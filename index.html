@@ -107,6 +107,10 @@ details[open] > summary::before{content:"▾ "}
 .edit-grid{display:grid;grid-template-columns:1fr 92px 66px auto;gap:7px;align-items:center;margin-top:9px}
 .edit-grid.fx{grid-template-columns:1fr 84px 54px 40px auto}
 .edit-grid.sb{grid-template-columns:1fr 84px 64px 54px auto}
+.rate{display:flex;gap:6px}
+.rate button{flex:1;padding:9px 0;border:1px solid var(--line);border-radius:9px;
+  background:var(--card2);font-size:14px;color:var(--dim)}
+.rate button.on{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:700}
 .edit-grid .hd{font-size:10px;color:var(--faint);text-align:center}
 .del{color:var(--faint);font-size:19px;line-height:1;padding:0 5px}
 footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;line-height:1.7}
@@ -303,6 +307,15 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
       <input type="time" id="hBed">
       <input type="time" id="hWake">
     </div>
+    <div class="edit-grid" style="grid-template-columns:1fr;margin:10px 0 0"><div class="hd" style="text-align:left">今日の体の調子</div></div>
+    <div class="rate" id="rateBody">
+      <button data-rate="body" data-val="1">1</button><button data-rate="body" data-val="2">2</button><button data-rate="body" data-val="3">3</button><button data-rate="body" data-val="4">4</button><button data-rate="body" data-val="5">5</button>
+    </div>
+    <div class="edit-grid" style="grid-template-columns:1fr;margin:8px 0 0"><div class="hd" style="text-align:left">今日の心の調子</div></div>
+    <div class="rate" id="rateMind">
+      <button data-rate="mind" data-val="1">1</button><button data-rate="mind" data-val="2">2</button><button data-rate="mind" data-val="3">3</button><button data-rate="mind" data-val="4">4</button><button data-rate="mind" data-val="5">5</button>
+    </div>
+    <div id="corrBox" class="tiny" style="margin-top:10px"></div>
     <div id="hList" style="margin-top:6px"></div>
     <details>
       <summary>自動で取り込む（ショートカット連携）</summary>
@@ -705,7 +718,7 @@ function addSpend(amt, cat, pay){
 
 /* ---------- events ---------- */
 document.addEventListener("click", e => {
-  const t = e.target.closest("[data-pad],[data-delspend],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub]");
+  const t = e.target.closest("[data-pad],[data-delspend],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate]");
   if(!t) return;
 
   if(t.dataset.pad !== undefined){
@@ -742,6 +755,13 @@ document.addEventListener("click", e => {
     const k = t.dataset.benmonth;
     if(S.benefitMonths[k]) delete S.benefitMonths[k]; else S.benefitMonths[k] = true;
     save(); render(); return;
+  }
+
+  if(t.dataset.rate){
+    const d = ymd(now()), h = S.health[d] || (S.health[d] = {});
+    const v = +t.dataset.val;
+    h[t.dataset.rate] = (h[t.dataset.rate] === v) ? null : v;   // 同じ数字をもう一度押すと取り消し
+    save(); healthView(); return;
   }
 
   if(t.dataset.delsub){ S.subs = S.subs.filter(x=>x.id!==t.dataset.delsub); save(); render(); return; }
@@ -801,6 +821,10 @@ function healthView(){
     if(document.activeElement !== e) e.value = v == null ? "" : v; };
   set("hSteps", h.steps); set("hBed", h.bed); set("hWake", h.wake);
 
+  document.querySelectorAll("[data-rate]").forEach(b =>
+    b.classList.toggle("on", (h[b.dataset.rate] || 0) === +b.dataset.val));
+  document.getElementById("corrBox").innerHTML = corrText();
+
   const days = Object.keys(S.health).sort().slice(-14).reverse();
   const maxS = Math.max(1, ...days.map(d => S.health[d].steps || 0));
   document.getElementById("hList").innerHTML = days.length
@@ -808,12 +832,43 @@ function healthView(){
         const x = S.health[d], sm = sleepMin(x.bed, x.wake);
         const dt = new Date(d + "T00:00:00");
         return `<div class="item"><div class="grow">
-          <div class="nm">${dt.getMonth()+1}/${dt.getDate()}（${"日月火水木金土"[dt.getDay()]}）</div>
+          <div class="nm">${dt.getMonth()+1}/${dt.getDate()}（${"日月火水木金土"[dt.getDay()]}）${
+            x.body?`<span class="chip">体${x.body}</span>`:""}${x.mind?`<span class="chip">心${x.mind}</span>`:""}</div>
           <div class="bar" style="margin:5px 0 0"><i style="width:${((x.steps||0)/maxS*100).toFixed(0)}%"></i></div></div>
           <div style="text-align:right"><div class="amt">${x.steps != null ? x.steps.toLocaleString("ja-JP")+"歩" : "—"}</div>
           <div class="tiny">${fmtSleep(sm)}</div></div></div>`;
       }).join("")
     : `<div class="tiny" style="padding-top:8px">まだ記録がありません。今日の分を上に入れるところからで大丈夫です。</div>`;
+}
+
+// 歩数×調子の相関（ピアソンのr）。相関は「関係の強さ」で、原因の証明ではない
+function pearson(pairs){
+  const n = pairs.length;
+  if(n < 2) return null;
+  const mx = pairs.reduce((a,p)=>a+p[0],0)/n, my = pairs.reduce((a,p)=>a+p[1],0)/n;
+  let sxy=0, sxx=0, syy=0;
+  for(const [x,y] of pairs){ sxy+=(x-mx)*(y-my); sxx+=(x-mx)**2; syy+=(y-my)**2; }
+  return (sxx===0 || syy===0) ? null : sxy/Math.sqrt(sxx*syy);
+}
+
+function corrText(){
+  const pm=[], pb=[];
+  for(const d of Object.keys(S.health)){
+    const x = S.health[d];
+    if(x.steps != null && x.mind) pm.push([x.steps, x.mind]);
+    if(x.steps != null && x.body) pb.push([x.steps, x.body]);
+  }
+  const line = (label, pairs) => {
+    if(pairs.length < 7)
+      return `${label} × 歩数: あと${7-pairs.length}日分たまると出ます（歩数と評価が両方ある日が7日必要）`;
+    const r = pearson(pairs);
+    if(r == null) return `${label} × 歩数: 計算できません（値が全部同じ）`;
+    const s = Math.abs(r) < .2 ? "ほぼ関係なし" : Math.abs(r) < .45 ? "弱い関係"
+            : Math.abs(r) < .7 ? "はっきりした関係" : "強い関係";
+    const dir = Math.abs(r) < .2 ? "" : (r > 0 ? "。歩いた日ほど調子が良い傾向" : "。歩いた日ほど調子が低い傾向");
+    return `${label} × 歩数: ${s}（r=${r.toFixed(2)}、${pairs.length}日分）${dir}`;
+  };
+  return line("心", pm) + "<br>" + line("体", pb);
 }
 
 for(const [id, key] of [["hSteps","steps"],["hBed","bed"],["hWake","wake"]]){
