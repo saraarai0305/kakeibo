@@ -1,0 +1,963 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>今日使えるお金</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#12151c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="今日使えるお金">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<style>
+:root{
+  --bg:#12151c; --card:#1a1f29; --card2:#212734; --line:#2c3444;
+  --fg:#e8ecf4; --dim:#8e9ab2; --faint:#5f6b81;
+  --ok:#5ecfa0; --warn:#e6b566; --bad:#e08f7a; --accent:#7aa7f0;
+  --r:16px;
+}
+@media (prefers-color-scheme: light){
+  :root{ --bg:#f4f6fa; --card:#ffffff; --card2:#eef1f7; --line:#dde3ee;
+         --fg:#1b2029; --dim:#5b6679; --faint:#8b95a8;
+         --ok:#1f9b6b; --warn:#a97711; --bad:#c0533a; --accent:#3a6fd0; }
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--fg);
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic UI","Segoe UI",sans-serif;
+  font-size:16px; line-height:1.5;
+  padding:env(safe-area-inset-top) 0 calc(env(safe-area-inset-bottom) + 24px);
+  -webkit-text-size-adjust:100%;
+}
+.wrap{max-width:560px;margin:0 auto;padding:12px 14px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:12px}
+h2{font-size:13px;font-weight:600;color:var(--dim);margin:0 0 10px;letter-spacing:.04em}
+.row{display:flex;align-items:center;gap:10px}
+.between{justify-content:space-between}
+.grow{flex:1;min-width:0}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+.tiny{font-size:12px;color:var(--faint)}
+.dim{color:var(--dim);font-size:13px}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+input,select{font:inherit;color:var(--fg);background:var(--card2);border:1px solid var(--line);
+  border-radius:10px;padding:9px 11px;width:100%;min-width:0}
+input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px}
+
+/* hero */
+.hero{background:linear-gradient(160deg,var(--card),var(--card2));text-align:center;padding:24px 16px 18px}
+.hero .lab{font-size:13px;color:var(--dim);letter-spacing:.06em}
+.hero .big{font-size:clamp(44px,15vw,64px);font-weight:700;line-height:1.05;margin:6px 0 2px;
+  font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.hero .big.neg{color:var(--bad)}
+.hero .sub{font-size:13px;color:var(--dim)}
+.bar{height:6px;background:var(--card2);border-radius:99px;overflow:hidden;margin:14px 0 8px;
+  border:1px solid var(--line)}
+.bar > i{display:block;height:100%;background:var(--ok);transition:width .25s ease}
+.bar > i.over{background:var(--bad)}
+
+/* shortfall */
+.alert{background:color-mix(in srgb,var(--warn) 12%,var(--card));border-color:color-mix(in srgb,var(--warn) 40%,var(--line))}
+.alert .amt{font-size:26px;font-weight:700;color:var(--warn);font-variant-numeric:tabular-nums}
+.alert ul{margin:10px 0 0;padding-left:1.1em;font-size:13px;color:var(--dim)}
+.alert li{margin:5px 0}
+
+/* quick spend */
+.pads{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px}
+.pad{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:11px 4px;
+  text-align:center;font-size:13px;font-weight:600}
+.pad:active{background:var(--line)}
+.pad small{display:block;font-size:10px;color:var(--faint);font-weight:400;margin-top:2px}
+.spendform{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:8px;
+  border:1px solid var(--line);border-radius:11px;overflow:hidden}
+.seg button{padding:9px 4px;font-size:13px;color:var(--dim);background:var(--card2)}
+.seg button.on{background:var(--accent);color:#fff;font-weight:600}
+.btn{background:var(--accent);color:#fff;border-radius:11px;padding:10px 16px;font-weight:600;white-space:nowrap}
+.btn.ghost{background:var(--card2);color:var(--fg);border:1px solid var(--line)}
+.btn.sm{padding:6px 12px;font-size:13px;border-radius:9px}
+.btn:disabled{opacity:.4}
+
+/* lists */
+.item{display:flex;align-items:center;gap:10px;padding:11px 0;border-top:1px solid var(--line)}
+.item:first-of-type{border-top:none}
+.item .nm{font-size:15px}
+.item .mt{font-size:11px;color:var(--faint);margin-top:1px}
+.item .amt{font-variant-numeric:tabular-nums;font-size:15px;white-space:nowrap}
+.chip{font-size:10px;padding:2px 7px;border-radius:99px;border:1px solid var(--line);color:var(--dim);
+  white-space:nowrap;vertical-align:1px;margin-left:6px}
+.chip.due{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,var(--line))}
+.chip.late{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 45%,var(--line))}
+.chip.done{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 45%,var(--line))}
+.done-row{opacity:.45}
+
+/* benefit counter */
+.dots{display:flex;flex-wrap:wrap;gap:5px;margin:12px 0 8px}
+.dot{width:100%;max-width:26px;aspect-ratio:1;border-radius:7px;background:var(--card2);
+  border:1px solid var(--line);flex:1 1 22px;display:grid;place-items:center;font-size:9px;color:var(--faint)}
+.dot.on{background:color-mix(in srgb,var(--ok) 30%,var(--card2));border-color:var(--ok);color:var(--fg)}
+.dot.next{border-color:var(--accent);border-style:dashed;color:var(--accent)}
+
+details{border-top:1px solid var(--line);padding-top:10px;margin-top:4px}
+details > summary{list-style:none;cursor:pointer;font-size:13px;color:var(--dim);padding:4px 0}
+details > summary::-webkit-details-marker{display:none}
+details > summary::before{content:"▸ ";color:var(--faint)}
+details[open] > summary::before{content:"▾ "}
+.edit-grid{display:grid;grid-template-columns:1fr 92px 66px auto;gap:7px;align-items:center;margin-top:9px}
+.edit-grid.fx{grid-template-columns:1fr 84px 54px 40px auto}
+.edit-grid .hd{font-size:10px;color:var(--faint);text-align:center}
+.del{color:var(--faint);font-size:19px;line-height:1;padding:0 5px}
+footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;line-height:1.7}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 22px);
+  background:var(--fg);color:var(--bg);padding:10px 18px;border-radius:99px;font-size:14px;font-weight:600;
+  opacity:0;pointer-events:none;transition:opacity .18s;z-index:9}
+.toast.show{opacity:.95}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===== HERO ===== -->
+  <div class="card hero">
+    <div class="lab">今日 使えるお金</div>
+    <div class="big num" id="heroAmt">¥0</div>
+    <div class="sub" id="heroSub">—</div>
+    <div class="bar"><i id="heroBar" style="width:0%"></i></div>
+    <div class="tiny" id="heroFoot">—</div>
+  </div>
+
+  <!-- ===== SHORTFALL ===== -->
+  <div class="card alert" id="shortCard" hidden>
+    <h2>今月の不足額</h2>
+    <div class="amt num" id="shortAmt">¥0</div>
+    <div class="dim" style="margin-top:6px">これは頑張りで埋まる数字ではなく、支払額を収入に合わせて引き直す手続きの対象です。この金額をそのまま持って行ってください。</div>
+    <ul>
+      <li>日本クレジットカウンセリング協会 — 多重債務の無料相談</li>
+      <li>法テラス — 無料法律相談（収入要件あり）</li>
+      <li>お住まいの自治体の自立相談支援機関 — 家計改善支援</li>
+    </ul>
+  </div>
+
+  <!-- ===== APPOINTMENT ===== -->
+  <div class="card" id="apptCard">
+    <h2>次の通院</h2>
+    <div class="row between">
+      <div class="grow">
+        <div style="font-size:19px;font-weight:700" id="apptWhen">—</div>
+        <div class="dim" id="apptWhere"></div>
+      </div>
+      <div style="text-align:right">
+        <span class="num" style="font-size:32px;font-weight:700" id="apptLeft">—</span>
+        <div class="tiny">日後</div>
+      </div>
+    </div>
+    <div class="tiny" id="apptNote" style="margin-top:8px"></div>
+    <details>
+      <summary>通院予定を編集</summary>
+      <div class="row" style="gap:7px;margin-top:9px">
+        <input type="date" id="apptDate"><input type="time" id="apptTime" style="max-width:110px">
+      </div>
+      <input id="apptPlace" placeholder="病院名（アプリの中だけ）" style="margin-top:7px">
+      <input id="apptAlias" placeholder="カレンダーに出す名前" style="margin-top:7px">
+      <input id="apptMemo" placeholder="頼むこと・持っていくもの（外には出しません）" style="margin-top:7px">
+      <div class="tiny" style="margin-top:8px">通知はiPhoneの「リマインダー」に入れてください。前日20:00と当日の2つが確実です。</div>
+    </details>
+  </div>
+
+  <!-- ===== CALENDAR EXPORT ===== -->
+  <div class="card">
+    <h2>カレンダーに書き出す</h2>
+    <div class="dim" style="margin-bottom:10px">
+      .icsファイルを作ります。iPhoneで開くとカレンダーに追加でき、TimeTreeにも表示されます。
+      <b>出す名前は上で決めたものだけ</b>が入ります。メモや病院の本当の名前は入りません。
+    </div>
+    <div id="icsPreview" class="tiny" style="margin-bottom:10px"></div>
+    <label class="row" style="gap:8px;margin-bottom:10px;cursor:pointer">
+      <input type="checkbox" id="icsAmount" style="width:auto;flex:none">
+      <span class="dim">支払いの金額もカレンダーに入れる</span>
+    </label>
+    <button class="btn grow" id="icsBtn" style="width:100%">.ics を書き出す（3ヶ月分）</button>
+    <div class="tiny" style="margin-top:8px">支払いの項目は「今月の支払い」の編集欄で、1件ずつ出す／出さないを選べます。</div>
+  </div>
+
+  <!-- ===== SPEND ===== -->
+  <div class="card">
+    <h2>使ったら押す</h2>
+    <div class="pads" id="pads"></div>
+    <div class="seg" id="paySeg">
+      <button data-pay="cash" class="on">現金・引落</button>
+      <button data-pay="card">カード</button>
+    </div>
+    <div class="spendform">
+      <input id="spAmt" type="number" inputmode="numeric" placeholder="金額" min="0" step="1">
+      <select id="spCat"></select>
+      <button class="btn" id="spAdd">記録</button>
+    </div>
+    <div id="todayList"></div>
+  </div>
+
+  <!-- ===== CARD PROJECTION ===== -->
+  <div class="card" id="cardCard">
+    <h2>来月きます（今月のカード利用）</h2>
+    <div class="row between" style="align-items:flex-end">
+      <div><span class="num" style="font-size:34px;font-weight:700" id="cardNow">¥0</span>
+        <div class="tiny">今月ここまでの利用</div></div>
+      <div style="text-align:right">
+        <span class="num" style="font-size:20px;font-weight:700" id="cardProj">¥0</span>
+        <div class="tiny">このペースだと月末に</div>
+      </div>
+    </div>
+    <div class="bar"><i id="cardBar" style="width:0%"></i></div>
+    <div class="tiny" id="cardMsg">—</div>
+    <details>
+      <summary>使える上限を決める</summary>
+      <div class="row" style="gap:8px;margin-top:9px;align-items:center">
+        <div class="grow dim">今月のカード上限</div>
+        <input id="cardCap" type="number" inputmode="numeric" style="max-width:130px">
+      </div>
+      <div class="tiny" style="margin-top:8px">目安は 収入 − 家賃 − 現金で使う分。ここを超えると来月の請求が収入を超えます。</div>
+    </details>
+  </div>
+
+  <!-- ===== UPCOMING ===== -->
+  <div class="card">
+    <h2>今月の支払い</h2>
+    <div id="fixedList"></div>
+    <details>
+      <summary>支払いを編集</summary>
+      <div class="edit-grid fx">
+        <div class="hd">名前</div><div class="hd">金額</div><div class="hd">日</div><div class="hd">暦</div><div></div>
+      </div>
+      <div id="fixedEdit"></div>
+      <button class="btn ghost sm" id="fixedAdd" style="margin-top:9px">＋ 支払いを追加</button>
+      <div class="tiny" style="margin-top:7px">「振」= 自分で振り込むもの（自動引落ではない）。名前の後ろに 振 と入れると付きます。</div>
+    </details>
+  </div>
+
+  <!-- ===== INCOME / BENEFIT ===== -->
+  <div class="card">
+    <h2>入ってくるお金</h2>
+    <div id="incomeList"></div>
+    <details>
+      <summary>入金を編集</summary>
+      <div class="edit-grid">
+        <div class="hd">名前</div><div class="hd">金額</div><div class="hd">日</div><div></div>
+      </div>
+      <div id="incomeEdit"></div>
+      <button class="btn ghost sm" id="incomeAdd" style="margin-top:9px">＋ 入金を追加</button>
+    </details>
+  </div>
+
+  <!-- ===== BENEFIT COUNTER ===== -->
+  <div class="card">
+    <h2>手当 のこり</h2>
+    <div class="row between">
+      <div><span class="num" style="font-size:30px;font-weight:700" id="benLeft">0</span>
+           <span class="dim">ヶ月分 / 全<span id="benTotal">18</span></span></div>
+      <div class="tiny" style="text-align:right" id="benEnd">—</div>
+    </div>
+    <div class="dots" id="benDots"></div>
+    <div class="tiny">枠は「支給対象の月」。押すと切り替わります。入金そのものは上の「入ってくるお金」で記録してください（対象月と入金月はずれます）。日数ベースで数える制度もあるため、ここは目安です。</div>
+  </div>
+
+  <!-- ===== BALANCE ===== -->
+  <div class="card">
+    <h2>いま持っているお金</h2>
+    <div id="acctList"></div>
+    <details>
+      <summary>残高を編集</summary>
+      <div class="edit-grid">
+        <div class="hd">名前</div><div class="hd">残高</div><div></div><div></div>
+      </div>
+      <div id="acctEdit"></div>
+      <button class="btn ghost sm" id="acctAdd" style="margin-top:9px">＋ 口座を追加</button>
+    </details>
+  </div>
+
+  <!-- ===== HEALTH ===== -->
+  <div class="card">
+    <h2>からだの記録（歩数と睡眠）</h2>
+    <button class="btn ghost sm" id="hPaste" style="width:100%;margin-bottom:10px">クリップボードから取り込む</button>
+    <div class="edit-grid" style="grid-template-columns:1.2fr 1fr 1fr;margin:0 0 4px">
+      <div class="hd">今日の歩数</div><div class="hd">就寝</div><div class="hd">起床</div>
+    </div>
+    <div class="edit-grid" style="grid-template-columns:1.2fr 1fr 1fr;margin:0">
+      <input type="number" inputmode="numeric" id="hSteps" placeholder="歩数">
+      <input type="time" id="hBed">
+      <input type="time" id="hWake">
+    </div>
+    <div id="hList" style="margin-top:6px"></div>
+    <details>
+      <summary>自動で取り込む（ショートカット連携）</summary>
+      <div class="tiny" style="margin-top:8px">
+        iPhoneの「ショートカット」がヘルスケアの歩数・睡眠を読めます。
+        <b>kenko|2026-08-02|8234|23:40|07:30</b>（歩数だけ・睡眠だけでも可）の形で
+        クリップボードにコピーする自動化を作り、このアプリを開いて上のボタンを押すと入ります。
+        作り方は SHORTCUTS.md にあります。
+      </div>
+    </details>
+  </div>
+
+  <!-- ===== BACKUP ===== -->
+  <div class="card">
+    <h2>バックアップ</h2>
+    <div class="dim" style="margin-bottom:10px">iPhoneのSafariは、しばらく開かないと保存データを消すことがあります。ときどき書き出してください。</div>
+    <div class="row" style="gap:8px">
+      <button class="btn ghost sm grow" id="expBtn">書き出す</button>
+      <button class="btn ghost sm grow" id="impBtn">読み込む</button>
+      <input type="file" id="impFile" accept="application/json,.json" hidden>
+    </div>
+    <div class="tiny" style="margin-top:9px" id="lastSave">—</div>
+  </div>
+
+  <footer>
+    データはこの端末の中だけに保存されます。どこにも送信されません。<br>
+    家賃と通院日の通知は、iPhone標準の「リマインダー」に入れてください。
+  </footer>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const KEY = "mainichi.v1";
+const CATS = ["食費","日用品","交通","医療","交際","その他"];
+const PADS = [[300,"食費"],[500,"食費"],[1000,"食費"],[null,"手入力"]];
+
+/* ---------- date helpers (all local time) ---------- */
+const now = () => new Date();
+const ymd = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const ym  = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+const lastDay = d => new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
+// 「31日」の引き落としは、31日がない月には末日に寄せる
+const dueDay = (day, d) => Math.min(+day || 1, lastDay(d));
+const addMonths = (key,n) => { const [y,m]=key.split("-").map(Number);
+  const d=new Date(y, m-1+n, 1); return ym(d); };
+const jpMonth = key => { const [y,m]=key.split("-").map(Number); return `${y}年${m}月`; };
+const yen = n => (n<0?"-":"") + "¥" + Math.round(Math.abs(n)).toLocaleString("ja-JP");
+
+/* ---------- state ---------- */
+const uid = () => Math.random().toString(36).slice(2,9);
+
+function seed(){
+  return {
+    version: 1,
+    accounts: [
+      {id:uid(), name:"銀行", bal:0},
+      {id:uid(), name:"現金", bal:0}
+    ],
+    fixed: [
+      {id:uid(), name:"家賃＋共益費", amt:0, day:25, transfer:true, share:true},
+      {id:uid(), name:"カード請求（先月使った分）", amt:0, day:26, transfer:false, share:false},
+      {id:uid(), name:"国民年金", amt:17920, day:31, transfer:false, share:false},
+      {id:uid(), name:"国民健康保険", amt:0, day:31, transfer:false, share:false}
+    ],
+    incomes: [
+      {id:"benefit", name:"手当", amt:0, day:15, benefit:true}
+    ],
+    spends: [],
+    appt: { date:"", time:"", place:"", alias:"", memo:"" },
+    icsAmount: false,   // カレンダーに金額を入れるか
+    cardCap: 0,         // 今月カードで使ってよい上限
+    health: {},         // "2026-08-02" -> {steps, bed:"23:40", wake:"07:30"}
+    ui: { pay: "cash" },
+    doneFixed: {},      // "fixedId:2026-08" -> true
+    doneIncome: {},     // "incomeId:2026-08" -> true（入金した月）
+    // 支給対象の月。入金月とはずれるので、入金記録とは別に持つ
+    benefitMonths: {},
+    benefit: { start:"2026-01", units:18 },
+    savedAt: null
+  };
+}
+
+function load(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    if(!raw) return seed();
+    const s = JSON.parse(raw);
+    const base = seed();
+    // shallow-merge so a partial/older save still boots
+    return Object.assign(base, s, {benefit: Object.assign(base.benefit, s.benefit||{})});
+  }catch(e){ console.warn("load failed", e); return seed(); }
+}
+
+let S = load();
+let saveTimer = null;
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>{
+    S.savedAt = new Date().toISOString();
+    try{ localStorage.setItem(KEY, JSON.stringify(S)); }
+    catch(e){ toast("保存できませんでした"); console.error(e); }
+    paintSaved();
+  }, 150);
+}
+
+/* ---------- core math ---------- */
+function calc(){
+  const d = now(), mk = ym(d), today = d.getDate();
+  const daysLeft = lastDay(d) - today + 1;
+
+  const balance = S.accounts.reduce((a,x)=>a + (+x.bal||0), 0);
+
+  let unpaid = 0, overdue = 0;
+  for(const f of S.fixed){
+    if(S.doneFixed[`${f.id}:${mk}`]) continue;
+    unpaid += (+f.amt||0);
+    if(dueDay(f.day, d) < today) overdue += (+f.amt||0);
+  }
+
+  // only count income that has not arrived AND whose day has not passed
+  let incoming = 0;
+  for(const i of S.incomes){
+    if(S.doneIncome[`${i.id}:${mk}`]) continue;
+    if(i.day >= today) incoming += (+i.amt||0);
+  }
+
+  const pool = balance + incoming - unpaid;      // 月末までに自由に使える総額
+  const perDay = pool > 0 ? pool / daysLeft : 0;
+
+  // カード払いは残高を今は減らさないが、使ったことに変わりはないので予算からは引く
+  const spentToday = S.spends
+    .filter(s => s.d === ymd(d))
+    .reduce((a,s)=>a + (+s.amt||0), 0);
+
+  // 今月のカード利用 = 来月の請求額
+  const cardNow = S.spends
+    .filter(s => s.pay === "card" && s.d.startsWith(mk))
+    .reduce((a,s)=>a + (+s.amt||0), 0);
+  const cardProj = cardNow / today * lastDay(d);
+
+  return { mk, today, daysLeft, balance, unpaid, overdue, incoming,
+           pool, perDay, spentToday, left: perDay - spentToday,
+           cardNow, cardProj };
+}
+
+/* ---------- render ---------- */
+function render(){ heroView(); apptView(); spendView(); cardView(); fixedView(); incomeView(); benefitView(); acctView(); healthView(); icsView(); paintSaved(); }
+
+function apptView(){
+  const a = S.appt || (S.appt = {});
+  const set = (id,v) => { const e = document.getElementById(id);
+    if(document.activeElement !== e) e.value = v || ""; };
+  set("apptDate", a.date); set("apptTime", a.time); set("apptAlias", a.alias);
+  set("apptPlace", a.place); set("apptMemo", a.memo);
+
+  const when = document.getElementById("apptWhen");
+  const left = document.getElementById("apptLeft");
+  document.getElementById("apptWhere").textContent = a.place || "";
+  document.getElementById("apptNote").textContent = a.memo || "";
+
+  if(!a.date){ when.textContent = "未設定"; left.textContent = "—"; return; }
+
+  const d = new Date(a.date + "T00:00:00");
+  const days = Math.round((d - new Date(ymd(now()) + "T00:00:00")) / 86400000);
+  when.textContent = `${d.getMonth()+1}月${d.getDate()}日（${"日月火水木金土"[d.getDay()]}）${a.time || ""}`;
+  left.textContent = days < 0 ? "済" : days;
+}
+
+function heroView(){
+  const c = calc();
+  const el = id => document.getElementById(id);
+
+  el("heroAmt").textContent = yen(c.left);
+  el("heroAmt").classList.toggle("neg", c.left < 0);
+  el("heroSub").textContent =
+    `1日 ${yen(c.perDay)} のうち 今日 ${yen(c.spentToday)} 使いました`;
+
+  const ratio = c.perDay > 0 ? Math.min(c.spentToday / c.perDay, 1) : (c.spentToday>0?1:0);
+  const bar = el("heroBar");
+  bar.style.width = (ratio*100).toFixed(1) + "%";
+  bar.classList.toggle("over", c.left < 0);
+
+  el("heroFoot").textContent =
+    `残高 ${yen(c.balance)}　＋入金予定 ${yen(c.incoming)}　−未払い ${yen(c.unpaid)}　＝ ${yen(c.pool)} を のこり${c.daysLeft}日で`;
+
+  const sc = el("shortCard");
+  if(c.pool < 0){
+    sc.hidden = false;
+    el("shortAmt").textContent = yen(-c.pool);
+  } else sc.hidden = true;
+}
+
+function spendView(){
+  const pads = document.getElementById("pads");
+  if(!pads.dataset.built){
+    pads.innerHTML = PADS.map((p,i)=>
+      `<button class="pad" data-pad="${i}">${p[0]?yen(p[0]):"＋"}<small>${p[1]}</small></button>`
+    ).join("");
+    const sel = document.getElementById("spCat");
+    sel.innerHTML = CATS.map(c=>`<option>${c}</option>`).join("");
+    pads.dataset.built = "1";
+  }
+  document.querySelectorAll("#paySeg button").forEach(b =>
+    b.classList.toggle("on", b.dataset.pay === (S.ui.pay || "cash")));
+
+  const d = ymd(now());
+  const list = S.spends.filter(s=>s.d===d).slice().reverse();
+  document.getElementById("todayList").innerHTML = list.length
+    ? list.map(s=>`<div class="item"><div class="grow"><div class="nm">${esc(s.cat)}${
+          s.pay==="card"?`<span class="chip due">カード</span>`:""}</div>
+        <div class="mt">${s.t||""}</div></div>
+        <div class="amt">${yen(s.amt)}</div>
+        <button class="del" data-delspend="${s.id}">×</button></div>`).join("")
+    : `<div class="tiny" style="padding-top:10px">今日はまだ記録がありません</div>`;
+}
+
+function cardView(){
+  const c = calc();
+  const cap = +S.cardCap || 0;
+  document.getElementById("cardNow").textContent  = yen(c.cardNow);
+  document.getElementById("cardProj").textContent = yen(c.cardProj);
+
+  const ratio = cap > 0 ? Math.min(c.cardNow / cap, 1) : 0;
+  const bar = document.getElementById("cardBar");
+  bar.style.width = (ratio*100).toFixed(1) + "%";
+  bar.classList.toggle("over", cap > 0 && c.cardProj > cap);
+
+  const capEl = document.getElementById("cardCap");
+  if(document.activeElement !== capEl) capEl.value = cap;
+
+  const msg = document.getElementById("cardMsg");
+  if(cap <= 0) msg.textContent = "上限を決めると、超えそうかどうかがここに出ます。";
+  else if(c.cardProj > cap)
+    msg.innerHTML = `このペースだと上限を <b style="color:var(--bad)">${yen(c.cardProj - cap)}</b> 超えます。1日あたり ${yen(cap / lastDay(now()))} が上限ペースです。`;
+  else
+    msg.innerHTML = `上限まであと <b style="color:var(--ok)">${yen(cap - c.cardProj)}</b>。このペースなら収まります。`;
+}
+
+function fixedView(){
+  const c = calc();
+  document.getElementById("fixedList").innerHTML = S.fixed.map(f=>{
+    const k = `${f.id}:${c.mk}`, done = !!S.doneFixed[k];
+    const due = dueDay(f.day, now());
+    const late = !done && due < c.today;
+    const dleft = due - c.today;
+    const chip = done ? `<span class="chip done">払った</span>`
+      : late ? `<span class="chip late">期限すぎ</span>`
+      : dleft === 0 ? `<span class="chip due">今日</span>`
+      : `<span class="chip">あと${dleft}日</span>`;
+    return `<div class="item ${done?"done-row":""}">
+      <div class="grow"><div class="nm">${esc(f.name)}${f.transfer?`<span class="chip">振込</span>`:""}${chip}</div>
+        <div class="mt">毎月${f.day}日</div></div>
+      <div class="amt">${yen(f.amt)}</div>
+      <button class="btn ghost sm" data-payfixed="${f.id}">${done?"戻す":"払った"}</button>
+    </div>`;
+  }).join("") || `<div class="tiny">支払いが登録されていません</div>`;
+
+  document.getElementById("fixedEdit").innerHTML = S.fixed.map(f=>`
+    <div class="edit-grid fx">
+      <input value="${esc(f.name)}${f.transfer?" 振":""}" data-fx="name" data-id="${f.id}">
+      <input type="number" inputmode="numeric" value="${f.amt}" data-fx="amt" data-id="${f.id}">
+      <input type="number" inputmode="numeric" min="1" max="31" value="${f.day}" data-fx="day" data-id="${f.id}">
+      <label class="tiny" style="display:flex;align-items:center;gap:3px;cursor:pointer" title="カレンダーに出す">
+        <input type="checkbox" style="width:auto;flex:none" data-share="${f.id}" ${f.share?"checked":""}>暦
+      </label>
+      <button class="del" data-delfixed="${f.id}">×</button>
+    </div>`).join("");
+}
+
+function incomeView(){
+  const c = calc();
+  document.getElementById("incomeList").innerHTML = S.incomes.map(i=>{
+    const k = `${i.id}:${c.mk}`, got = !!S.doneIncome[k];
+    const late = !got && i.day < c.today;
+    const chip = got ? `<span class="chip done">入金済み</span>`
+      : late ? `<span class="chip late">まだ入金なし</span>`
+      : `<span class="chip">あと${i.day - c.today}日</span>`;
+    return `<div class="item">
+      <div class="grow"><div class="nm">${esc(i.name)}${chip}</div>
+        <div class="mt">毎月${i.day}日ごろ${late?"　※計算に入れていません":""}</div></div>
+      <div class="amt">${yen(i.amt)}</div>
+      <button class="btn ghost sm" data-gotincome="${i.id}">${got?"戻す":"入った"}</button>
+    </div>`;
+  }).join("") || `<div class="tiny">入金が登録されていません</div>`;
+
+  document.getElementById("incomeEdit").innerHTML = S.incomes.map(i=>`
+    <div class="edit-grid">
+      <input value="${esc(i.name)}" data-ic="name" data-id="${i.id}">
+      <input type="number" inputmode="numeric" value="${i.amt}" data-ic="amt" data-id="${i.id}">
+      <input type="number" inputmode="numeric" min="1" max="31" value="${i.day}" data-ic="day" data-id="${i.id}">
+      <button class="del" data-delincome="${i.id}"${i.benefit?" disabled style='opacity:.25'":""}>×</button>
+    </div>`).join("");
+}
+
+function benefitView(){
+  const total = S.benefit.units;
+  const keys = [];
+  for(let n=0; n<total; n++) keys.push(addMonths(S.benefit.start, n));
+
+  const got = keys.filter(k => !!S.benefitMonths[k]).length;
+  document.getElementById("benLeft").textContent = total - got;
+  document.getElementById("benTotal").textContent = total;
+
+  const nextIdx = keys.findIndex(k => !S.benefitMonths[k]);
+  document.getElementById("benEnd").innerHTML = nextIdx < 0
+    ? "受給枠を使い切りました"
+    : `次は ${jpMonth(keys[nextIdx])}分<br>枠の最後は ${jpMonth(keys[total-1])}分`;
+
+  document.getElementById("benDots").innerHTML = keys.map((k,n)=>{
+    const on = !!S.benefitMonths[k];
+    const cls = on ? "on" : (n === nextIdx ? "next" : "");
+    return `<button class="dot ${cls}" data-benmonth="${k}" title="${jpMonth(k)}分">${k.slice(5)}</button>`;
+  }).join("");
+}
+
+function acctView(){
+  const total = S.accounts.reduce((a,x)=>a+(+x.bal||0),0);
+  document.getElementById("acctList").innerHTML =
+    S.accounts.map(a=>`<div class="item"><div class="grow nm">${esc(a.name)}</div>
+      <div class="amt">${yen(a.bal)}</div></div>`).join("")
+    + `<div class="item"><div class="grow nm" style="color:var(--dim)">合計</div>
+       <div class="amt" style="font-weight:700">${yen(total)}</div></div>`;
+
+  document.getElementById("acctEdit").innerHTML = S.accounts.map(a=>`
+    <div class="edit-grid">
+      <input value="${esc(a.name)}" data-ac="name" data-id="${a.id}">
+      <input type="number" inputmode="numeric" value="${a.bal}" data-ac="bal" data-id="${a.id}">
+      <div></div>
+      <button class="del" data-delacct="${a.id}">×</button>
+    </div>`).join("");
+}
+
+function paintSaved(){
+  const el = document.getElementById("lastSave");
+  el.textContent = S.savedAt
+    ? "最後に保存: " + new Date(S.savedAt).toLocaleString("ja-JP")
+    : "まだ保存されていません";
+}
+
+const esc = s => String(s).replace(/[&<>"']/g, m =>
+  ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+
+let toastTimer;
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove("show"), 1600);
+}
+
+/* ---------- money movement ---------- */
+function primaryAcct(){
+  return S.accounts.find(a => a.name.includes("現金")) || S.accounts[0];
+}
+function bankAcct(){
+  return S.accounts.find(a => !a.name.includes("現金")) || S.accounts[0];
+}
+
+function addSpend(amt, cat, pay){
+  amt = Math.round(+amt);
+  if(!(amt > 0)) return toast("金額を入れてください");
+  pay = pay || S.ui.pay || "cash";
+  const d = now();
+  S.spends.push({ id:uid(), d:ymd(d), t:`${d.getHours()}:${String(d.getMinutes()).padStart(2,"0")}`,
+                  amt, cat, pay });
+  // カードは今の残高を動かさない。来月の請求として積み上がる
+  if(pay === "cash"){ const a = primaryAcct(); if(a) a.bal = (+a.bal||0) - amt; }
+  save(); render();
+  toast(pay === "card" ? `${yen(amt)}　来月の請求に追加` : `${yen(amt)} を記録`);
+}
+
+/* ---------- events ---------- */
+document.addEventListener("click", e => {
+  const t = e.target.closest("[data-pad],[data-delspend],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct]");
+  if(!t) return;
+
+  if(t.dataset.pad !== undefined){
+    const [amt, cat] = PADS[+t.dataset.pad];
+    if(amt === null){ document.getElementById("spAmt").focus(); return; }
+    addSpend(amt, cat); return;
+  }
+
+  if(t.dataset.delspend){
+    const i = S.spends.findIndex(s=>s.id===t.dataset.delspend);
+    if(i>=0){
+      const sp = S.spends[i];
+      if(sp.pay !== "card"){ const a = primaryAcct(); if(a) a.bal = (+a.bal||0) + (+sp.amt||0); }
+      S.spends.splice(i,1); save(); render(); toast("取り消しました");
+    }
+    return;
+  }
+
+  if(t.dataset.payfixed){
+    const f = S.fixed.find(x=>x.id===t.dataset.payfixed); if(!f) return;
+    const k = `${f.id}:${ym(now())}`, a = bankAcct();
+    if(S.doneFixed[k]){ delete S.doneFixed[k]; if(a) a.bal = (+a.bal||0) + (+f.amt||0); }
+    else { S.doneFixed[k] = true; if(a) a.bal = (+a.bal||0) - (+f.amt||0); }
+    save(); render(); return;
+  }
+
+  if(t.dataset.gotincome){
+    const i = S.incomes.find(x=>x.id===t.dataset.gotincome); if(!i) return;
+    toggleIncome(i, ym(now())); return;
+  }
+
+  if(t.dataset.benmonth){
+    // 支給対象月の記録だけ。お金が動くのは「入ってくるお金」側の「入った」ボタン
+    const k = t.dataset.benmonth;
+    if(S.benefitMonths[k]) delete S.benefitMonths[k]; else S.benefitMonths[k] = true;
+    save(); render(); return;
+  }
+
+  if(t.dataset.delfixed){ S.fixed = S.fixed.filter(x=>x.id!==t.dataset.delfixed); save(); render(); return; }
+  if(t.dataset.delincome){
+    const i = S.incomes.find(x=>x.id===t.dataset.delincome);
+    if(i && i.benefit) return toast("手当は消せません");
+    S.incomes = S.incomes.filter(x=>x.id!==t.dataset.delincome); save(); render(); return;
+  }
+  if(t.dataset.delacct){
+    if(S.accounts.length <= 1) return toast("最後の1つは消せません");
+    S.accounts = S.accounts.filter(x=>x.id!==t.dataset.delacct); save(); render(); return;
+  }
+});
+
+// past/future months only flip the record; only the current month moves the balance
+function toggleIncome(i, monthKey, recordOnly){
+  const k = `${i.id}:${monthKey}`, a = bankAcct();
+  if(S.doneIncome[k]){
+    delete S.doneIncome[k];
+    if(!recordOnly && a) a.bal = (+a.bal||0) - (+i.amt||0);
+  } else {
+    S.doneIncome[k] = true;
+    if(!recordOnly && a) a.bal = (+a.bal||0) + (+i.amt||0);
+  }
+  save(); render();
+}
+
+document.getElementById("paySeg").addEventListener("click", e => {
+  const b = e.target.closest("[data-pay]"); if(!b) return;
+  S.ui.pay = b.dataset.pay; save(); spendView();
+});
+/* ---------- からだの記録 ---------- */
+function sleepMin(bed, wake){
+  if(!bed || !wake) return null;
+  const [bh,bm] = bed.split(":").map(Number), [wh,wm] = wake.split(":").map(Number);
+  if([bh,bm,wh,wm].some(isNaN)) return null;
+  const b = bh*60+bm, w = wh*60+wm;
+  return b <= w ? w - b : 1440 - b + w;   // 就寝が起床より遅い時刻なら前日夜とみなす
+}
+const fmtSleep = m => m == null ? "—" : `${Math.floor(m/60)}時間${String(m%60).padStart(2,"0")}分`;
+
+// "kenko|2026-08-02|8234|23:40|07:30" 形式。空欄はスキップ
+function applyHealthLine(line){
+  const p = line.trim().split("|");
+  if(p[0] !== "kenko" || !/^\d{4}-\d{2}-\d{2}$/.test(p[1] || "")) return false;
+  const h = S.health[p[1]] || (S.health[p[1]] = {});
+  if(p[2]) h.steps = Math.round(+p[2]) || 0;
+  if(p[3]) h.bed = p[3];
+  if(p[4]) h.wake = p[4];
+  return true;
+}
+
+function healthView(){
+  const t = ymd(now()), h = S.health[t] || {};
+  const set = (id,v) => { const e = document.getElementById(id);
+    if(document.activeElement !== e) e.value = v == null ? "" : v; };
+  set("hSteps", h.steps); set("hBed", h.bed); set("hWake", h.wake);
+
+  const days = Object.keys(S.health).sort().slice(-14).reverse();
+  const maxS = Math.max(1, ...days.map(d => S.health[d].steps || 0));
+  document.getElementById("hList").innerHTML = days.length
+    ? days.map(d => {
+        const x = S.health[d], sm = sleepMin(x.bed, x.wake);
+        const dt = new Date(d + "T00:00:00");
+        return `<div class="item"><div class="grow">
+          <div class="nm">${dt.getMonth()+1}/${dt.getDate()}（${"日月火水木金土"[dt.getDay()]}）</div>
+          <div class="bar" style="margin:5px 0 0"><i style="width:${((x.steps||0)/maxS*100).toFixed(0)}%"></i></div></div>
+          <div style="text-align:right"><div class="amt">${x.steps != null ? x.steps.toLocaleString("ja-JP")+"歩" : "—"}</div>
+          <div class="tiny">${fmtSleep(sm)}</div></div></div>`;
+      }).join("")
+    : `<div class="tiny" style="padding-top:8px">まだ記録がありません。今日の分を上に入れるところからで大丈夫です。</div>`;
+}
+
+for(const [id, key] of [["hSteps","steps"],["hBed","bed"],["hWake","wake"]]){
+  document.getElementById(id).addEventListener("input", e => {
+    const t = ymd(now()), h = S.health[t] || (S.health[t] = {});
+    if(key === "steps") h.steps = Math.round(+e.target.value) || 0;
+    else h[key] = e.target.value;
+    save();
+  });
+  document.getElementById(id).addEventListener("change", healthView);
+}
+
+document.getElementById("hPaste").addEventListener("click", async ()=>{
+  try{
+    const txt = await navigator.clipboard.readText();
+    let n = 0;
+    for(const line of txt.split(/\r?\n/)) if(applyHealthLine(line)) n++;
+    if(n){ save(); render(); toast(`${n}件 取り込みました`); }
+    else toast("kenko| で始まる行がありません");
+  }catch(e){ toast("クリップボードを読めませんでした"); }
+});
+
+// URL の #k=... からも取り込める（ショートカットの「URLを開く」用）
+function importFromHash(){
+  const m = location.hash.match(/^#k=(.+)$/);
+  if(!m) return;
+  if(applyHealthLine("kenko|" + decodeURIComponent(m[1]))){ save(); toast("取り込みました"); }
+  history.replaceState(null, "", location.pathname + location.search);
+}
+window.addEventListener("hashchange", ()=>{ importFromHash(); render(); });
+
+/* ---------- カレンダー書き出し（.ics） ---------- */
+// 外に出るのは「出す名前」だけ。place も memo も入れない。
+const icsEsc = s => String(s).replace(/[\\;,]/g, m => "\\" + m).replace(/\r?\n/g, "\\n");
+const pad2 = n => String(n).padStart(2, "0");
+
+function icsItems(){
+  const out = [], d = now();
+  const a = S.appt || {};
+  if(a.date) out.push({ kind:"appt", title: a.alias || "予定", date: a.date, time: a.time });
+
+  // 支払いは「暦」にチェックの入ったものだけ、3ヶ月分
+  for(let m = 0; m < 3; m++){
+    const base = new Date(d.getFullYear(), d.getMonth() + m, 1);
+    for(const f of S.fixed){
+      if(!f.share) continue;
+      const day = dueDay(f.day, base);
+      const dt = new Date(base.getFullYear(), base.getMonth(), day);
+      if(dt < new Date(ymd(d) + "T00:00:00")) continue;
+      const title = S.icsAmount ? `${f.name} ${yen(f.amt)}` : f.name;
+      out.push({ kind:"pay", title, date: ymd(dt) });
+    }
+  }
+  return out;
+}
+
+function buildICS(items){
+  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  const L = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//mainichi//JP","CALSCALE:GREGORIAN"];
+  items.forEach((it, i) => {
+    const ymdRaw = it.date.replace(/-/g, "");
+    L.push("BEGIN:VEVENT", `UID:mainichi-${ymdRaw}-${i}@local`, `DTSTAMP:${stamp}`);
+    if(it.time){
+      const [hh, mm] = it.time.split(":").map(Number);
+      const end = new Date(`${it.date}T${it.time}:00`);
+      end.setMinutes(end.getMinutes() + 30);
+      L.push(`DTSTART:${ymdRaw}T${pad2(hh)}${pad2(mm)}00`,
+             `DTEND:${ymd(end).replace(/-/g,"")}T${pad2(end.getHours())}${pad2(end.getMinutes())}00`);
+    } else {
+      const nx = new Date(`${it.date}T00:00:00`); nx.setDate(nx.getDate() + 1);
+      L.push(`DTSTART;VALUE=DATE:${ymdRaw}`, `DTEND;VALUE=DATE:${ymd(nx).replace(/-/g,"")}`);
+    }
+    L.push(`SUMMARY:${icsEsc(it.title)}`, "END:VEVENT");
+  });
+  L.push("END:VCALENDAR");
+  return L.join("\r\n");
+}
+
+function icsView(){
+  const items = icsItems();
+  const box = document.getElementById("icsAmount");
+  if(document.activeElement !== box) box.checked = !!S.icsAmount;
+  document.getElementById("icsPreview").innerHTML = items.length
+    ? "出るのはこれだけです：<br>" + items.map(i =>
+        `・${i.date}${i.time ? " " + i.time : ""}　${esc(i.title)}`).join("<br>")
+    : "出す予定がありません。";
+}
+
+document.getElementById("icsAmount").addEventListener("change", e => {
+  S.icsAmount = e.target.checked; save(); icsView();
+});
+document.getElementById("icsBtn").addEventListener("click", ()=>{
+  const items = icsItems();
+  if(!items.length) return toast("出す予定がありません");
+  const blob = new Blob([buildICS(items)], {type:"text/calendar;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `yotei-${ymd(now())}.ics`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  toast(`${items.length}件を書き出しました`);
+});
+
+document.addEventListener("change", e => {
+  const id = e.target.dataset.share; if(!id) return;
+  const f = S.fixed.find(x => x.id === id); if(!f) return;
+  f.share = e.target.checked; save(); icsView();
+});
+
+for(const [id, key] of [["apptDate","date"],["apptTime","time"],["apptAlias","alias"],
+                        ["apptPlace","place"],["apptMemo","memo"]]){
+  document.getElementById(id).addEventListener("input", e => {
+    S.appt[key] = e.target.value; save(); apptView();
+  });
+}
+
+document.getElementById("cardCap").addEventListener("input", e => {
+  S.cardCap = Math.max(0, Math.round(+e.target.value) || 0); save(); cardView();
+});
+
+document.getElementById("spAdd").addEventListener("click", ()=>{
+  const el = document.getElementById("spAmt");
+  addSpend(el.value, document.getElementById("spCat").value);
+  el.value = "";
+});
+document.getElementById("spAmt").addEventListener("keydown", e => {
+  if(e.key === "Enter") document.getElementById("spAdd").click();
+});
+
+// inline edits
+document.addEventListener("change", e => {
+  const el = e.target;
+  const map = {fx:"fixed", ic:"incomes", ac:"accounts"};
+  for(const [attr, coll] of Object.entries(map)){
+    const field = el.dataset[attr];
+    if(!field) continue;
+    const obj = S[coll].find(x => x.id === el.dataset.id);
+    if(!obj) return;
+    if(field === "name"){
+      let v = el.value.trim();
+      if(coll === "fixed"){ obj.transfer = / 振$/.test(v) || /振$/.test(v); v = v.replace(/\s*振$/, ""); }
+      obj.name = v || "(名前なし)";
+    } else if(field === "day"){
+      obj.day = Math.min(31, Math.max(1, Math.round(+el.value) || 1));
+    } else {
+      obj[field] = Math.round(+el.value) || 0;
+    }
+    save(); render(); return;
+  }
+});
+
+document.getElementById("fixedAdd").addEventListener("click", ()=>{
+  S.fixed.push({id:uid(), name:"新しい支払い", amt:0, day:1, transfer:false}); save(); render(); });
+document.getElementById("incomeAdd").addEventListener("click", ()=>{
+  S.incomes.push({id:uid(), name:"新しい入金", amt:0, day:1}); save(); render(); });
+document.getElementById("acctAdd").addEventListener("click", ()=>{
+  S.accounts.push({id:uid(), name:"新しい口座", bal:0}); save(); render(); });
+
+// backup
+document.getElementById("expBtn").addEventListener("click", ()=>{
+  const blob = new Blob([JSON.stringify(S, null, 2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `mainichi-${ymd(now())}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+});
+document.getElementById("impBtn").addEventListener("click", ()=> document.getElementById("impFile").click());
+document.getElementById("impFile").addEventListener("change", async e => {
+  const f = e.target.files[0]; if(!f) return;
+  try{
+    const obj = JSON.parse(await f.text());
+    if(!obj || !Array.isArray(obj.accounts)) throw new Error("形式が違います");
+    S = Object.assign(seed(), obj);
+    save(); render(); toast("読み込みました");
+  }catch(err){ toast("読み込めませんでした"); console.error(err); }
+  e.target.value = "";
+});
+
+// re-render when the day may have changed
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) render(); });
+
+importFromHash();
+render();
+
+if("serviceWorker" in navigator &&
+   (location.protocol === "https:" || location.hostname === "localhost")){
+  navigator.serviceWorker.register("sw.js").catch(()=>{});
+}
+</script>
+</body>
+</html>
