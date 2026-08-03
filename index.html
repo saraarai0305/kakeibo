@@ -107,6 +107,11 @@ details[open] > summary::before{content:"▾ "}
 .edit-grid{display:grid;grid-template-columns:1fr 92px 66px auto;gap:7px;align-items:center;margin-top:9px}
 .edit-grid.fx{grid-template-columns:1fr 84px 54px 40px auto}
 .edit-grid.sb{grid-template-columns:1fr 84px 64px 54px auto}
+.habits{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.habits .pad.on{background:color-mix(in srgb,var(--ok) 26%,var(--card2));border-color:var(--ok);color:var(--fg)}
+.tick{width:27px;height:27px;flex:none;border-radius:9px;border:1.5px solid var(--line);
+  color:transparent;font-size:15px;font-weight:700;line-height:1}
+.tick.on{background:var(--ok);border-color:var(--ok);color:#fff}
 .rate{display:flex;gap:6px}
 .rate button{flex:1;padding:9px 0;border:1px solid var(--line);border-radius:9px;
   background:var(--card2);font-size:14px;color:var(--dim)}
@@ -130,6 +135,26 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
     <div class="sub" id="heroSub">—</div>
     <div class="bar"><i id="heroBar" style="width:0%"></i></div>
     <div class="tiny" id="heroFoot">—</div>
+  </div>
+
+  <!-- ===== TODAY ===== -->
+  <div class="card">
+    <h2>今日やること <span class="tiny" id="habitCount"></span></h2>
+    <div class="habits" id="habitRow"></div>
+    <div id="taskList"></div>
+    <div class="row" style="gap:8px;margin-top:10px">
+      <input id="taskNew" placeholder="今日のタスクを追加">
+      <button class="btn" id="taskAdd">追加</button>
+    </div>
+    <details style="margin-top:12px">
+      <summary>明日やることを決める（夜のうちに）</summary>
+      <div id="planList" style="margin-top:4px"></div>
+      <div class="row" style="gap:8px;margin-top:8px">
+        <input id="planNew" placeholder="明日のタスク">
+        <button class="btn ghost sm" id="planAdd">追加</button>
+      </div>
+      <div class="tiny" style="margin-top:7px">ここに入れたものが、明日の朝そのまま「今日やること」に出ます。</div>
+    </details>
   </div>
 
   <!-- ===== SHORTFALL ===== -->
@@ -390,6 +415,7 @@ function seed(){
     icsAmount: false,   // カレンダーに金額を入れるか
     cardCap: 0,         // 今月カードで使ってよい上限
     health: {},         // "2026-08-02" -> {steps, bed:"23:40", wake:"07:30"}
+    daily: {},          // "2026-08-03" -> {habits:{med_m:true,...}, tasks:[{id,text,done}]}
     ui: { pay: "cash" },
     doneFixed: {},      // "fixedId:2026-08" -> true
     doneIncome: {},     // "incomeId:2026-08" -> true（入金した月）
@@ -464,7 +490,44 @@ function calc(){
 }
 
 /* ---------- render ---------- */
-function render(){ heroView(); apptView(); spendView(); cardView(); fixedView(); subsView(); incomeView(); benefitView(); acctView(); healthView(); icsView(); paintSaved(); }
+function render(){ heroView(); todayView(); apptView(); spendView(); cardView(); fixedView(); subsView(); incomeView(); benefitView(); acctView(); healthView(); icsView(); paintSaved(); }
+
+/* ---------- 今日やること ---------- */
+const HABITS = [["med_m","薬 朝"],["med_d","薬 昼"],["med_n","薬 夜"],["out","外に出た"],
+                ["bath","風呂"],["teeth","歯磨き"],["dev","制作"]];
+const dayRec = k => S.daily[k] || (S.daily[k] = {habits:{}, tasks:[]});
+const tomorrowKey = () => { const d = now(); d.setDate(d.getDate()+1); return ymd(d); };
+
+function todayView(){
+  const rec = S.daily[ymd(now())] || {habits:{}, tasks:[]};
+  const done = HABITS.filter(([id]) => rec.habits[id]).length;
+  document.getElementById("habitCount").textContent = `毎日の分 ${done}/${HABITS.length}`;
+  document.getElementById("habitRow").innerHTML = HABITS.map(([id,label]) =>
+    `<button class="pad ${rec.habits[id] ? "on" : ""}" data-habit="${id}">${label}</button>`).join("");
+
+  document.getElementById("taskList").innerHTML = rec.tasks.length
+    ? rec.tasks.map(t => `<div class="item">
+        <button class="tick ${t.done ? "on" : ""}" data-task="${t.id}">✓</button>
+        <div class="grow nm ${t.done ? "done-row" : ""}">${esc(t.text)}</div>
+        <button class="del" data-deltask="${t.id}">×</button></div>`).join("")
+    : `<div class="tiny">タスクがありません。前日の夜に決めておくのが理想ですが、今から足しても大丈夫です。</div>`;
+
+  const plan = S.daily[tomorrowKey()] || {tasks:[]};
+  document.getElementById("planList").innerHTML = plan.tasks.length
+    ? plan.tasks.map(t => `<div class="item">
+        <div class="grow nm">${esc(t.text)}</div>
+        <button class="del" data-delplan="${t.id}">×</button></div>`).join("")
+    : `<div class="tiny">まだ決めていません</div>`;
+}
+
+function addTask(dateKey, inputId){
+  const el = document.getElementById(inputId);
+  const text = el.value.trim();
+  if(!text) return toast("内容を入れてください");
+  dayRec(dateKey).tasks.push({id:uid(), text, done:false});
+  el.value = "";
+  save(); todayView();
+}
 
 function apptView(){
   const a = S.appt || (S.appt = {});
@@ -718,7 +781,7 @@ function addSpend(amt, cat, pay){
 
 /* ---------- events ---------- */
 document.addEventListener("click", e => {
-  const t = e.target.closest("[data-pad],[data-delspend],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate]");
+  const t = e.target.closest("[data-pad],[data-delspend],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate],[data-habit],[data-task],[data-deltask],[data-delplan]");
   if(!t) return;
 
   if(t.dataset.pad !== undefined){
@@ -755,6 +818,28 @@ document.addEventListener("click", e => {
     const k = t.dataset.benmonth;
     if(S.benefitMonths[k]) delete S.benefitMonths[k]; else S.benefitMonths[k] = true;
     save(); render(); return;
+  }
+
+  if(t.dataset.habit){
+    const rec = dayRec(ymd(now()));
+    rec.habits[t.dataset.habit] = !rec.habits[t.dataset.habit];
+    save(); todayView(); return;
+  }
+  if(t.dataset.task){
+    const rec = dayRec(ymd(now()));
+    const task = rec.tasks.find(x => x.id === t.dataset.task);
+    if(task){ task.done = !task.done; save(); todayView(); }
+    return;
+  }
+  if(t.dataset.deltask){
+    const rec = dayRec(ymd(now()));
+    rec.tasks = rec.tasks.filter(x => x.id !== t.dataset.deltask);
+    save(); todayView(); return;
+  }
+  if(t.dataset.delplan){
+    const rec = dayRec(tomorrowKey());
+    rec.tasks = rec.tasks.filter(x => x.id !== t.dataset.delplan);
+    save(); todayView(); return;
   }
 
   if(t.dataset.rate){
@@ -988,6 +1073,13 @@ for(const [id, key] of [["apptDate","date"],["apptTime","time"],["apptAlias","al
 document.getElementById("cardCap").addEventListener("input", e => {
   S.cardCap = Math.max(0, Math.round(+e.target.value) || 0); save(); cardView();
 });
+
+document.getElementById("taskAdd").addEventListener("click", ()=> addTask(ymd(now()), "taskNew"));
+document.getElementById("planAdd").addEventListener("click", ()=> addTask(tomorrowKey(), "planNew"));
+document.getElementById("taskNew").addEventListener("keydown", e => {
+  if(e.key === "Enter") addTask(ymd(now()), "taskNew"); });
+document.getElementById("planNew").addEventListener("keydown", e => {
+  if(e.key === "Enter") addTask(tomorrowKey(), "planNew"); });
 
 document.getElementById("spAdd").addEventListener("click", ()=>{
   const el = document.getElementById("spAmt");
