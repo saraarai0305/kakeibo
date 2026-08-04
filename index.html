@@ -425,8 +425,18 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
     </div>
     <div class="calgrid" id="calHead" style="margin-bottom:3px"></div>
     <div class="calgrid" id="calBody"></div>
-    <div class="tiny" style="margin-top:8px">✓=できたこと（習慣＋タスク）　数字=使った額　●=支払い・予定</div>
+    <div class="tiny" style="margin-top:8px">✓=できたこと（習慣＋タスク）　数字=使った額　●=支払い・予定　▶=ワンモーション</div>
     <div id="calDetail" style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px"></div>
+    <details style="margin-top:10px">
+      <summary>ワンモーションの納品予定を取り込む（PC）</summary>
+      <div class="tiny" id="moInfo" style="margin:8px 0">未取り込み</div>
+      <div class="row" style="gap:8px">
+        <button class="btn ghost sm grow" id="moFileBtn">schedule.json を選ぶ</button>
+        <button class="btn ghost sm grow" id="moPaste">クリップボードから</button>
+        <input type="file" id="moFileInput" accept="application/json,.json" hidden>
+      </div>
+      <div class="tiny" style="margin-top:7px">正本は 自動投稿フォルダの schedule.json。予定が変わったら再取り込みすれば最新になります。</div>
+    </details>
   </div>
 
   <!-- ===== BACKUP ===== -->
@@ -500,6 +510,7 @@ function seed(){
     cardCap: 0,         // 今月カードで使ってよい上限
     health: {},         // "2026-08-02" -> {steps, bed:"23:40", wake:"07:30"}
     daily: {},          // "2026-08-03" -> {habits:{med_m:true,...}, tasks:[{id,text,done}]}
+    motion: null,       // 自動投稿/schedule.json の取り込み（コミット禁止データ、端末内のみ）
     ui: { pay: "cash" },
     doneFixed: {},      // "fixedId:2026-08" -> true
     doneIncome: {},     // "incomeId:2026-08" -> true（入金した月）
@@ -631,6 +642,11 @@ function streakView(){
 let calCursor = ym(new Date());
 let calSel = null;
 
+function motionOn(key){
+  return (S.motion && Array.isArray(S.motion.days))
+    ? S.motion.days.filter(x => x.date === key) : [];
+}
+
 function duesOn(key){
   const d = new Date(key + "T00:00:00");
   const out = [];
@@ -663,14 +679,23 @@ function calView(){
       : 0;
     const spend = S.spends.filter(s => s.d === key).reduce((a,s) => a + (+s.amt||0), 0);
     const dues = duesOn(key).length;
+    const mos = motionOn(key);
     const rows = [];
     if(ck) rows.push(`<span class="ck">✓${ck}</span>`);
     if(spend) rows.push(`<span class="sp">${spend >= 10000 ? (spend/10000).toFixed(1)+"万" : spend.toLocaleString("ja-JP")}</span>`);
     if(dues) rows.push(`<span class="due">●${dues > 1 ? dues : ""}</span>`);
+    if(mos.length) rows.push(`<span style="color:var(--accent);font-weight:700">▶D${mos[0].day}</span>`);
     cells.push(`<button class="calcell${key === tk ? " today" : ""}${key === calSel ? " sel" : ""}" data-calday="${key}">
       <span class="dn">${d}</span>${rows.join("")}</button>`);
   }
   document.getElementById("calBody").innerHTML = cells.join("");
+
+  const mi = document.getElementById("moInfo");
+  const mo = S.motion;
+  mi.textContent = mo && Array.isArray(mo.days)
+    ? `更新 ${mo.updated || "?"}　全${mo.days.length}件（投稿済み ${mo.days.filter(d => d.status === "posted").length}）`
+    : "未取り込み";
+
   calDetail();
 }
 
@@ -693,10 +718,31 @@ function calDetail(){
       <div class="grow nm">${esc(s.cat)}${s.pay === "card" ? `<span class="chip due">カード</span>` : ""}</div>
       <div class="amt">${yen(s.amt)}</div></div>`).join("");
   if(h) html += `<div class="tiny" style="margin-top:5px">歩数 ${h.steps != null ? h.steps.toLocaleString("ja-JP") : "—"}　睡眠 ${fmtSleep(sleepMin(h.bed, h.wake))}　体${h.body || "—"}　心${h.mind || "—"}</div>`;
+
+  const mos = motionOn(key);
+  html += mos.map(x => {
+    const st = x.status === "posted" ? `<span class="chip done">投稿済み</span>`
+             : x.status === "ordered" ? `<span class="chip due">発注中</span>`
+             : `<span class="chip">予定</span>`;
+    const prov = x.date_provisional ? `<span class="chip">日付は仮</span>` : "";
+    const dl = (S.motion && S.motion.deadline_time) || "21:00";
+    const link = x.post_url ? `　<a href="${esc(x.post_url)}" target="_blank" rel="noopener" style="color:var(--accent)">Xで見る</a>` : "";
+    const [dh, dm] = dl.split(":").map(Number);
+    const pct = Math.min(100, ((dh * 60 + (dm || 0)) / 1440) * 100).toFixed(1);
+    let remain = "";
+    if(key === ymd(now()) && x.status !== "posted"){
+      const mins = dh * 60 + (dm || 0) - (now().getHours() * 60 + now().getMinutes());
+      remain = mins > 0 ? `　あと${Math.floor(mins/60)}時間${mins%60}分` : "　納期をすぎています";
+    }
+    return `<div class="item" style="padding:8px 0;display:block">
+      <div class="nm" style="color:var(--accent)">▶ Day ${x.day}　${esc(x.title)}${st}${prov}</div>
+      <div class="bar" style="margin:7px 0 3px"><i style="width:${pct}%;background:var(--accent)"></i></div>
+      <div class="mt">納期 ${dl}${remain}${link}</div></div>`;
+  }).join("");
   html += dues.map(x => `<div class="item" style="padding:7px 0">
       <div class="grow nm" style="color:var(--warn)">${esc(x.name)}${x.paid ? `<span class="chip done">払った</span>` : ""}</div>
       ${x.amt ? `<div class="amt">${yen(x.amt)}</div>` : ""}</div>`).join("");
-  if(!habitsDone.length && !rec.tasks.length && !spends.length && !h && !dues.length)
+  if(!habitsDone.length && !rec.tasks.length && !spends.length && !h && !dues.length && !mos.length)
     html += `<div class="tiny">この日の記録はありません。</div>`;
   box.innerHTML = html;
 }
@@ -1336,6 +1382,25 @@ document.getElementById("incomeAdd").addEventListener("click", ()=>{
   S.incomes.push({id:uid(), name:"新しい入金", amt:0, day:1}); save(); render(); });
 document.getElementById("acctAdd").addEventListener("click", ()=>{
   S.accounts.push({id:uid(), name:"新しい口座", bal:0}); save(); render(); });
+
+// ワンモーション予定の取り込み（schedule.json）
+function applyMotionJSON(text){
+  const obj = JSON.parse(text);
+  if(!obj || !Array.isArray(obj.days)) throw new Error("形式が違います");
+  S.motion = obj; save(); render();
+  toast(`ワンモーション予定 ${obj.days.length}件 取り込みました`);
+}
+document.getElementById("moFileBtn").addEventListener("click", ()=> document.getElementById("moFileInput").click());
+document.getElementById("moFileInput").addEventListener("change", async e => {
+  const f = e.target.files[0]; if(!f) return;
+  try{ applyMotionJSON(await f.text()); }
+  catch(err){ toast("読み込めませんでした"); console.error(err); }
+  e.target.value = "";
+});
+document.getElementById("moPaste").addEventListener("click", async ()=>{
+  try{ applyMotionJSON(await navigator.clipboard.readText()); }
+  catch(e){ toast("クリップボードから読めませんでした"); }
+});
 
 // backup
 document.getElementById("expBtn").addEventListener("click", ()=>{
