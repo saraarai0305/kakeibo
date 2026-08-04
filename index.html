@@ -116,6 +116,60 @@ details[open] > summary::before{content:"▾ "}
 .rate button{flex:1;padding:9px 0;border:1px solid var(--line);border-radius:9px;
   background:var(--card2);font-size:14px;color:var(--dim)}
 .rate button.on{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:700}
+
+/* ---- tabs & pages ---- */
+body{padding-bottom:calc(env(safe-area-inset-bottom) + 82px)}
+.wrap [data-pg]{display:none}
+[data-pg][hidden]{display:none !important}
+body[data-tab="today"] [data-pg="today"]{display:block}
+body[data-tab="money"] [data-pg="money"]{display:block}
+body[data-tab="cal"]   [data-pg="cal"]{display:block}
+body[data-tab="body"]  [data-pg="body"]{display:block}
+body[data-tab="pay"]   [data-pg="pay"]{display:block}
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:8;
+  display:grid;grid-template-columns:repeat(5,1fr);gap:2px;
+  padding:8px 10px calc(env(safe-area-inset-bottom) + 8px);
+  background:color-mix(in srgb,var(--bg) 90%,transparent);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-top:1px solid var(--line)}
+.tabbar button{padding:8px 2px;border-radius:11px;font-size:12.5px;font-weight:600;color:var(--faint)}
+.tabbar button.on{background:var(--card2);color:var(--fg)}
+.tabbar button.on::before{content:"";display:block;width:16px;height:3px;border-radius:2px;
+  background:var(--accent);margin:0 auto 4px}
+.toast{bottom:calc(env(safe-area-inset-bottom) + 94px)}
+
+/* ---- header ---- */
+.top{display:flex;align-items:center;gap:9px;padding:6px 2px 12px}
+.mini-logo{display:flex;align-items:flex-end;gap:2.5px;height:20px}
+.mini-logo i{width:5.5px;border-radius:2px}
+.mini-logo i:nth-child(1){height:8px;background:#5F6B81}
+.mini-logo i:nth-child(2){height:13px;background:#7AA7F0}
+.mini-logo i:nth-child(3){height:19px;background:#5ECFA0}
+.top .t{font-size:15px;font-weight:700;flex:1}
+.streak{font-size:12.5px;color:var(--dim);background:var(--card);
+  border:1px solid var(--line);border-radius:99px;padding:4px 11px}
+.streak b{color:var(--ok);font-size:14px}
+
+/* ---- big goal ---- */
+.goal{background:linear-gradient(155deg,var(--card),var(--card2));padding:22px 18px}
+.goal .lab{font-size:12px;color:var(--faint);letter-spacing:.08em;margin-bottom:6px}
+.goal .big{font-size:clamp(24px,7.5vw,42px);font-weight:800;line-height:1.25;letter-spacing:-.01em}
+.goal .big.done{color:var(--ok)}
+.goal .sub{font-size:13px;color:var(--dim);margin-top:8px}
+
+/* ---- calendar ---- */
+.calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.calhd{font-size:10.5px;color:var(--faint);text-align:center;padding:2px 0}
+.calcell{min-height:58px;border:1px solid var(--line);border-radius:8px;padding:3px 4px;
+  background:var(--card2);font-size:10.5px;text-align:left;color:var(--fg);
+  display:flex;flex-direction:column;gap:1px;align-items:flex-start}
+.calcell:disabled{opacity:.25}
+.calcell .dn{font-size:11px;color:var(--dim)}
+.calcell.today{border-color:var(--accent)}
+.calcell.sel{outline:2px solid var(--accent);outline-offset:-1px}
+.calcell .ck{color:var(--ok);font-weight:700}
+.calcell .sp{color:var(--fg);font-variant-numeric:tabular-nums}
+.calcell .due{color:var(--warn)}
 .edit-grid .hd{font-size:10px;color:var(--faint);text-align:center}
 .del{color:var(--faint);font-size:19px;line-height:1;padding:0 5px}
 footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;line-height:1.7}
@@ -125,11 +179,20 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 .toast.show{opacity:.95}
 </style>
 </head>
-<body>
+<body data-tab="today">
 <div class="wrap">
 
+  <header class="top">
+    <div class="mini-logo"><i></i><i></i><i></i></div>
+    <div class="t">まいにち</div>
+    <div class="streak" id="streakBox">—</div>
+  </header>
+
+  <!-- ===== BIG GOAL ===== -->
+  <div class="card goal" id="bigGoal" data-pg="today"></div>
+
   <!-- ===== HERO ===== -->
-  <div class="card hero">
+  <div class="card hero" data-pg="money">
     <div class="lab">今日 使えるお金</div>
     <div class="big num" id="heroAmt">¥0</div>
     <div class="sub" id="heroSub">—</div>
@@ -138,7 +201,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   </div>
 
   <!-- ===== TODAY ===== -->
-  <div class="card">
+  <div class="card" data-pg="today">
     <h2>今日やること <span class="tiny" id="habitCount"></span></h2>
     <div class="habits" id="habitRow"></div>
     <div id="taskList"></div>
@@ -158,7 +221,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   </div>
 
   <!-- ===== SHORTFALL ===== -->
-  <div class="card alert" id="shortCard" hidden>
+  <div class="card alert" id="shortCard" data-pg="money" hidden>
     <h2>今月の不足額</h2>
     <div class="amt num" id="shortAmt">¥0</div>
     <div class="dim" style="margin-top:6px">これは頑張りで埋まる数字ではなく、支払額を収入に合わせて引き直す手続きの対象です。この金額をそのまま持って行ってください。</div>
@@ -170,7 +233,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   </div>
 
   <!-- ===== APPOINTMENT ===== -->
-  <div class="card" id="apptCard">
+  <div class="card" id="apptCard" data-pg="today">
     <h2>次の通院</h2>
     <div class="row between">
       <div class="grow">
@@ -196,7 +259,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   </div>
 
   <!-- ===== CALENDAR EXPORT ===== -->
-  <div class="card">
+  <div class="card" data-pg="pay">
     <h2>カレンダーに書き出す</h2>
     <div class="dim" style="margin-bottom:10px">
       .icsファイルを作ります。iPhoneで開くとカレンダーに追加でき、TimeTreeにも表示されます。
@@ -212,7 +275,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   </div>
 
   <!-- ===== SPEND ===== -->
-  <div class="card">
+  <div class="card" data-pg="money">
     <h2>使ったら押す</h2>
     <div class="pads" id="pads"></div>
     <div class="seg" id="paySeg">
@@ -228,7 +291,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   </div>
 
   <!-- ===== CARD PROJECTION ===== -->
-  <div class="card" id="cardCard">
+  <div class="card" id="cardCard" data-pg="money">
     <h2>来月きます（今月のカード利用）</h2>
     <div class="row between" style="align-items:flex-end">
       <div><span class="num" style="font-size:34px;font-weight:700" id="cardNow">¥0</span>
@@ -251,7 +314,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   </div>
 
   <!-- ===== UPCOMING ===== -->
-  <div class="card">
+  <div class="card" data-pg="pay">
     <h2>今月の支払い</h2>
     <div id="fixedList"></div>
     <details>
@@ -266,7 +329,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   </div>
 
   <!-- ===== SUBSCRIPTIONS ===== -->
-  <div class="card">
+  <div class="card" data-pg="pay">
     <h2>サブスク</h2>
     <div id="subList"></div>
     <details>
@@ -281,7 +344,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   </div>
 
   <!-- ===== INCOME / BENEFIT ===== -->
-  <div class="card">
+  <div class="card" data-pg="money">
     <h2>入ってくるお金</h2>
     <div id="incomeList"></div>
     <details>
@@ -295,7 +358,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   </div>
 
   <!-- ===== BENEFIT COUNTER ===== -->
-  <div class="card">
+  <div class="card" data-pg="money">
     <h2>手当 のこり</h2>
     <div class="row between">
       <div><span class="num" style="font-size:30px;font-weight:700" id="benLeft">0</span>
@@ -307,7 +370,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   </div>
 
   <!-- ===== BALANCE ===== -->
-  <div class="card">
+  <div class="card" data-pg="money">
     <h2>いま持っているお金</h2>
     <div id="acctList"></div>
     <details>
@@ -321,7 +384,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   </div>
 
   <!-- ===== HEALTH ===== -->
-  <div class="card">
+  <div class="card" data-pg="body">
     <h2>からだの記録（歩数と睡眠）</h2>
     <button class="btn ghost sm" id="hPaste" style="width:100%;margin-bottom:10px">クリップボードから取り込む</button>
     <div class="edit-grid" style="grid-template-columns:1.2fr 1fr 1fr;margin:0 0 4px">
@@ -353,8 +416,21 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
     </details>
   </div>
 
+  <!-- ===== CALENDAR PAGE ===== -->
+  <div class="card" data-pg="cal">
+    <div class="row between" style="margin-bottom:9px">
+      <button class="btn ghost sm" data-calnav="-1">‹</button>
+      <div style="font-weight:700;font-size:16px" id="calTitle">—</div>
+      <button class="btn ghost sm" data-calnav="1">›</button>
+    </div>
+    <div class="calgrid" id="calHead" style="margin-bottom:3px"></div>
+    <div class="calgrid" id="calBody"></div>
+    <div class="tiny" style="margin-top:8px">✓=できたこと（習慣＋タスク）　数字=使った額　●=支払い・予定</div>
+    <div id="calDetail" style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px"></div>
+  </div>
+
   <!-- ===== BACKUP ===== -->
-  <div class="card">
+  <div class="card" data-pg="money">
     <h2>バックアップ</h2>
     <div class="dim" style="margin-bottom:10px">iPhoneのSafariは、しばらく開かないと保存データを消すことがあります。ときどき書き出してください。</div>
     <div class="row" style="gap:8px">
@@ -370,6 +446,14 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
     家賃と通院日の通知は、iPhone標準の「リマインダー」に入れてください。
   </footer>
 </div>
+
+<nav class="tabbar">
+  <button data-tab="today">きょう</button>
+  <button data-tab="money">おかね</button>
+  <button data-tab="cal">こよみ</button>
+  <button data-tab="body">からだ</button>
+  <button data-tab="pay">しはらい</button>
+</nav>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -490,7 +574,132 @@ function calc(){
 }
 
 /* ---------- render ---------- */
-function render(){ heroView(); todayView(); apptView(); spendView(); cardView(); fixedView(); subsView(); incomeView(); benefitView(); acctView(); healthView(); icsView(); paintSaved(); }
+function render(){ bigGoalView(); streakView(); heroView(); todayView(); apptView(); spendView(); cardView(); fixedView(); subsView(); incomeView(); benefitView(); acctView(); healthView(); icsView(); calView(); paintSaved(); }
+
+/* ---------- タブ ---------- */
+const TABS = ["today","money","cal","body","pay"];
+function setTab(t){
+  if(!TABS.includes(t)) t = "today";
+  S.ui.tab = t; save();
+  document.body.dataset.tab = t;
+  document.querySelectorAll(".tabbar button").forEach(b =>
+    b.classList.toggle("on", b.dataset.tab === t));
+  window.scrollTo(0, 0);
+}
+
+/* ---------- でかでか目標とストリーク ---------- */
+function bigGoalView(){
+  const rec = S.daily[ymd(now())] || {habits:{}, tasks:[]};
+  const undone = rec.tasks.filter(t => !t.done);
+  const tomo = S.daily[tomorrowKey()];
+  let lab = "今日の目標", big = "", sub = "", done = false;
+
+  if(now().getHours() >= 19 && (!tomo || !tomo.tasks.length)){
+    lab = "今夜のうちに";
+    big = "明日を決める";
+    sub = "「明日やることを決める」に1つ入れるだけで、明日の朝が変わります";
+  } else if(undone.length){
+    big = undone[0].text;
+    sub = undone.length > 1 ? `これが終わったら、あと${undone.length - 1}件` : "これが終われば今日のタスクは全部終わり";
+  } else if(rec.tasks.length){
+    big = "全部できた"; done = true;
+    sub = `今日のタスク${rec.tasks.length}件、完了。`;
+  } else {
+    big = "今日やることを決める";
+    sub = "下のリストに1つ追加するところから";
+  }
+  document.getElementById("bigGoal").innerHTML =
+    `<div class="lab">${lab}</div><div class="big${done ? " done" : ""}">${esc(big)}</div><div class="sub">${esc(sub)}</div>`;
+}
+
+function hasRecord(k){
+  const r = S.daily[k];
+  if(r && (Object.values(r.habits || {}).some(Boolean) || (r.tasks || []).some(t => t.done))) return true;
+  if(S.health[k]) return true;
+  return S.spends.some(s => s.d === k);
+}
+function streakView(){
+  let n = 0;
+  const c = new Date();
+  if(!hasRecord(ymd(c))) c.setDate(c.getDate() - 1);
+  while(hasRecord(ymd(c))){ n++; c.setDate(c.getDate() - 1); }
+  document.getElementById("streakBox").innerHTML =
+    n > 0 ? `連続 <b>${n}</b> 日` : "今日から";
+}
+
+/* ---------- こよみ（月カレンダー） ---------- */
+let calCursor = ym(new Date());
+let calSel = null;
+
+function duesOn(key){
+  const d = new Date(key + "T00:00:00");
+  const out = [];
+  for(const f of S.fixed)
+    if(dueDay(f.day, d) === d.getDate())
+      out.push({name:f.name, amt:f.amt, paid: !!S.doneFixed[`${f.id}:${key.slice(0,7)}`]});
+  for(const s of S.subs)
+    if(s.day && s.cycle !== "y" && dueDay(s.day, d) === d.getDate())
+      out.push({name:s.name, amt:s.amt});
+  if(S.appt && S.appt.date === key) out.push({name: S.appt.place || "予定"});
+  return out;
+}
+
+function calView(){
+  const [y, m] = calCursor.split("-").map(Number);
+  document.getElementById("calTitle").textContent = `${y}年${m}月`;
+  document.getElementById("calHead").innerHTML =
+    ["月","火","水","木","金","土","日"].map(w => `<div class="calhd">${w}</div>`).join("");
+
+  const days = new Date(y, m, 0).getDate();
+  const off = (new Date(y, m-1, 1).getDay() + 6) % 7;   // 月曜はじまり
+  const tk = ymd(now());
+  const cells = [];
+  for(let i = 0; i < off; i++) cells.push(`<button class="calcell" disabled></button>`);
+  for(let d = 1; d <= days; d++){
+    const key = `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    const rec = S.daily[key];
+    const ck = rec
+      ? Object.values(rec.habits || {}).filter(Boolean).length + (rec.tasks || []).filter(t => t.done).length
+      : 0;
+    const spend = S.spends.filter(s => s.d === key).reduce((a,s) => a + (+s.amt||0), 0);
+    const dues = duesOn(key).length;
+    const rows = [];
+    if(ck) rows.push(`<span class="ck">✓${ck}</span>`);
+    if(spend) rows.push(`<span class="sp">${spend >= 10000 ? (spend/10000).toFixed(1)+"万" : spend.toLocaleString("ja-JP")}</span>`);
+    if(dues) rows.push(`<span class="due">●${dues > 1 ? dues : ""}</span>`);
+    cells.push(`<button class="calcell${key === tk ? " today" : ""}${key === calSel ? " sel" : ""}" data-calday="${key}">
+      <span class="dn">${d}</span>${rows.join("")}</button>`);
+  }
+  document.getElementById("calBody").innerHTML = cells.join("");
+  calDetail();
+}
+
+function calDetail(){
+  const box = document.getElementById("calDetail");
+  if(!calSel){ box.innerHTML = `<div class="tiny">日付をタップすると、その日の記録が出ます。</div>`; return; }
+  const key = calSel, dt = new Date(key + "T00:00:00");
+  const rec = S.daily[key] || {habits:{}, tasks:[]};
+  const spends = S.spends.filter(s => s.d === key);
+  const h = S.health[key];
+  const dues = duesOn(key);
+
+  let html = `<div style="font-weight:700;margin-bottom:6px">${dt.getMonth()+1}月${dt.getDate()}日（${"日月火水木金土"[dt.getDay()]}）</div>`;
+  const habitsDone = HABITS.filter(([id]) => rec.habits[id]).map(([,l]) => l);
+  if(habitsDone.length) html += `<div class="tiny" style="margin-bottom:4px">できたこと: ${habitsDone.join("・")}</div>`;
+  html += rec.tasks.map(t => `<div class="item" style="padding:7px 0">
+      <span style="width:20px;color:${t.done ? "var(--ok)" : "var(--faint)"}">${t.done ? "✓" : "・"}</span>
+      <div class="grow nm ${t.done ? "done-row" : ""}">${esc(t.text)}</div></div>`).join("");
+  html += spends.map(s => `<div class="item" style="padding:7px 0">
+      <div class="grow nm">${esc(s.cat)}${s.pay === "card" ? `<span class="chip due">カード</span>` : ""}</div>
+      <div class="amt">${yen(s.amt)}</div></div>`).join("");
+  if(h) html += `<div class="tiny" style="margin-top:5px">歩数 ${h.steps != null ? h.steps.toLocaleString("ja-JP") : "—"}　睡眠 ${fmtSleep(sleepMin(h.bed, h.wake))}　体${h.body || "—"}　心${h.mind || "—"}</div>`;
+  html += dues.map(x => `<div class="item" style="padding:7px 0">
+      <div class="grow nm" style="color:var(--warn)">${esc(x.name)}${x.paid ? `<span class="chip done">払った</span>` : ""}</div>
+      ${x.amt ? `<div class="amt">${yen(x.amt)}</div>` : ""}</div>`).join("");
+  if(!habitsDone.length && !rec.tasks.length && !spends.length && !h && !dues.length)
+    html += `<div class="tiny">この日の記録はありません。</div>`;
+  box.innerHTML = html;
+}
 
 /* ---------- 今日やること ---------- */
 const HABITS = [["med_m","薬 朝"],["med_d","薬 昼"],["med_n","薬 夜"],["out","外に出た"],
@@ -526,7 +735,7 @@ function addTask(dateKey, inputId){
   if(!text) return toast("内容を入れてください");
   dayRec(dateKey).tasks.push({id:uid(), text, done:false});
   el.value = "";
-  save(); todayView();
+  save(); render();
 }
 
 function apptView(){
@@ -781,8 +990,12 @@ function addSpend(amt, cat, pay){
 
 /* ---------- events ---------- */
 document.addEventListener("click", e => {
-  const t = e.target.closest("[data-pad],[data-delspend],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate],[data-habit],[data-task],[data-deltask],[data-delplan]");
+  const t = e.target.closest("[data-pad],[data-delspend],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate],[data-habit],[data-task],[data-deltask],[data-delplan],[data-tab],[data-calnav],[data-calday]");
   if(!t) return;
+
+  if(t.dataset.tab){ setTab(t.dataset.tab); return; }
+  if(t.dataset.calnav){ calCursor = addMonths(calCursor, +t.dataset.calnav); calSel = null; calView(); return; }
+  if(t.dataset.calday){ calSel = (calSel === t.dataset.calday) ? null : t.dataset.calday; calView(); return; }
 
   if(t.dataset.pad !== undefined){
     const [amt, cat] = PADS[+t.dataset.pad];
@@ -823,23 +1036,23 @@ document.addEventListener("click", e => {
   if(t.dataset.habit){
     const rec = dayRec(ymd(now()));
     rec.habits[t.dataset.habit] = !rec.habits[t.dataset.habit];
-    save(); todayView(); return;
+    save(); render(); return;
   }
   if(t.dataset.task){
     const rec = dayRec(ymd(now()));
     const task = rec.tasks.find(x => x.id === t.dataset.task);
-    if(task){ task.done = !task.done; save(); todayView(); }
+    if(task){ task.done = !task.done; save(); render(); }
     return;
   }
   if(t.dataset.deltask){
     const rec = dayRec(ymd(now()));
     rec.tasks = rec.tasks.filter(x => x.id !== t.dataset.deltask);
-    save(); todayView(); return;
+    save(); render(); return;
   }
   if(t.dataset.delplan){
     const rec = dayRec(tomorrowKey());
     rec.tasks = rec.tasks.filter(x => x.id !== t.dataset.delplan);
-    save(); todayView(); return;
+    save(); render(); return;
   }
 
   if(t.dataset.rate){
@@ -1148,6 +1361,7 @@ document.getElementById("impFile").addEventListener("change", async e => {
 // re-render when the day may have changed
 document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) render(); });
 
+setTab(S.ui.tab || "today");
 importFromHash();
 render();
 
