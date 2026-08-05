@@ -515,6 +515,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
       <div class="tiny" id="restoreInfo" style="margin-bottom:8px"></div>
       <button class="btn ghost sm" id="restoreBtn" style="width:100%">同期で上書きされる前の状態に戻す</button>
     </div>
+    <div class="tiny" style="margin-top:10px" id="buildBox"></div>
   </div>
 
   <!-- ===== BACKUP ===== -->
@@ -546,7 +547,9 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 
 <script>
 "use strict";
+const BUILD = "2026-08-05-a";   // version.txt と一致させること
 const KEY = "mainichi.v1";
+let staleBuild = false;         // 古い版のまま開きっぱなしになっていないか
 const CATS = ["食費","日用品","交通","医療","交際","その他"];
 const PADS = [[300,"食費"],[500,"食費"],[1000,"食費"],[null,"手入力"]];
 
@@ -1597,6 +1600,19 @@ const SYNC_KEY = "mainichi.sync";
 const GIST_FILE = "mainichi-data.json";
 let syncTimer = null, pullTimer = null, syncing = false;
 
+// 中身の量。時刻だけで勝敗を決めると、開きっぱなしの空の端末が勝ててしまう
+function richness(o){
+  return (o.spends || []).length
+       + Object.keys(o.daily || {}).length
+       + Object.keys(o.health || {}).length
+       + (o.errands || []).length
+       + (o.subs || []).length
+       + (o.fixed || []).filter(f => +f.amt > 0).length
+       + (o.accounts || []).filter(a => +a.bal > 0).length;
+}
+// 記録が大きく減る方向の上書きは自動ではやらない
+const bigDrop = (from, to) => richness(to) < richness(from) * 0.6 - 1;
+
 function syncCfg(){
   try{ return JSON.parse(localStorage.getItem(SYNC_KEY)) || {}; }catch(e){ return {}; }
 }
@@ -1618,6 +1634,8 @@ function syncPaint(state, msg){
   const setup = document.getElementById("syncSetup");
   if(on) setup.open = false;
   restorePaint();
+  document.getElementById("buildBox").textContent =
+    `版 ${BUILD}${staleBuild ? "（古い・開き直してください）" : ""}　この端末の記録量 ${richness(S)}`;
 }
 
 async function gistFetch(path, opts){
@@ -1640,6 +1658,19 @@ async function pushRemote(){
   if(!c.token || !c.gistId || syncing) return;
   syncing = true; syncPaint("busy", "送信中…");
   try{
+    // 送る前に相手を見る。こちらのほうが極端に記録が少ないなら送らない
+    try{
+      const g0 = await gistFetch(`/gists/${c.gistId}`);
+      const f0 = g0.files && g0.files[GIST_FILE];
+      if(f0 && f0.content){
+        const remote = JSON.parse(f0.content);
+        if(bigDrop(remote, S)){
+          syncPaint("err", `送信を止めました（この端末の記録が少なすぎます: ${richness(S)} < 相手 ${richness(remote)}）`);
+          return;
+        }
+      }
+    }catch(e){ /* 相手が読めないときは通常どおり送る */ }
+
     await gistFetch(`/gists/${c.gistId}`, {
       method: "PATCH",
       body: JSON.stringify({ files: { [GIST_FILE]: { content: payload() } } })
@@ -1661,6 +1692,11 @@ async function pullRemote(silent, force){
     const f = g.files && g.files[GIST_FILE];
     if(f && f.content){
       const remote = JSON.parse(f.content);
+      // 記録が大きく減る方向の自動受信は止める（空の端末に負けないため）
+      if(!force && bigDrop(S, remote)){
+        syncPaint("err", `受信を止めました（相手の記録が少なすぎます: ${richness(remote)} < この端末 ${richness(S)}）`);
+        return;
+      }
       // 通常は新しいほうを採用。force（2台目の参加時）は無条件で相手に合わせる
       if(force || (remote.savedAt && (!S.savedAt || remote.savedAt > S.savedAt))){
         // 上書き直前の中身を1つだけ退避しておく（取り違えたときの保険）
@@ -1678,15 +1714,29 @@ async function pullRemote(silent, force){
   }finally{ syncing = false; }
 }
 
+/* 開きっぱなしの古い版が同期を壊した実績があるので、版ずれを検出したら同期を止める */
+async function checkBuild(){
+  try{
+    const r = await fetch("version.txt?t=" + Date.now(), {cache:"no-store"});
+    if(!r.ok) return;
+    const latest = (await r.text()).trim();
+    if(latest && latest !== BUILD){
+      staleBuild = true;
+      clearInterval(pullTimer);
+      syncPaint("err", "新しい版があります。開き直すまで同期を止めています");
+    }
+  }catch(e){ /* オフラインなら何もしない */ }
+}
+
 function schedulePush(){
-  if(!syncCfg().token) return;
+  if(!syncCfg().token || staleBuild) return;
   clearTimeout(syncTimer);
   syncTimer = setTimeout(pushRemote, 3000);   // 入力が落ち着いてから送る
 }
 
 function startSyncLoop(){
   clearInterval(pullTimer);
-  if(!syncCfg().token) return;
+  if(!syncCfg().token || staleBuild) return;
   pullRemote(true);
   pullTimer = setInterval(() => { if(!document.hidden) pullRemote(true); }, 45000);
 }
@@ -1799,15 +1849,16 @@ document.getElementById("impFile").addEventListener("change", async e => {
 
 // re-render when the day may have changed / 戻ってきたら相手側の変更も取りに行く
 document.addEventListener("visibilitychange", ()=>{
-  if(!document.hidden){ render(); pullRemote(true); }
+  if(!document.hidden){ render(); checkBuild(); pullRemote(true); }
 });
+setInterval(checkBuild, 10 * 60 * 1000);
 
 setTab(S.ui.tab || "today");
 importFromHash();
 render();
 syncPaint(syncCfg().token ? "ok" : "", syncCfg().token
   ? "自動でそろえています" : "PCとiPhoneを自動でそろえます。");
-startSyncLoop();
+checkBuild().then(startSyncLoop);   // 版を確かめてから同期を始める
 
 if("serviceWorker" in navigator &&
    (location.protocol === "https:" || location.hostname === "localhost")){

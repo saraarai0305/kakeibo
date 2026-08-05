@@ -1,5 +1,5 @@
 /* Offline shell. Data lives in localStorage, never in this cache. */
-const CACHE = "mainichi-v1";
+const CACHE = "mainichi-v2";
 const ASSETS = [
   "./",
   "./index.html",
@@ -24,6 +24,8 @@ self.addEventListener("activate", e => {
 // network-first so edits show up, cache as the offline fallback
 self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
+  // 版の確認だけは絶対にキャッシュを挟まない
+  if (new URL(e.request.url).pathname.endsWith("/version.txt")) return;
   e.respondWith(
     fetch(e.request)
       .then(res => {
