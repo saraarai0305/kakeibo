@@ -249,6 +249,9 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 </div>
 <div class="wrap">
 
+  <div class="robar" id="crashBox" hidden style="color:var(--bad);
+       background:color-mix(in srgb,var(--bad) 12%,var(--card));
+       border-color:color-mix(in srgb,var(--bad) 40%,var(--line))"></div>
   <div class="robar" id="roBar" hidden>読み取り専用です。この端末では記録できません。</div>
 
   <header class="top">
@@ -635,7 +638,15 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 
 <script>
 "use strict";
-const BUILD = "0.3.0";          // version.txt と一致させること
+// 何かが落ちたら黙って白くせず、画面に出す
+addEventListener("error", ev => {
+  const b = document.getElementById("crashBox");
+  if(!b) return;
+  b.hidden = false;
+  b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
+});
+
+const BUILD = "0.3.1";          // version.txt と一致させること
 const KEY = "mainichi.v1";
 let staleBuild = false;         // 古い版のまま開きっぱなしになっていないか
 const CATS = ["食費","日用品","交通","医療","交際","その他"];
@@ -698,14 +709,34 @@ function seed(){
   };
 }
 
+/* 古い保存や同期で欠けた項目があっても落ちないように形を整える。
+   1つでも欠けると描画全体が止まるので、ここで必ず通す。 */
+function normalize(o){
+  const b = seed();
+  const s = Object.assign(b, o || {});
+  for(const k of ["accounts","fixed","incomes","spends","subs","errands"])
+    if(!Array.isArray(s[k])) s[k] = b[k];
+  for(const k of ["health","daily","doneFixed","doneIncome","benefitMonths"])
+    if(!s[k] || typeof s[k] !== "object") s[k] = {};
+  for(const k of ["appt","ui","benefit","lightRule"])
+    if(!s[k] || typeof s[k] !== "object") s[k] = b[k];
+  if(s.habits && !Array.isArray(s.habits)) s.habits = null;
+  for(const k of Object.keys(s.daily)){
+    const d = s.daily[k];
+    if(!d || typeof d !== "object"){ delete s.daily[k]; continue; }
+    if(!d.habits || typeof d.habits !== "object") d.habits = {};
+    if(!Array.isArray(d.tasks)) d.tasks = [];
+  }
+  for(const k of Object.keys(s.health))
+    if(!s.health[k] || typeof s.health[k] !== "object") delete s.health[k];
+  return s;
+}
+
 function load(){
   try{
     const raw = localStorage.getItem(KEY);
     if(!raw) return seed();
-    const s = JSON.parse(raw);
-    const base = seed();
-    // shallow-merge so a partial/older save still boots
-    return Object.assign(base, s, {benefit: Object.assign(base.benefit, s.benefit||{})});
+    return normalize(JSON.parse(raw));
   }catch(e){ console.warn("load failed", e); return seed(); }
 }
 
@@ -763,7 +794,21 @@ function calc(){
 }
 
 /* ---------- render ---------- */
-function render(){ modeView(); errView(); bigGoalView(); streakView(); heroView(); todayView(); apptView(); spendView(); cardView(); fixedView(); subsView(); incomeView(); benefitView(); acctView(); healthView(); icsView(); calView(); paintSaved(); }
+/* 1枚が落ちても残りは描く。どこで落ちたかは画面に出す（黙って白くしない） */
+function render(){
+  const parts = [["今日のモード",modeView],["用事",errView],["今日の一番",bigGoalView],
+    ["今週の本数",streakView],["使えるお金",heroView],["今日やること",todayView],
+    ["通院",apptView],["支出",spendView],["カード",cardView],["支払い",fixedView],
+    ["サブスク",subsView],["入金",incomeView],["手当",benefitView],["残高",acctView],
+    ["からだ",healthView],["書き出し",icsView],["こよみ",calView],["保存",paintSaved]];
+  const bad = [];
+  for(const [name, fn] of parts){
+    try{ fn(); }catch(e){ bad.push(name + "（" + e.message + "）"); console.error(name, e); }
+  }
+  const box = document.getElementById("crashBox");
+  box.hidden = !bad.length;
+  if(bad.length) box.textContent = "うまく出せなかった部分: " + bad.join(" / ");
+}
 
 /* ---------- タブ ---------- */
 const TABS = ["today","money","cal","body","pay"];
@@ -897,7 +942,7 @@ function modeView(){
     rest:   ["休み", "予定を入れない日です"]
   }[m.mode];
 
-  const rec = S.daily[ymd(now())] || {habits:{}};
+  const rec = dayRec(ymd(now()));
   const isMotion = m.mode === "motion";
   let html = `<div class="lab">今日のモード</div>
     <div class="big">${T[0]}</div>
@@ -1071,7 +1116,12 @@ const HABITS_DEFAULT = [
   {id:"teeth", icon:"▤", label:"歯磨き"}, {id:"dev",   icon:"▲", label:"制作"}
 ];
 const habitList = () => (S.habits && S.habits.length) ? S.habits : HABITS_DEFAULT;
-const dayRec = k => S.daily[k] || (S.daily[k] = {habits:{}, tasks:[]});
+function dayRec(k){
+  const d = S.daily[k] || (S.daily[k] = {habits:{}, tasks:[]});
+  if(!d.habits || typeof d.habits !== "object") d.habits = {};
+  if(!Array.isArray(d.tasks)) d.tasks = [];
+  return d;
+}
 const tomorrowKey = () => { const d = now(); d.setDate(d.getDate()+1); return ymd(d); };
 
 function todayView(){
@@ -1169,11 +1219,11 @@ function learnedPads(){
 
 function spendView(){
   const pads = document.getElementById("pads");
-  const list = learnedPads();
-  pads.innerHTML = list.map((p,i)=>
+  const padList = learnedPads();
+  pads.innerHTML = padList.map((p,i)=>
     `<button class="pad" data-pad="${i}">${p[0]?yen(p[0]):"＋"}<small>${esc(p[1])}</small></button>`
   ).join("");
-  pads.dataset.map = JSON.stringify(list);
+  pads.dataset.map = JSON.stringify(padList);
   const sel = document.getElementById("spCat");
   if(!sel.dataset.built){
     sel.innerHTML = CATS.map(c=>`<option>${c}</option>`).join("");
@@ -1908,7 +1958,7 @@ async function pullRemote(silent, force){
       if(force || (remote.savedAt && (!S.savedAt || remote.savedAt > S.savedAt))){
         // 上書き直前の中身を1つだけ退避しておく（取り違えたときの保険）
         try{ localStorage.setItem("mainichi.before-sync", JSON.stringify(S)); }catch(e){}
-        S = Object.assign(seed(), remote);
+        S = normalize(remote);
         localStorage.setItem(KEY, JSON.stringify(S));
         render();
         toast("最新のデータを受け取りました");
@@ -2076,8 +2126,7 @@ document.getElementById("restoreBtn").addEventListener("click", ()=>{
   if(!raw) return toast("退避データがありません");
   if(!confirm("同期で上書きされる前の状態に戻します。\n今の内容は失われます。よろしいですか？")) return;
   try{
-    const o = JSON.parse(raw);
-    S = Object.assign(seed(), o);
+    S = normalize(JSON.parse(raw));
     S.savedAt = new Date().toISOString();      // これを最新として扱う
     localStorage.setItem(KEY, JSON.stringify(S));
     render(); restorePaint();
@@ -2178,7 +2227,7 @@ document.getElementById("impFile").addEventListener("change", async e => {
   try{
     const obj = JSON.parse(await f.text());
     if(!obj || !Array.isArray(obj.accounts)) throw new Error("形式が違います");
-    S = Object.assign(seed(), obj);
+    S = normalize(obj);
     save(); render(); toast("読み込みました");
   }catch(err){ toast("読み込めませんでした"); console.error(err); }
   e.target.value = "";
