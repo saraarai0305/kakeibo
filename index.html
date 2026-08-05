@@ -44,7 +44,13 @@ h2{font-size:16px;font-weight:700;color:var(--fg);margin:0 0 10px;letter-spacing
 .dim{color:var(--dim);font-size:13px}
 button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
 input,select{font:inherit;color:var(--fg);background:var(--card2);border:1px solid var(--line);
-  border-radius:10px;padding:9px 11px;width:100%;min-width:0}
+  border-radius:10px;padding:9px 11px;width:100%;min-width:0;max-width:100%}
+/* iOSの date/time は中身の幅を主張して枠からはみ出す。ネイティブの見た目を解除して抑える */
+input[type="time"],input[type="date"]{
+  -webkit-appearance:none;appearance:none;
+  display:block;box-sizing:border-box;text-align:left}
+input[type="time"]::-webkit-date-and-time-value,
+input[type="date"]::-webkit-date-and-time-value{text-align:left;margin:0}
 input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px}
 
 /* hero */
@@ -306,7 +312,8 @@ body[data-ro="1"] .rocover{display:block}
 .catseg button{font-size:11px;padding:5px 10px;border-radius:99px;
   border:1px solid var(--line);color:var(--dim);background:var(--card2)}
 .catseg button.on{color:#0D1015;font-weight:700;border-color:transparent}
-.edit-grid .hd{font-size:10px;color:var(--faint);text-align:center}
+.hd{font-size:10px;color:var(--faint)}
+.edit-grid .hd{text-align:center}
 .del{color:var(--faint);font-size:19px;line-height:1;padding:0 5px}
 footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;line-height:1.7}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 22px);
@@ -430,8 +437,8 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
     <div class="tiny" id="apptNote" style="margin-top:8px"></div>
     <details>
       <summary>通院予定を編集</summary>
-      <div class="row" style="gap:7px;margin-top:9px">
-        <input type="date" id="apptDate"><input type="time" id="apptTime" style="max-width:110px">
+      <div class="edit-grid" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+        <input type="date" id="apptDate"><input type="time" id="apptTime">
       </div>
       <input id="apptPlace" placeholder="病院名（アプリの中だけ）" style="margin-top:7px">
       <input id="apptAlias" placeholder="カレンダーに出す名前" style="margin-top:7px">
@@ -583,11 +590,12 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   <div class="card lead" data-pg="body">
     <h2>からだの記録（歩数と睡眠）</h2>
     <button class="btn ghost sm" id="hPaste" style="width:100%;margin-bottom:10px">クリップボードから取り込む</button>
-    <div class="edit-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));margin:0 0 4px">
-      <div class="hd">今日の歩数</div><div class="hd">就寝</div><div class="hd">起床</div>
+    <div class="hd" style="text-align:left;margin:2px 0 4px">今日の歩数</div>
+    <input type="number" inputmode="numeric" id="hSteps" placeholder="歩数">
+    <div class="edit-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));margin:9px 0 4px">
+      <div class="hd" style="text-align:left">就寝</div><div class="hd" style="text-align:left">起床</div>
     </div>
-    <div class="edit-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));margin:0">
-      <input type="number" inputmode="numeric" id="hSteps" placeholder="歩数">
+    <div class="edit-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));margin:0">
       <input type="time" id="hBed">
       <input type="time" id="hWake">
     </div>
@@ -769,7 +777,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.7.1";          // version.txt と一致させること
+const BUILD = "0.7.2";          // version.txt と一致させること
 const KEY = "mainichi.v1";
 let staleBuild = false;         // 古い版のまま開きっぱなしになっていないか
 const CATS = ["食費","日用品","交通","医療","交際","その他"];
