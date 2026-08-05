@@ -106,7 +106,8 @@ details > summary{list-style:none;cursor:pointer;font-size:13px;color:var(--dim)
 details > summary::-webkit-details-marker{display:none}
 details > summary::before{content:"▸ ";color:var(--faint)}
 details[open] > summary::before{content:"▾ "}
-.edit-grid{display:grid;grid-template-columns:1fr 92px 66px auto;gap:7px;align-items:center;margin-top:9px}
+.edit-grid{display:grid;grid-template-columns:minmax(0,1fr) 92px 66px auto;gap:7px;align-items:center;margin-top:9px}
+.edit-grid > *{min-width:0}
 .edit-grid.fx{grid-template-columns:1fr 84px 54px 40px auto}
 .edit-grid.sb{grid-template-columns:1fr 84px 64px 54px auto}
 .habits{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
@@ -114,10 +115,40 @@ details[open] > summary::before{content:"▾ "}
 .tick{width:27px;height:27px;flex:none;border-radius:9px;border:1.5px solid var(--line);
   color:transparent;font-size:15px;font-weight:700;line-height:1}
 .tick.on{background:var(--ok);border-color:var(--ok);color:#fff}
+/* 調子の5段階は、赤→緑のグラデーションを5等分した単色。押した色そのものが意味 */
 .rate{display:flex;gap:6px}
-.rate button{flex:1;padding:9px 0;border:1px solid var(--line);border-radius:9px;
-  background:var(--card2);font-size:14px;color:var(--dim)}
-.rate button.on{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:700}
+.rate button{flex:1;padding:11px 0;border:1px solid var(--line);border-radius:9px;
+  background:var(--card2);font-size:14px;color:var(--dim);font-weight:600}
+.rate button.on{color:#0D1015;font-weight:800;border-color:transparent}
+.rate button[data-val="1"].on{background:#E06B5A}
+.rate button[data-val="2"].on{background:#E39A5C}
+.rate button[data-val="3"].on{background:#DFC661}
+.rate button[data-val="4"].on{background:#9BCF77}
+.rate button[data-val="5"].on{background:#5ECFA0}
+
+/* 並び替えチップ。いま何順かを常に見せる */
+.sorts{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px}
+.sorts button{font-size:11.5px;padding:5px 11px;border-radius:99px;
+  border:1px solid var(--line);color:var(--dim);background:var(--card2)}
+.sorts button.on{background:var(--fg);color:var(--bg);border-color:transparent;font-weight:700}
+
+/* 金額の大小を棒で見せる（対比） */
+.amtbar{height:3px;border-radius:2px;background:var(--accent);opacity:.55;margin-top:5px}
+
+/* サービスの目印。頭文字を色つきの札に */
+.badge{width:30px;height:30px;border-radius:9px;flex:none;display:grid;place-items:center;
+  font-size:13px;font-weight:800;color:#0D1015}
+
+/* 相関の散布図 */
+.scat{width:100%;height:150px;display:block;margin-top:4px}
+
+/* 横向きは使わない前提。狭い高さでは縦にするよう促す */
+.rotate{display:none}
+@media (orientation:landscape) and (max-height:520px){
+  .wrap, .tabbar{display:none}
+  .rotate{display:grid;place-items:center;height:100vh;text-align:center;
+    padding:24px;color:var(--dim);font-size:15px;line-height:2}
+}
 
 /* ---- tabs & pages ---- */
 body{padding-bottom:calc(env(safe-area-inset-bottom) + 82px)}
@@ -222,7 +253,9 @@ body[data-ro="1"] .rocover{display:block}
 .goal .sub{font-size:13px;color:var(--dim);margin-top:8px}
 
 /* ---- calendar ---- */
-.calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+/* 1fr の既定は min-width:auto なので、長い予定名が入った列だけ広がる。0で止める */
+.calgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
+.calgrid > *{min-width:0}
 .calhd{font-size:10.5px;color:var(--faint);text-align:center;padding:2px 0}
 .calcell{min-height:58px;border:1px solid var(--line);border-radius:8px;padding:3px 4px;
   background:var(--card2);font-size:10.5px;text-align:left;color:var(--fg);
@@ -257,7 +290,11 @@ body[data-ro="1"] .rocover{display:block}
   pointer-events:auto}
 .blk.auto{opacity:.82}
 .blk small{display:block;font-size:9px;font-weight:500;opacity:.75}
-.addrow{display:grid;grid-template-columns:76px 76px 1fr auto;gap:6px;margin-top:10px;align-items:center}
+/* time入力は中身の幅を主張するので minmax(0,…) で必ず縮むようにする */
+.addrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;
+  gap:6px;margin-top:8px;align-items:center}
+.addrow > *{min-width:0}
+.addrow .wide{grid-column:1 / -1}
 .catseg{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
 .catseg button{font-size:11px;padding:5px 10px;border-radius:99px;
   border:1px solid var(--line);color:var(--dim);background:var(--card2)}
@@ -272,6 +309,10 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 </style>
 </head>
 <body data-tab="today">
+<div class="rotate">
+  <div><div class="mini-logo" style="justify-content:center;margin-bottom:14px"><i></i><i></i><i></i></div>
+  画面を縦にしてください。<br>このアプリは縦向きで使います。</div>
+</div>
 <div class="ptr" id="ptr" aria-hidden="true">
   <svg viewBox="0 0 24 24" width="22" height="22">
     <path d="M12 4a8 8 0 1 0 8 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
@@ -292,11 +333,11 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
     <button class="gear" id="settingsOpen" aria-label="設定">⚙</button>
   </header>
 
+  <!-- ===== BIG GOAL（一番上は「何をする日か」） ===== -->
+  <div class="card goal lead" id="bigGoal" data-pg="today"></div>
+
   <!-- ===== MODE (体力予算) ===== -->
   <div class="card mode" id="modeCard" data-pg="today"></div>
-
-  <!-- ===== BIG GOAL ===== -->
-  <div class="card goal" id="bigGoal" data-pg="today"></div>
 
   <!-- ===== HERO ===== -->
   <div class="card hero" data-pg="money">
@@ -327,19 +368,19 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
     </details>
   </div>
 
-  <!-- ===== ERRANDS ===== -->
+  <!-- ===== やること ===== -->
   <div class="card" data-pg="today">
-    <h2>一回で終わる用事 <span class="tiny" id="errCount"></span></h2>
+    <h2>やること <span class="tiny" id="errCount"></span></h2>
+    <div class="sorts" id="errSorts"></div>
     <div id="errList"></div>
-    <div class="row" style="gap:8px;margin-top:10px">
-      <input id="errNew" placeholder="用事（例: ボタンの材料を買う）">
+    <div class="addrow" style="margin-top:12px">
+      <input class="wide" id="errNew" placeholder="やること（例: ボタンの材料を買う）">
+      <input id="errNote" placeholder="行き先・持ち物">
+      <input type="date" id="errDue">
       <button class="btn" id="errAdd">追加</button>
     </div>
-    <div class="row" style="gap:8px;margin-top:7px">
-      <input id="errNote" placeholder="行き先・持ち物（任意）">
-      <input type="date" id="errDue" style="max-width:150px">
-    </div>
-    <div class="tiny" style="margin-top:7px">2段階あるものは2件に分けてください（材料を買う／取り付ける）。済んだものは消さずに残ります。</div>
+    <div class="catseg" id="errPrioSeg"></div>
+    <div class="tiny" style="margin-top:8px">2段階あるものは2件に分けてください（材料を買う／取り付ける）。済んだものは消さずに残ります。</div>
   </div>
 
   <!-- ===== SHORTFALL ===== -->
@@ -412,6 +453,18 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
     <div id="todayList"></div>
   </div>
 
+  <!-- ===== SPEND CALENDAR ===== -->
+  <div class="card" data-pg="money">
+    <div class="row between" style="margin-bottom:10px">
+      <button class="btn ghost sm" data-calnav="-1">‹</button>
+      <div style="font-weight:700;font-size:15px" id="mcTitle">—</div>
+      <button class="btn ghost sm" data-calnav="1">›</button>
+    </div>
+    <div class="calgrid" id="mcHead" style="margin-bottom:4px"></div>
+    <div class="calgrid" id="mcBody"></div>
+    <div id="mcBreak" style="margin-top:14px"></div>
+  </div>
+
   <!-- ===== CARD PROJECTION ===== -->
   <div class="card" id="cardCard" data-pg="money">
     <h2>来月きます（今月のカード利用）</h2>
@@ -437,7 +490,8 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 
   <!-- ===== UPCOMING ===== -->
   <div class="card lead" data-pg="pay">
-    <h2>今月の支払い</h2>
+    <h2>今月の固定費 <span class="tiny" id="fixedTotal"></span></h2>
+    <div class="sorts" id="paySorts"></div>
     <div id="fixedList"></div>
     <details>
       <summary>支払いを編集</summary>
@@ -452,7 +506,8 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 
   <!-- ===== SUBSCRIPTIONS ===== -->
   <div class="card" data-pg="pay">
-    <h2>サブスク</h2>
+    <h2>サブスク <span class="tiny" id="subTotal"></span></h2>
+    <div class="sorts" id="subSorts"></div>
     <div id="subList"></div>
     <details>
       <summary>サブスクを編集</summary>
@@ -509,10 +564,10 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   <div class="card lead" data-pg="body">
     <h2>からだの記録（歩数と睡眠）</h2>
     <button class="btn ghost sm" id="hPaste" style="width:100%;margin-bottom:10px">クリップボードから取り込む</button>
-    <div class="edit-grid" style="grid-template-columns:1.2fr 1fr 1fr;margin:0 0 4px">
+    <div class="edit-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));margin:0 0 4px">
       <div class="hd">今日の歩数</div><div class="hd">就寝</div><div class="hd">起床</div>
     </div>
-    <div class="edit-grid" style="grid-template-columns:1.2fr 1fr 1fr;margin:0">
+    <div class="edit-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));margin:0">
       <input type="number" inputmode="numeric" id="hSteps" placeholder="歩数">
       <input type="time" id="hBed">
       <input type="time" id="hWake">
@@ -525,8 +580,10 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
     <div class="rate" id="rateMind">
       <button data-rate="mind" data-val="1">1</button><button data-rate="mind" data-val="2">2</button><button data-rate="mind" data-val="3">3</button><button data-rate="mind" data-val="4">4</button><button data-rate="mind" data-val="5">5</button>
     </div>
-    <div id="corrBox" class="tiny" style="margin-top:10px"></div>
-    <div id="hList" style="margin-top:6px"></div>
+    <div style="font-size:15px;font-weight:600;margin:16px 0 4px">歩数と心の調子</div>
+    <div id="scatBox"></div>
+    <div id="corrBox" class="tiny" style="margin-top:8px"></div>
+    <div id="hList" style="margin-top:10px"></div>
     <details>
       <summary>自動で取り込む（ショートカット連携）</summary>
       <div class="tiny" style="margin-top:8px">
@@ -680,7 +737,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.5.0";          // version.txt と一致させること
+const BUILD = "0.6.0";          // version.txt と一致させること
 const KEY = "mainichi.v1";
 let staleBuild = false;         // 古い版のまま開きっぱなしになっていないか
 const CATS = ["食費","日用品","交通","医療","交際","その他"];
@@ -832,7 +889,8 @@ function calc(){
 /* ---------- render ---------- */
 /* 1枚が落ちても残りは描く。どこで落ちたかは画面に出す（黙って白くしない） */
 function render(){
-  const parts = [["今日のモード",modeView],["用事",errView],["今日の一番",bigGoalView],
+  const parts = [["今日のモード",modeView],["やること",errView],["今日のテーマ",bigGoalView],
+    ["支出カレンダー",moneyCalView],
     ["今週の本数",streakView],["使えるお金",heroView],["今日やること",todayView],
     ["通院",apptView],["支出",spendView],["カード",cardView],["支払い",fixedView],
     ["サブスク",subsView],["入金",incomeView],["手当",benefitView],["残高",acctView],
@@ -972,17 +1030,18 @@ function modeView(){
   card.classList.toggle("rest", m.mode === "rest");
 
   const T = {
-    plugin: ["プラグイン 3時間", "13:30 - 16:30　1テーマだけ"],
-    motion: ["モーション 3時間", "13:30 - 16:30　アプリに入れるまでが納品"],
-    light:  ["今日は軽い日 90分", "できる分だけ。潰れた日は数えません"],
-    rest:   ["休み", "予定を入れない日です"]
+    plugin: ["プラグイン開発", "13:30 - 16:30 の3時間　1テーマだけ"],
+    motion: ["ワンモーション", "13:30 - 16:30 の3時間　アプリに入れるまでが納品"],
+    light:  ["短めにする日", "13:30 - 15:00 の90分"],
+    rest:   ["制作はお休み", "予定を入れない日です"]
   }[m.mode];
 
   const rec = dayRec(ymd(now()));
   const isMotion = m.mode === "motion";
-  let html = `<div class="lab">今日のモード</div>
-    <div class="big">${T[0]}</div>
+  let html = `<div class="lab">きょうの制作</div>
+    <div class="big" style="font-size:clamp(19px,5.2vw,26px)">${T[0]}</div>
     <div class="sub">${T[1]}</div>`;
+  // 短くする理由は必ず数字で示す。納得できない指示には従えないため
   if(m.why) html += `<div class="why">${esc(m.why)}</div>`;
 
   // リング3つ: 今日の毎日の分／今週のモーション／のこり用事
@@ -994,9 +1053,9 @@ function modeView(){
   const errLeft = S.errands.filter(e => !e.done).length;
   const errAll = Math.max(S.errands.length, 1);
   html += `<div class="rings">
-    ${ring(hdone, HL.length, "var(--ok)", `${hdone}/${HL.length}`, "毎日の分")}
-    ${ring(wk, 3, "var(--accent)", `${wk}/3`, "今週の本数")}
-    ${ring(errAll - errLeft, errAll, "var(--warn)", `${errLeft}件`, "のこり用事")}
+    ${ring(hdone, HL.length, "var(--ok)", `${hdone}/${HL.length}`, "今日の習慣")}
+    ${ring(wk, 3, "var(--accent)", `${wk}/3`, "今週のモーション")}
+    ${ring(errAll - errLeft, errAll, "var(--warn)", `${errLeft}`, "やること のこり")}
   </div>`;
   if(isMotion)
     html += `<label class="applied" data-applied="1">
@@ -1007,32 +1066,117 @@ function modeView(){
   card.innerHTML = html;
 }
 
-/* ---------- 一回で終わる用事 ---------- */
+/* ---------- やること ---------- */
+// 重要度×緊急度の4分類。色そのものが優先度を表す
+const PRIOS = [
+  {id:"iu", label:"重要・急ぎ", color:"#E06B5A"},
+  {id:"i",  label:"重要",       color:"#7AA7F0"},
+  {id:"u",  label:"急ぎ",       color:"#E39A5C"},
+  {id:"n",  label:"いつか",     color:"#6F7C93"}
+];
+const prioOf = id => PRIOS.find(p => p.id === id) || PRIOS[3];
+const ERR_SORTS = [["prio","優先度順"],["due","期限順"],["new","追加順"]];
+let errSort = "prio";
+let errPrio = "n";
+
 function errView(){
+  const tk = ymd(now());
+  const rank = e => PRIOS.findIndex(p => p.id === (e.prio || "n"));
   const list = S.errands.slice().sort((a,b) => {
     if(a.done !== b.done) return a.done ? 1 : -1;
-    if(!a.due && !b.due) return 0;
-    if(!a.due) return 1;
-    if(!b.due) return -1;
-    return a.due < b.due ? -1 : 1;
+    if(errSort === "prio"){
+      const r = rank(a) - rank(b); if(r) return r;
+    }
+    if(errSort !== "new"){
+      if(a.due && b.due && a.due !== b.due) return a.due < b.due ? -1 : 1;
+      if(a.due !== b.due) return a.due ? -1 : 1;
+    }
+    return 0;
   });
   const left = S.errands.filter(e => !e.done).length;
   document.getElementById("errCount").textContent = `のこり ${left}件`;
 
-  const tk = ymd(now());
+  document.getElementById("errSorts").innerHTML = ERR_SORTS.map(([id,lab]) =>
+    `<button data-errsort="${id}" class="${errSort===id?"on":""}">${lab}</button>`).join("");
+  document.getElementById("errPrioSeg").innerHTML = PRIOS.map(p =>
+    `<button data-errprio="${p.id}" style="${errPrio===p.id?`background:${p.color};color:#0D1015;font-weight:700;border-color:transparent`:""}">${p.label}</button>`).join("");
+
   document.getElementById("errList").innerHTML = list.length
     ? list.map(e => {
+        const p = prioOf(e.prio);
         const over = e.due && !e.done && e.due < tk;
         const due = e.due
-          ? `<span class="err-due${over ? " over" : ""}">${e.due.slice(5).replace("-","/")}まで</span>` : "";
+          ? `<span class="err-due${over ? " over" : ""}">${over ? "期限すぎ " : ""}${e.due.slice(5).replace("-","/")}まで</span>` : "";
         const note = e.note ? `<span class="err-due">　${esc(e.note)}</span>` : "";
         return `<div class="item ${e.done ? "err-done" : ""}">
           <button class="tick ${e.done ? "on" : ""}" data-err="${e.id}">✓</button>
+          <span style="width:4px;align-self:stretch;border-radius:2px;flex:none;background:${e.done?"transparent":p.color}"></span>
           <div class="grow"><div class="nm ${e.done ? "done-row" : ""}">${esc(e.text)}</div>
-            <div class="mt">${due}${note}</div></div>
+            <div class="mt">${e.done ? "" : `<span class="err-due">${p.label}</span>`}${due ? "　"+due : ""}${note}</div></div>
           <button class="del" data-delerr="${e.id}">×</button></div>`;
       }).join("")
-    : `<div class="tiny">用事はありません。</div>`;
+    : `<div class="tiny">やることはありません。</div>`;
+}
+
+/* ---------- おかね: 月の支出カレンダーと内訳 ---------- */
+const CAT_COLORS = {"食費":"#5ECFA0","日用品":"#7AA7F0","交通":"#E39A5C",
+  "医療":"#E28FC8","交際":"#DFC661","その他":"#6F7C93"};
+
+function moneyCalView(){
+  const [y, m] = calCursor.split("-").map(Number);
+  document.getElementById("mcTitle").textContent = `${y}年${m}月の支出`;
+  document.getElementById("mcHead").innerHTML =
+    ["月","火","水","木","金","土","日"].map(w => `<div class="calhd">${w}</div>`).join("");
+
+  const days = new Date(y, m, 0).getDate();
+  const off = (new Date(y, m-1, 1).getDay() + 6) % 7;
+  const tk = ymd(now());
+  const byDay = {};
+  let total = 0;
+  const byCat = {};
+  for(const s of S.spends){
+    if(!s.d.startsWith(calCursor)) continue;
+    const a = +s.amt || 0;
+    byDay[s.d] = (byDay[s.d] || 0) + a;
+    byCat[s.cat] = (byCat[s.cat] || 0) + a;
+    total += a;
+  }
+  const maxD = Math.max(1, ...Object.values(byDay));
+
+  const cells = [];
+  for(let i = 0; i < off; i++) cells.push(`<button class="calcell" disabled></button>`);
+  for(let d = 1; d <= days; d++){
+    const key = `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    const v = byDay[key] || 0;
+    // 使った額の大きさを、背景の濃さで見せる（数字を読まなくても分かる）
+    const bg = v ? `background:color-mix(in srgb,var(--accent) ${Math.round(10 + v/maxD*46)}%,var(--card2))` : "";
+    cells.push(`<button class="calcell${key === tk ? " today" : ""}" style="${bg}" data-calday="${key}">
+      <span class="dn">${d}</span>
+      ${v ? `<span class="sp" style="font-size:9.5px">${v >= 10000 ? (v/10000).toFixed(1)+"万" : v.toLocaleString("ja-JP")}</span>` : ""}</button>`);
+  }
+  document.getElementById("mcBody").innerHTML = cells.join("");
+
+  const box = document.getElementById("mcBreak");
+  if(!total){ box.innerHTML = `<div class="tiny">この月の支出の記録はまだありません。</div>`; return; }
+
+  const rows = Object.entries(byCat).sort((a,b) => b[1] - a[1]);
+  // 積み上げ1本で割合、その下に内訳。円グラフより細い差が読める
+  const bar = rows.map(([c,v]) =>
+    `<i style="width:${(v/total*100).toFixed(1)}%;background:${CAT_COLORS[c] || "#6F7C93"}"></i>`).join("");
+  box.innerHTML = `
+    <div class="row between" style="margin-bottom:7px">
+      <span class="dim">この月の合計</span>
+      <span class="amt" style="font-size:19px;font-weight:800">${yen(total)}</span>
+    </div>
+    <div style="display:flex;height:11px;border-radius:6px;overflow:hidden;gap:1.5px">${bar}</div>
+    <div style="margin-top:9px">${rows.map(([c,v]) => `
+      <div class="item" style="padding:8px 0">
+        <span style="width:11px;height:11px;border-radius:3px;flex:none;background:${CAT_COLORS[c] || "#6F7C93"}"></span>
+        <div class="grow nm">${esc(c)}</div>
+        <div style="text-align:right">
+          <div class="amt">${yen(v)}</div>
+          <div class="tiny">${(v/total*100).toFixed(0)}%</div>
+        </div></div>`).join("")}</div>`;
 }
 
 /* ---------- こよみ（月カレンダー＋その日の時間割） ---------- */
@@ -1179,26 +1323,27 @@ function calDetail(){
       <div style="font-weight:700;font-size:16px">${dt.getMonth()+1}月${dt.getDate()}日（${"日月火水木金土"[dt.getDay()]}）</div>
     </div>
     ${timeline(key)}
-    <div class="catseg" id="planCatSeg">${TCATS.map(c =>
-      `<button data-planCat="${c.id}" style="${planCat===c.id?`background:${c.color};`:""}">${c.label}</button>`).join("")}</div>
-    <div class="addrow">
-      <input type="time" id="planFrom"><input type="time" id="planTo">
-      <input id="planText" placeholder="予定の名前">
-      <button class="btn" id="planAddBtn">追加</button>
-    </div>
-    <div class="tiny" style="margin:7px 0 12px">
-      薄い帯は記録から自動で出ています（睡眠・制作の時間・通院・期限のきた用事）。
-      自分で足した予定はタップで消せます。
-    </div>`;
-  const habitsDone = habitList().filter(h => rec.habits[h.id]).map(h => h.label);
-  if(habitsDone.length) html += `<div class="tiny" style="margin-bottom:4px">できたこと: ${habitsDone.join("・")}</div>`;
-  html += rec.tasks.map(t => `<div class="item" style="padding:7px 0">
-      <span style="width:20px;color:${t.done ? "var(--ok)" : "var(--faint)"}">${t.done ? "✓" : "・"}</span>
-      <div class="grow nm ${t.done ? "done-row" : ""}">${esc(t.text)}</div></div>`).join("");
-  html += spends.map(s => `<div class="item" style="padding:7px 0">
-      <div class="grow nm">${esc(s.cat)}${s.pay === "card" ? `<span class="chip due">カード</span>` : ""}</div>
-      <div class="amt">${yen(s.amt)}</div></div>`).join("");
-  if(h) html += `<div class="tiny" style="margin-top:5px">歩数 ${h.steps != null ? h.steps.toLocaleString("ja-JP") : "—"}　睡眠 ${fmtSleep(sleepMin(h.bed, h.wake))}　体${h.body || "—"}　心${h.mind || "—"}</div>`;
+    <details style="margin-top:12px">
+      <summary>予定を足す</summary>
+      <div class="catseg" id="planCatSeg">${TCATS.map(c =>
+        `<button data-planCat="${c.id}" style="${planCat===c.id?`background:${c.color};color:#0D1015;font-weight:700;border-color:transparent`:""}">${c.label}</button>`).join("")}</div>
+      <div class="addrow">
+        <input class="wide" id="planText" placeholder="予定の名前">
+        <input type="time" id="planFrom"><input type="time" id="planTo">
+        <button class="btn" id="planAddBtn">追加</button>
+      </div>
+      <div class="tiny" style="margin-top:8px">薄い帯は記録から自動で出ています。自分で足した予定はタップで消せます。</div>
+    </details>`;
+  // 詳細はこの1行にまとめる。時間割が主役なので、記録は要約だけ
+  const habitsDone = habitList().filter(h => rec.habits[h.id]).length;
+  const spendSum = spends.reduce((a,s) => a + (+s.amt||0), 0);
+  const sum = [];
+  if(habitsDone) sum.push(`習慣 ${habitsDone}/${habitList().length}`);
+  if(rec.tasks.length) sum.push(`タスク ${rec.tasks.filter(t=>t.done).length}/${rec.tasks.length}`);
+  if(spendSum) sum.push(`支出 ${yen(spendSum)}`);
+  if(h && h.steps != null) sum.push(`${h.steps.toLocaleString("ja-JP")}歩`);
+  if(h && h.bed && h.wake) sum.push(fmtSleep(sleepMin(h.bed, h.wake)));
+  if(sum.length) html += `<div class="quiet tiny" style="margin-top:12px">${esc(sum.join("　"))}</div>`;
 
   const mos = motionOn(key);
   html += mos.map(x => {
@@ -1223,8 +1368,6 @@ function calDetail(){
   html += dues.map(x => `<div class="item" style="padding:7px 0">
       <div class="grow nm" style="color:var(--warn)">${esc(x.name)}${x.paid ? `<span class="chip done">払った</span>` : ""}</div>
       ${x.amt ? `<div class="amt">${yen(x.amt)}</div>` : ""}</div>`).join("");
-  if(!habitsDone.length && !rec.tasks.length && !spends.length && !h && !dues.length && !mos.length)
-    html += `<div class="tiny">この日の記録はありません。</div>`;
   box.innerHTML = html;
 }
 
@@ -1385,9 +1528,31 @@ function cardView(){
     msg.innerHTML = `上限まであと <b style="color:var(--ok)">${yen(cap - c.cardProj)}</b>。このペースなら収まります。`;
 }
 
+// 頭文字の札。外部の画像は取りに行かない（オフラインでも壊れないように）
+const MARK_COLORS = ["#7AA7F0","#5ECFA0","#E39A5C","#E28FC8","#DFC661","#5AC8E8","#E06B5A"];
+function mark(name){
+  let h = 0; for(const ch of name) h = (h * 31 + ch.charCodeAt(0)) % 997;
+  const col = MARK_COLORS[h % MARK_COLORS.length];
+  return `<span class="badge" style="background:${col}">${esc(name.trim().slice(0,1) || "・")}</span>`;
+}
+
+const PAY_SORTS = [["due","期日順"],["amt","金額順"],["name","名前順"]];
+let paySort = "due";
+
 function fixedView(){
   const c = calc();
-  document.getElementById("fixedList").innerHTML = S.fixed.map(f=>{
+  const total = S.fixed.reduce((a,f) => a + (+f.amt||0), 0);
+  const max = Math.max(1, ...S.fixed.map(f => +f.amt||0));
+  document.getElementById("fixedTotal").textContent = `毎月 ${yen(total)}`;
+  document.getElementById("paySorts").innerHTML = PAY_SORTS.map(([id,lab]) =>
+    `<button data-paysort="${id}" class="${paySort===id?"on":""}">${lab}</button>`).join("");
+
+  const list = S.fixed.slice().sort((a,b) =>
+    paySort === "amt"  ? (+b.amt||0) - (+a.amt||0)
+  : paySort === "name" ? String(a.name).localeCompare(String(b.name), "ja")
+  : dueDay(a.day, now()) - dueDay(b.day, now()));
+
+  document.getElementById("fixedList").innerHTML = list.map(f=>{
     const k = `${f.id}:${c.mk}`, done = !!S.doneFixed[k];
     const due = dueDay(f.day, now());
     const late = !done && due < c.today;
@@ -1397,12 +1562,18 @@ function fixedView(){
       : dleft === 0 ? `<span class="chip due">今日</span>`
       : `<span class="chip">あと${dleft}日</span>`;
     return `<div class="item ${done?"done-row":""}">
-      <div class="grow"><div class="nm">${esc(f.name)}${f.transfer?`<span class="chip">振込</span>`:""}${chip}</div>
-        <div class="mt">毎月${f.day}日</div></div>
-      <div class="amt">${yen(f.amt)}</div>
+      ${mark(f.name)}
+      <div class="grow">
+        <div class="row between" style="gap:8px">
+          <div class="nm">${esc(f.name)}${f.transfer?`<span class="chip">振込</span>`:""}</div>
+          <div class="amt" style="font-weight:700">${yen(f.amt)}</div>
+        </div>
+        <div class="amtbar" style="width:${((+f.amt||0)/max*100).toFixed(0)}%"></div>
+        <div class="mt">毎月${f.day}日${chip}</div>
+      </div>
       <button class="btn ghost sm" data-payfixed="${f.id}">${done?"戻す":"払った"}</button>
     </div>`;
-  }).join("") || `<div class="tiny">支払いが登録されていません</div>`;
+  }).join("") || `<div class="tiny">固定費が登録されていません</div>`;
 
   document.getElementById("fixedEdit").innerHTML = S.fixed.map(f=>`
     <div class="edit-grid fx">
@@ -1416,19 +1587,35 @@ function fixedView(){
     </div>`).join("");
 }
 
+const SUB_SORTS = [["amt","高い順"],["day","請求日順"],["name","名前順"]];
+let subSort = "amt";
+
 function subsView(){
   const perMonth = s => s.cycle === "y" ? (+s.amt||0) / 12 : (+s.amt||0);
   const total = S.subs.reduce((a,s) => a + perMonth(s), 0);
+  const max = Math.max(1, ...S.subs.map(perMonth));
+  document.getElementById("subTotal").textContent =
+    S.subs.length ? `月 ${yen(total)}／年 ${yen(total*12)}` : "";
+  document.getElementById("subSorts").innerHTML = SUB_SORTS.map(([id,lab]) =>
+    `<button data-subsort="${id}" class="${subSort===id?"on":""}">${lab}</button>`).join("");
 
-  document.getElementById("subList").innerHTML = (S.subs.length
-    ? S.subs.map(s => `<div class="item">
-        <div class="grow"><div class="nm">${esc(s.name)}${s.cycle==="y"?`<span class="chip">年払い</span>`:""}</div>
-          <div class="mt">${s.cycle==="y"?"年 "+yen(s.amt)+" → 月あたり "+yen(perMonth(s)):"毎月"+(s.day?s.day+"日":"")}</div></div>
-        <div class="amt">${yen(perMonth(s))}</div></div>`).join("")
-    : `<div class="tiny" style="padding-bottom:6px">登録されていません</div>`)
-    + (S.subs.length ? `<div class="item"><div class="grow nm" style="color:var(--dim)">月あたり合計</div>
-        <div style="text-align:right"><div class="amt" style="font-weight:700">${yen(total)}</div>
-        <div class="tiny">年間 ${yen(total*12)}</div></div></div>` : "");
+  const list = S.subs.slice().sort((a,b) =>
+    subSort === "day"  ? (a.day||99) - (b.day||99)
+  : subSort === "name" ? String(a.name).localeCompare(String(b.name), "ja")
+  : perMonth(b) - perMonth(a));
+
+  document.getElementById("subList").innerHTML = list.length
+    ? list.map(s => `<div class="item">
+        ${mark(s.name)}
+        <div class="grow">
+          <div class="row between" style="gap:8px">
+            <div class="nm">${esc(s.name)}${s.cycle==="y"?`<span class="chip">年払い</span>`:""}</div>
+            <div class="amt" style="font-weight:700">${yen(perMonth(s))}</div>
+          </div>
+          <div class="amtbar" style="width:${(perMonth(s)/max*100).toFixed(0)}%"></div>
+          <div class="mt">${s.cycle==="y"?"年 "+yen(s.amt)+" を12で割った額":"毎月"+(s.day?s.day+"日":"")}</div>
+        </div></div>`).join("")
+    : `<div class="tiny" style="padding-bottom:6px">登録されていません</div>`;
 
   document.getElementById("subEdit").innerHTML = S.subs.map(s => `
     <div class="edit-grid sb">
@@ -1548,7 +1735,7 @@ function addSpend(amt, cat, pay){
 
 /* ---------- events ---------- */
 document.addEventListener("click", e => {
-  const t = e.target.closest("[data-pad],[data-delspend],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate],[data-habit],[data-task],[data-deltask],[data-delplan],[data-gotab],[data-calnav],[data-calday],[data-err],[data-delerr],[data-applied],[data-delhabit],[data-plancat],[data-delplan2],#lightBtn");
+  const t = e.target.closest("[data-pad],[data-delspend],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate],[data-habit],[data-task],[data-deltask],[data-delplan],[data-gotab],[data-calnav],[data-calday],[data-err],[data-delerr],[data-applied],[data-delhabit],[data-plancat],[data-delplan2],[data-errsort],[data-errprio],[data-paysort],[data-subsort],#lightBtn");
   if(!t) return;
 
   if(t.dataset.delhabit){
@@ -1576,7 +1763,10 @@ document.addEventListener("click", e => {
     S.errands = S.errands.filter(x => x.id !== t.dataset.delerr); save(); errView(); return;
   }
 
-  if(t.dataset.calnav){ calCursor = addMonths(calCursor, +t.dataset.calnav); calSel = null; calView(); return; }
+  if(t.dataset.calnav){
+    calCursor = addMonths(calCursor, +t.dataset.calnav); calSel = null;
+    calView(); moneyCalView(); return;
+  }
   if(t.dataset.calday){
     calSel = (calSel === t.dataset.calday) ? null : t.dataset.calday;
     calView();
@@ -1584,6 +1774,10 @@ document.addEventListener("click", e => {
     return;
   }
   if(t.dataset.plancat){ planCat = t.dataset.plancat; calDetail(); return; }
+  if(t.dataset.errsort){ errSort = t.dataset.errsort; errView(); return; }
+  if(t.dataset.errprio){ errPrio = t.dataset.errprio; errView(); return; }
+  if(t.dataset.paysort){ paySort = t.dataset.paysort; fixedView(); return; }
+  if(t.dataset.subsort){ subSort = t.dataset.subsort; subsView(); return; }
   if(t.dataset.delplan2){
     if(!canWrite()) return;
     const arr = S.plan[calSel] || [];
@@ -1716,6 +1910,7 @@ function healthView(){
 
   document.querySelectorAll("[data-rate]").forEach(b =>
     b.classList.toggle("on", (h[b.dataset.rate] || 0) === +b.dataset.val));
+  document.getElementById("scatBox").innerHTML = scatter();
   document.getElementById("corrBox").innerHTML = corrText();
 
   const days = Object.keys(S.health).sort().slice(-14).reverse();
@@ -1744,6 +1939,49 @@ function pearson(pairs){
   return (sxx===0 || syy===0) ? null : sxy/Math.sqrt(sxx*syy);
 }
 
+// 歩数（横）× 心の調子（縦）の散布図。点が増えるほど傾きが見えてくる
+function scatter(){
+  const pts = [];
+  for(const d of Object.keys(S.health).sort()){
+    const x = S.health[d];
+    if(x.steps != null && x.mind) pts.push([x.steps, x.mind, d]);
+  }
+  const W = 320, H = 150, L = 26, B = 18;
+  if(!pts.length)
+    return `<div class="tiny" style="padding:18px 0">歩数と心の調子が両方ある日が増えると、ここに散らばりが出ます。</div>`;
+
+  const maxX = Math.max(2000, ...pts.map(p => p[0]));
+  const px = v => L + (v / maxX) * (W - L - 6);
+  const py = v => (H - B) - ((v - 1) / 4) * (H - B - 8);
+
+  let g = "";
+  for(let v = 1; v <= 5; v++)
+    g += `<line x1="${L}" y1="${py(v)}" x2="${W-6}" y2="${py(v)}" stroke="var(--line)" stroke-width="1"/>
+          <text x="0" y="${py(v)+4}" fill="var(--faint)" font-size="9">${v}</text>`;
+  g += `<text x="${L}" y="${H-4}" fill="var(--faint)" font-size="9">0歩</text>
+        <text x="${W-6}" y="${H-4}" fill="var(--faint)" font-size="9" text-anchor="end">${maxX.toLocaleString("ja-JP")}歩</text>`;
+
+  // 回帰直線。点が7日ぶん以上そろってから引く
+  if(pts.length >= 7){
+    const n = pts.length;
+    const mx = pts.reduce((a,p)=>a+p[0],0)/n, my = pts.reduce((a,p)=>a+p[1],0)/n;
+    let sxy = 0, sxx = 0;
+    for(const [x,y] of pts){ sxy += (x-mx)*(y-my); sxx += (x-mx)**2; }
+    if(sxx > 0){
+      const b = sxy/sxx, a = my - b*mx;
+      const cl = v => Math.max(1, Math.min(5, v));
+      g += `<line x1="${px(0)}" y1="${py(cl(a))}" x2="${px(maxX)}" y2="${py(cl(a+b*maxX))}"
+             stroke="var(--accent)" stroke-width="2" stroke-dasharray="4 3" opacity=".85"/>`;
+    }
+  }
+  const tk = ymd(now());
+  g += pts.map(([x,y,d]) =>
+    `<circle cx="${px(x).toFixed(1)}" cy="${py(y).toFixed(1)}" r="${d===tk?5:3.5}"
+      fill="${d===tk?"var(--ok)":"var(--accent)"}" opacity="${d===tk?1:.65}"/>`).join("");
+
+  return `<svg class="scat" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${g}</svg>`;
+}
+
 function corrText(){
   const pm=[], pb=[];
   for(const d of Object.keys(S.health)){
@@ -1770,7 +2008,7 @@ for(const [id, key] of [["hSteps","steps"],["hBed","bed"],["hWake","wake"]]){
     const t = ymd(now()), h = S.health[t] || (S.health[t] = {});
     if(key === "steps") h.steps = Math.round(+e.target.value) || 0;
     else h[key] = e.target.value;
-    save();
+    save(); healthView();   // 入れた瞬間にグラフへ反映する
   });
   document.getElementById(id).addEventListener("change", healthView);
 }
@@ -1888,7 +2126,7 @@ function addErrand(){
   const el = document.getElementById("errNew"), text = el.value.trim();
   if(!text) return toast("内容を入れてください");
   const noteEl = document.getElementById("errNote"), dueEl = document.getElementById("errDue");
-  S.errands.push({id:uid(), text, note:noteEl.value.trim(), due:dueEl.value, done:false});
+  S.errands.push({id:uid(), text, note:noteEl.value.trim(), due:dueEl.value, prio:errPrio, done:false});
   el.value = ""; noteEl.value = ""; dueEl.value = "";
   save(); errView(); toast("追加しました");
 }
