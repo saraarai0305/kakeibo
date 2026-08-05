@@ -537,17 +537,17 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 </div>
 
 <nav class="tabbar">
-  <button data-tab="today">きょう</button>
-  <button data-tab="money">おかね</button>
-  <button data-tab="cal">こよみ</button>
-  <button data-tab="body">からだ</button>
-  <button data-tab="pay">しはらい</button>
+  <button data-gotab="today">きょう</button>
+  <button data-gotab="money">おかね</button>
+  <button data-gotab="cal">こよみ</button>
+  <button data-gotab="body">からだ</button>
+  <button data-gotab="pay">しはらい</button>
 </nav>
 <div class="toast" id="toast"></div>
 
 <script>
 "use strict";
-const BUILD = "2026-08-05-a";   // version.txt と一致させること
+const BUILD = "2026-08-05-b";   // version.txt と一致させること
 const KEY = "mainichi.v1";
 let staleBuild = false;         // 古い版のまま開きっぱなしになっていないか
 const CATS = ["食費","日用品","交通","医療","交際","その他"];
@@ -679,11 +679,12 @@ function render(){ modeView(); errView(); bigGoalView(); streakView(); heroView(
 const TABS = ["today","money","cal","body","pay"];
 function setTab(t){
   if(!TABS.includes(t)) t = "today";
+  const changed = document.body.dataset.tab !== t;
   S.ui.tab = t; save();
   document.body.dataset.tab = t;
   document.querySelectorAll(".tabbar button").forEach(b =>
-    b.classList.toggle("on", b.dataset.tab === t));
-  window.scrollTo(0, 0);
+    b.classList.toggle("on", b.dataset.gotab === t));
+  if(changed) window.scrollTo(0, 0);   // 同じタブを押しただけならスクロールしない
 }
 
 /* ---------- でかでか目標とストリーク ---------- */
@@ -1201,9 +1202,10 @@ function addSpend(amt, cat, pay){
 
 /* ---------- events ---------- */
 document.addEventListener("click", e => {
-  const t = e.target.closest("[data-pad],[data-delspend],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate],[data-habit],[data-task],[data-deltask],[data-delplan],[data-tab],[data-calnav],[data-calday],[data-err],[data-delerr],[data-applied],#lightBtn");
+  const t = e.target.closest("[data-pad],[data-delspend],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate],[data-habit],[data-task],[data-deltask],[data-delplan],[data-gotab],[data-calnav],[data-calday],[data-err],[data-delerr],[data-applied],#lightBtn");
   if(!t) return;
 
+  if(t.dataset.gotab){ setTab(t.dataset.gotab); return; }
   if(t.id === "lightBtn"){ dayRec(ymd(now())).light = true; save(); render(); return; }
   if(t.dataset.applied){
     const rec = dayRec(ymd(now()));
@@ -1219,7 +1221,6 @@ document.addEventListener("click", e => {
     S.errands = S.errands.filter(x => x.id !== t.dataset.delerr); save(); errView(); return;
   }
 
-  if(t.dataset.tab){ setTab(t.dataset.tab); return; }
   if(t.dataset.calnav){ calCursor = addMonths(calCursor, +t.dataset.calnav); calSel = null; calView(); return; }
   if(t.dataset.calday){ calSel = (calSel === t.dataset.calday) ? null : t.dataset.calday; calView(); return; }
 
