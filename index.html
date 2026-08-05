@@ -250,6 +250,13 @@ body[data-ro="1"] .rocover{display:block}
 .goal .lab{font-size:12px;color:var(--faint);letter-spacing:.08em;margin-bottom:6px}
 .goal .big{font-size:clamp(24px,7.5vw,42px);font-weight:800;line-height:1.25;letter-spacing:-.01em}
 .goal .big.done{color:var(--ok)}
+/* テーマは書き換えるものなので、入力欄のまま大きく置く（1タップで直せる） */
+.bigin{background:none;border:none;border-bottom:1px dashed var(--line);border-radius:0;
+  padding:2px 0 6px;width:100%;
+  font-size:clamp(24px,7.5vw,40px);font-weight:800;line-height:1.25;letter-spacing:-.01em;
+  color:var(--fg)}
+.bigin::placeholder{color:var(--faint);font-weight:700}
+.bigin:focus{outline:none;border-bottom-color:var(--accent)}
 .goal .sub{font-size:13px;color:var(--dim);margin-top:8px}
 
 /* ---- calendar ---- */
@@ -333,8 +340,15 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
     <button class="gear" id="settingsOpen" aria-label="設定">⚙</button>
   </header>
 
-  <!-- ===== BIG GOAL（一番上は「何をする日か」） ===== -->
-  <div class="card goal lead" id="bigGoal" data-pg="today"></div>
+  <!-- ===== 今日のテーマ（自分で決める一言） ===== -->
+  <div class="card goal lead" data-pg="today">
+    <div id="themeBox">
+      <div class="lab">今日のテーマ</div>
+      <input id="themeInput" class="bigin" placeholder="ひとことで決める" maxlength="40">
+      <div class="sub" id="themeSub"></div>
+    </div>
+    <div id="endBox" hidden></div>
+  </div>
 
   <!-- ===== MODE (体力予算) ===== -->
   <div class="card mode" id="modeCard" data-pg="today"></div>
@@ -755,7 +769,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.7.0";          // version.txt と一致させること
+const BUILD = "0.7.1";          // version.txt と一致させること
 const KEY = "mainichi.v1";
 let staleBuild = false;         // 古い版のまま開きっぱなしになっていないか
 const CATS = ["食費","日用品","交通","医療","交際","その他"];
@@ -946,7 +960,7 @@ function setTab(t){
   if(changed) window.scrollTo(0, 0);   // 同じタブを押しただけならスクロールしない
 }
 
-/* ---------- でかでか目標とストリーク ---------- */
+/* ---------- 今日のテーマ ---------- */
 function bigGoalView(){
   const tk = ymd(now()), h = now().getHours();
   const rec = S.daily[tk] || {habits:{}};
@@ -955,10 +969,25 @@ function bigGoalView(){
   const tomo = plannedOn(tomorrowKey());
   const HL = habitList();
   const hdone = HL.filter(x => rec.habits[x.id]).length;
-  const el = document.getElementById("bigGoal");
+  const themeBox = document.getElementById("themeBox");
+  const el = document.getElementById("endBox");
 
   // 21時以降は「返す」画面にする。できた数を数えて、言葉で返す
-  if(h >= 21){
+  themeBox.hidden = h >= 21;
+  el.hidden = h < 21;
+
+  if(h < 21){
+    const inp = document.getElementById("themeInput");
+    if(document.activeElement !== inp) inp.value = rec.theme || "";
+    const bits = [];
+    if(todays.length) bits.push(`今日やること ${todays.length - undone.length}/${todays.length}`);
+    if(hdone) bits.push(`毎日つけるもの ${hdone}/${HL.length}`);
+    document.getElementById("themeSub").textContent =
+      bits.length ? bits.join("　") : "下で今日やることを決めると、ここに進み具合が出ます";
+    return;
+  }
+
+  {
     const doneToday = S.errands.filter(e => e.done && e.doneAt === tk).length;
     const total = hdone + doneToday;
     const sp = S.spends.filter(s => s.d === tk).length;
@@ -971,36 +1000,22 @@ function bigGoalView(){
     const nextLine = !tomo.length
       ? "明日やることを1つ決めておくと、朝がすこし楽になります"
       : `明日は「${tomo[0].text}」から`;
-    el.className = "card goal";
+    const theme = rec.theme ? `<div class="sub" style="margin-top:2px">テーマ「${esc(rec.theme)}」</div>` : "";
     el.innerHTML = `<div class="lab">今日のおわり</div>
       <div class="big${total ? " done" : ""}">${esc(word)}</div>
+      ${theme}
       <div class="sub">${bits.length ? esc(bits.join("　")) : "記録はありませんでした"}</div>
       <div class="sub" style="margin-top:9px;color:var(--faint)">${esc(nextLine)}</div>`;
     return;
   }
 
-  let lab = "今日のテーマ", big = "", sub = "", done = false;
-  const err = S.errands.filter(e => !e.done && e.due && e.plan !== tk)
-    .sort((a,b) => a.due < b.due ? -1 : 1)[0];
-
-  if(undone.length){
-    big = undone[0].text;
-    sub = undone.length > 1 ? `これが終わったら、あと${undone.length - 1}件` : "これが終われば今日は終わり";
-  } else if(err && err.due <= tk){
-    lab = "期限がきています";
-    big = err.text;
-    sub = err.note || "「ためてあること」から";
-  } else if(todays.length){
-    big = "全部できた"; done = true;
-    sub = `今日やること${todays.length}件、完了。`;
-  } else {
-    big = "今日やることを決める";
-    sub = "下のリストに1つ追加するところから";
-  }
-  el.className = "card goal";
-  el.innerHTML =
-    `<div class="lab">${lab}</div><div class="big${done ? " done" : ""}">${esc(big)}</div><div class="sub">${esc(sub)}</div>`;
 }
+
+document.getElementById("themeInput").addEventListener("input", e => {
+  if(!canWrite()) return;
+  dayRec(ymd(now())).theme = e.target.value;
+  save();
+});
 
 /* ---------- 今週◯/3本（連続日数は意図的に持たない） ---------- */
 function weekRange(d){
@@ -1356,6 +1371,7 @@ function calDetail(){
   let html = `<div class="row between" style="margin-bottom:2px">
       <div style="font-weight:700;font-size:16px">${dt.getMonth()+1}月${dt.getDate()}日（${"日月火水木金土"[dt.getDay()]}）</div>
     </div>
+    ${rec.theme ? `<div class="dim" style="margin-bottom:4px">テーマ「${esc(rec.theme)}」</div>` : ""}
     ${timeline(key)}
     <details style="margin-top:12px">
       <summary>予定を足す</summary>
