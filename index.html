@@ -169,6 +169,22 @@ body[data-tab="pay"]   [data-pg="pay"]{display:block}
 .err-due{font-size:11px;color:var(--dim)}
 .err-due.over{color:var(--warn)}
 
+/* ---- pull to refresh ---- */
+.ptr{position:fixed;top:calc(env(safe-area-inset-top) + 6px);left:50%;z-index:7;
+  width:38px;height:38px;margin-left:-19px;border-radius:50%;
+  background:var(--card);border:1px solid var(--line);color:var(--accent);
+  display:grid;place-items:center;opacity:0;pointer-events:none;
+  transform:translateY(-14px);transition:opacity .12s}
+.ptr.ready{background:var(--accent);color:#fff;border-color:var(--accent)}
+.ptr.spin svg{animation:ptrspin .8s linear infinite}
+@keyframes ptrspin{to{transform:rotate(360deg)}}
+
+/* ---- read only ---- */
+body[data-ro="1"] .rocover{display:block}
+.robar{background:color-mix(in srgb,var(--warn) 14%,var(--card));
+  border:1px solid color-mix(in srgb,var(--warn) 40%,var(--line));
+  border-radius:11px;padding:9px 12px;font-size:13px;color:var(--warn);margin-bottom:12px}
+
 /* ---- sync ---- */
 .syncdot{width:8px;height:8px;border-radius:50%;background:var(--faint);flex:none}
 .syncdot.ok{background:var(--ok)}
@@ -205,7 +221,15 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 </style>
 </head>
 <body data-tab="today">
+<div class="ptr" id="ptr" aria-hidden="true">
+  <svg viewBox="0 0 24 24" width="22" height="22">
+    <path d="M12 4a8 8 0 1 0 8 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M12 1.5 17 5l-5 3.5z" fill="currentColor"/>
+  </svg>
+</div>
 <div class="wrap">
+
+  <div class="robar" id="roBar" hidden>読み取り専用です。この端末では記録できません。</div>
 
   <header class="top">
     <div class="mini-logo"><i></i><i></i><i></i></div>
@@ -510,6 +534,14 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
       <button class="btn" id="syncStart" style="width:100%;margin-top:9px">同期を開始</button>
       <div class="tiny" id="syncGistOut" style="margin-top:8px"></div>
     </details>
+    <div style="margin-top:12px">
+      <div class="tiny" style="margin-bottom:6px">この端末の役割</div>
+      <div class="seg" id="roleSeg">
+        <button data-role="rw">記録する</button>
+        <button data-role="ro">読み取り専用</button>
+      </div>
+      <div class="tiny" style="margin-top:6px">読み取り専用にすると、この端末からは記録できず、相手のデータを上書きしません。見るだけの端末に。</div>
+    </div>
     <button class="btn ghost sm" id="syncOff" style="width:100%;margin-top:9px" hidden>同期を止める（この端末だけ）</button>
     <div id="restoreBox" hidden style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
       <div class="tiny" id="restoreInfo" style="margin-bottom:8px"></div>
@@ -547,7 +579,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 
 <script>
 "use strict";
-const BUILD = "2026-08-05-b";   // version.txt と一致させること
+const BUILD = "2026-08-05-c";   // version.txt と一致させること
 const KEY = "mainichi.v1";
 let staleBuild = false;         // 古い版のまま開きっぱなしになっていないか
 const CATS = ["食費","日用品","交通","医療","交際","その他"];
@@ -942,6 +974,7 @@ function todayView(){
 }
 
 function addTask(dateKey, inputId){
+  if(!canWrite()) return;
   const el = document.getElementById(inputId);
   const text = el.value.trim();
   if(!text) return toast("内容を入れてください");
@@ -1188,6 +1221,7 @@ function bankAcct(){
 }
 
 function addSpend(amt, cat, pay){
+  if(!canWrite()) return;
   amt = Math.round(+amt);
   if(!(amt > 0)) return toast("金額を入れてください");
   pay = pay || S.ui.pay || "cash";
@@ -1206,6 +1240,9 @@ document.addEventListener("click", e => {
   if(!t) return;
 
   if(t.dataset.gotab){ setTab(t.dataset.gotab); return; }
+  if(t.dataset.calnav || t.dataset.calday){ /* 見るだけの操作は読み取り専用でも通す */ }
+  else if(!canWrite()) return;
+
   if(t.id === "lightBtn"){ dayRec(ymd(now())).light = true; save(); render(); return; }
   if(t.dataset.applied){
     const rec = dayRec(ymd(now()));
@@ -1398,6 +1435,7 @@ function corrText(){
 
 for(const [id, key] of [["hSteps","steps"],["hBed","bed"],["hWake","wake"]]){
   document.getElementById(id).addEventListener("input", e => {
+    if(!canWrite()) return;
     const t = ymd(now()), h = S.health[t] || (S.health[t] = {});
     if(key === "steps") h.steps = Math.round(+e.target.value) || 0;
     else h[key] = e.target.value;
@@ -1515,6 +1553,7 @@ document.getElementById("cardCap").addEventListener("input", e => {
 });
 
 function addErrand(){
+  if(!canWrite()) return;
   const el = document.getElementById("errNew"), text = el.value.trim();
   if(!text) return toast("内容を入れてください");
   const noteEl = document.getElementById("errNote"), dueEl = document.getElementById("errDue");
@@ -1546,6 +1585,7 @@ document.getElementById("spAmt").addEventListener("keydown", e => {
 document.addEventListener("change", e => {
   const el = e.target;
   const map = {fx:"fixed", ic:"incomes", ac:"accounts", sb:"subs"};
+  if(Object.keys(map).some(a => el.dataset[a]) && !canWrite()){ render(); return; }
   for(const [attr, coll] of Object.entries(map)){
     const field = el.dataset[attr];
     if(!field) continue;
@@ -1619,6 +1659,21 @@ function syncCfg(){
 }
 function setSyncCfg(c){ localStorage.setItem(SYNC_KEY, JSON.stringify(c)); }
 
+/* 読み取り専用: この端末では記録させない。相手を上書きもしない */
+const isReadOnly = () => syncCfg().role === "ro";
+function canWrite(){
+  if(!isReadOnly()) return true;
+  toast("読み取り専用です（おかね → 同期 で切り替え）");
+  return false;
+}
+function rolePaint(){
+  const ro = isReadOnly();
+  document.body.dataset.ro = ro ? "1" : "";
+  document.getElementById("roBar").hidden = !ro;
+  document.querySelectorAll("#roleSeg button").forEach(b =>
+    b.classList.toggle("on", (b.dataset.role === "ro") === ro));
+}
+
 function syncPaint(state, msg){
   const dot = document.getElementById("syncDot");
   dot.className = "syncdot" + (state ? " " + state : "");
@@ -1634,7 +1689,7 @@ function syncPaint(state, msg){
   if(c.gistId) document.getElementById("syncIdText").textContent = c.gistId;
   const setup = document.getElementById("syncSetup");
   if(on) setup.open = false;
-  restorePaint();
+  restorePaint(); rolePaint();
   document.getElementById("buildBox").textContent =
     `版 ${BUILD}${staleBuild ? "（古い・開き直してください）" : ""}　この端末の記録量 ${richness(S)}`;
 }
@@ -1656,7 +1711,8 @@ const payload = () => JSON.stringify(S, null, 2);
 
 async function pushRemote(){
   const c = syncCfg();
-  if(!c.token || !c.gistId || syncing) return;
+  if(!c.token || !c.gistId || syncing || staleBuild) return;
+  if(c.role === "ro"){ syncPaint("ok", "読み取り専用（送信しません）"); return; }
   syncing = true; syncPaint("busy", "送信中…");
   try{
     // 送る前に相手を見る。こちらのほうが極端に記録が少ないなら送らない
@@ -1715,8 +1771,27 @@ async function pullRemote(silent, force){
   }finally{ syncing = false; }
 }
 
-/* 開きっぱなしの古い版が同期を壊した実績があるので、版ずれを検出したら同期を止める */
-async function checkBuild(){
+/* 開きっぱなしの古い版が同期を壊した実績があるので、版ずれを検出したら同期を止める。
+   iOSのPWAは開き直しても古いページを掴んだままのことがあるので、自力で作り直す。 */
+async function hardReload(){
+  const tries = +(sessionStorage.getItem("mainichi.reloads") || 0);
+  if(tries >= 2) return false;                    // 無限ループ防止
+  sessionStorage.setItem("mainichi.reloads", tries + 1);
+  try{
+    if(window.caches){
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+    if(navigator.serviceWorker){
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+    }
+  }catch(e){}
+  location.replace(location.pathname + "?v=" + Date.now());
+  return true;
+}
+
+async function checkBuild(auto){
   try{
     const r = await fetch("version.txt?t=" + Date.now(), {cache:"no-store"});
     if(!r.ok) return;
@@ -1724,10 +1799,47 @@ async function checkBuild(){
     if(latest && latest !== BUILD){
       staleBuild = true;
       clearInterval(pullTimer);
-      syncPaint("err", "新しい版があります。開き直すまで同期を止めています");
+      syncPaint("err", "新しい版があります。作り直しています…");
+      if(auto !== false) await hardReload();
+    }else{
+      sessionStorage.removeItem("mainichi.reloads");
     }
   }catch(e){ /* オフラインなら何もしない */ }
 }
+
+/* ---------- 引っぱって更新 ---------- */
+async function manualRefresh(){
+  const el = document.getElementById("ptr");
+  el.classList.add("spin");
+  await checkBuild();
+  if(!staleBuild){ await pullRemote(false); toast("最新の状態にしました"); }
+  el.classList.remove("spin");
+}
+
+(function setupPTR(){
+  const el = document.getElementById("ptr");
+  let y0 = 0, active = false, ready = false;
+  addEventListener("touchstart", e => {
+    if(window.scrollY > 0 || e.touches.length !== 1) return;
+    y0 = e.touches[0].clientY; active = true; ready = false;
+  }, {passive:true});
+  addEventListener("touchmove", e => {
+    if(!active) return;
+    const dy = e.touches[0].clientY - y0;
+    if(dy <= 0){ el.style.opacity = 0; return; }
+    const p = Math.min(dy / 80, 1);
+    ready = p >= 1;
+    el.style.opacity = p;
+    el.style.transform = `translateY(${Math.min(dy * .45, 46) - 14}px) rotate(${p * 300}deg)`;
+    el.classList.toggle("ready", ready);
+  }, {passive:true});
+  addEventListener("touchend", async ()=>{
+    if(!active) return;
+    active = false;
+    el.style.opacity = 0; el.style.transform = ""; el.classList.remove("ready");
+    if(ready) await manualRefresh();
+  }, {passive:true});
+})();
 
 function schedulePush(){
   if(!syncCfg().token || staleBuild) return;
@@ -1806,6 +1918,15 @@ document.getElementById("restoreBtn").addEventListener("click", ()=>{
     render(); restorePaint();
     toast("戻しました");
   }catch(e){ toast("戻せませんでした"); console.error(e); }
+});
+
+document.getElementById("roleSeg").addEventListener("click", e => {
+  const b = e.target.closest("[data-role]"); if(!b) return;
+  const c = syncCfg();
+  c.role = b.dataset.role === "ro" ? "ro" : "rw";
+  setSyncCfg(c); rolePaint();
+  toast(c.role === "ro" ? "読み取り専用にしました" : "記録できるようにしました");
+  if(c.role === "rw") schedulePush();
 });
 
 document.getElementById("syncIdCopy").addEventListener("click", async ()=>{
