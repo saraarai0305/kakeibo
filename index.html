@@ -511,6 +511,10 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
       <div class="tiny" id="syncGistOut" style="margin-top:8px"></div>
     </details>
     <button class="btn ghost sm" id="syncOff" style="width:100%;margin-top:9px" hidden>同期を止める（この端末だけ）</button>
+    <div id="restoreBox" hidden style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
+      <div class="tiny" id="restoreInfo" style="margin-bottom:8px"></div>
+      <button class="btn ghost sm" id="restoreBtn" style="width:100%">同期で上書きされる前の状態に戻す</button>
+    </div>
   </div>
 
   <!-- ===== BACKUP ===== -->
@@ -1613,6 +1617,7 @@ function syncPaint(state, msg){
   if(c.gistId) document.getElementById("syncIdText").textContent = c.gistId;
   const setup = document.getElementById("syncSetup");
   if(on) setup.open = false;
+  restorePaint();
 }
 
 async function gistFetch(path, opts){
@@ -1720,6 +1725,36 @@ document.getElementById("syncStart").addEventListener("click", async ()=>{
   }catch(e){
     syncPaint("err", "接続できませんでした（" + e.message + "）。トークンの権限を確認してください");
   }
+});
+
+/* 上書き前の退避データ。取り違えたときの戻し道 */
+function restorePaint(){
+  const raw = localStorage.getItem("mainichi.before-sync");
+  const box = document.getElementById("restoreBox");
+  if(!raw){ box.hidden = true; return; }
+  box.hidden = false;
+  let info = "退避データあり";
+  try{
+    const o = JSON.parse(raw);
+    const spends = (o.spends || []).length, days = Object.keys(o.daily || {}).length;
+    info = `退避データ: 保存 ${o.savedAt ? new Date(o.savedAt).toLocaleString("ja-JP") : "不明"}／` +
+           `支出${spends}件・記録${days}日分`;
+  }catch(e){}
+  document.getElementById("restoreInfo").textContent = info;
+}
+
+document.getElementById("restoreBtn").addEventListener("click", ()=>{
+  const raw = localStorage.getItem("mainichi.before-sync");
+  if(!raw) return toast("退避データがありません");
+  if(!confirm("同期で上書きされる前の状態に戻します。\n今の内容は失われます。よろしいですか？")) return;
+  try{
+    const o = JSON.parse(raw);
+    S = Object.assign(seed(), o);
+    S.savedAt = new Date().toISOString();      // これを最新として扱う
+    localStorage.setItem(KEY, JSON.stringify(S));
+    render(); restorePaint();
+    toast("戻しました");
+  }catch(e){ toast("戻せませんでした"); console.error(e); }
 });
 
 document.getElementById("syncIdCopy").addEventListener("click", async ()=>{
