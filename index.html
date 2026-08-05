@@ -1631,7 +1631,7 @@ async function pushRemote(){
   }finally{ syncing = false; }
 }
 
-async function pullRemote(silent){
+async function pullRemote(silent, force){
   const c = syncCfg();
   if(!c.token || !c.gistId || syncing) return;
   syncing = true;
@@ -1641,8 +1641,10 @@ async function pullRemote(silent){
     const f = g.files && g.files[GIST_FILE];
     if(f && f.content){
       const remote = JSON.parse(f.content);
-      // 新しいほうを採用。同時刻なら何もしない
-      if(remote.savedAt && (!S.savedAt || remote.savedAt > S.savedAt)){
+      // 通常は新しいほうを採用。force（2台目の参加時）は無条件で相手に合わせる
+      if(force || (remote.savedAt && (!S.savedAt || remote.savedAt > S.savedAt))){
+        // 上書き直前の中身を1つだけ退避しておく（取り違えたときの保険）
+        try{ localStorage.setItem("mainichi.before-sync", JSON.stringify(S)); }catch(e){}
         S = Object.assign(seed(), remote);
         localStorage.setItem(KEY, JSON.stringify(S));
         render();
@@ -1673,11 +1675,18 @@ document.getElementById("syncStart").addEventListener("click", async ()=>{
   const token = document.getElementById("syncToken").value.trim();
   const gistId = document.getElementById("syncGist").value.trim();
   if(!token) return toast("トークンを貼ってください");
+  if(gistId && !confirm(
+      "この端末のデータは、同期先の内容に置き換わります。\n\n" +
+      "先に設定した端末（データが入っているほう）の内容に合わせる場合はOK。\n" +
+      "この端末のデータを残したい場合はキャンセルして、こちらを1台目として設定してください。"))
+    return;
+
   setSyncCfg({ token, gistId });
   syncPaint("busy", "接続中…");
   try{
     if(gistId){
-      await pullRemote();
+      // 参加する側は、必ず既存の内容に合わせる（savedAtの新旧で勝手に上書きしない）
+      await pullRemote(false, true);
     }else{
       const g = await gistFetch("/gists", {
         method: "POST",
