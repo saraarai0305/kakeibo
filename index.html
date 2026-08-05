@@ -207,6 +207,23 @@ body[data-tab="pay"]   [data-pg="pay"]{display:block}
 .ring b{display:block;color:var(--fg);font-size:13px;font-weight:700;
   font-variant-numeric:tabular-nums;margin-bottom:1px}
 .habits .pad i{display:block;font-style:normal;font-size:16px;line-height:1;margin-bottom:3px}
+/* きょうの流れ。時間帯ごとに1行、色は領域そのもの */
+.flow{display:grid;gap:7px;margin-top:12px}
+.fl{display:grid;grid-template-columns:4px 1fr auto;gap:10px;align-items:center;
+  background:var(--card2);border:1px solid var(--line);border-radius:11px;
+  padding:10px 11px;text-align:left;width:100%}
+.flmain{display:grid;grid-template-columns:62px minmax(0,1fr);gap:10px;
+  align-items:center;text-align:left;width:100%;padding:0}
+.fl.done{opacity:.5}
+.flbar{width:4px;align-self:stretch;border-radius:2px}
+.fltime{font-size:10.5px;color:var(--faint);line-height:1.35}
+.fltime b{color:var(--dim);font-size:12.5px;font-variant-numeric:tabular-nums}
+.flname{font-size:14.5px;font-weight:700;color:var(--fg);line-height:1.35}
+.flnote{display:block;font-size:11px;font-weight:400;color:var(--dim);margin-top:2px}
+.fltick{width:24px;height:24px;border-radius:8px;border:1.5px solid var(--line);
+  display:grid;place-items:center;color:transparent;font-size:13px;font-weight:700}
+.fltick.on{background:var(--ok);border-color:var(--ok);color:#0D1015}
+
 .applied{display:flex;align-items:center;gap:9px;margin-top:13px;
   border-top:1px solid var(--line);padding-top:12px;cursor:pointer}
 .applied .nm{font-size:14px}
@@ -743,6 +760,17 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
       <div class="tiny" style="margin-top:6px">どちらかに当てはまると、その日は3時間ではなく90分になります。</div>
     </div>
 
+    <div class="card" id="grpFlow">
+      <h2>制作の領域と時間帯</h2>
+      <div class="tiny" style="margin-bottom:10px">
+        「急ぎ」を付けた領域が、その日の一番いい枠に上がります。
+        FBが来た・生活で困りごとが起きた、そういうときに付けてください。
+      </div>
+      <div id="areaEdit"></div>
+      <div style="font-size:14px;font-weight:600;margin:16px 0 7px">時間帯</div>
+      <div id="slotEdit"></div>
+    </div>
+
     <div class="card" id="grpMoney">
       <h2>お金の設定</h2>
       <div class="tiny" style="margin-bottom:10px">
@@ -779,7 +807,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.8.0";          // version.txt と一致させること
+const BUILD = "0.9.0";          // version.txt と一致させること
 const KEY = "mainichi.v1";
 let staleBuild = false;         // 古い版のまま開きっぱなしになっていないか
 const CATS = ["食費","日用品","交通","医療","交際","その他"];
@@ -826,6 +854,18 @@ function seed(){
     daily: {},          // "2026-08-03" -> {habits:{med_m:true,...}, tasks:[{id,text,done}]}
     habits: null,       // null なら既定。設定で編集すると配列になる
     lightRule: { steps:12000, sleepH:5 },
+    // 制作の領域。urgent を立てると、その日の一番いい枠に上がる
+    areas: [
+      {id:"plugin", label:"プラグイン開発", color:"#F0A868", urgent:false, note:""},
+      {id:"app",    label:"生活管理アプリ", color:"#7AA7F0", urgent:false, note:""},
+      {id:"motion", label:"ワンモーション", color:"#E28FC8", urgent:false, note:""},
+      {id:"env",    label:"PC・環境の整備", color:"#8E9AB2", urgent:false, note:""}
+    ],
+    slots: [
+      {id:"am", label:"午前", from:"10:00", to:"12:00"},
+      {id:"pm", label:"午後", from:"13:30", to:"16:00"},
+      {id:"nt", label:"夜",   from:"19:30", to:"21:00"}
+    ],
     motion: null,       // 自動投稿/schedule.json の取り込み（コミット禁止データ、端末内のみ）
     errands: [          // 一回で終わる用事。溜まって圧にならないよう全件出す
       {id:uid(), text:"ボタンの修理: 材料を買う", note:"コーナン", due:"", done:false},
@@ -855,6 +895,8 @@ function normalize(o){
   for(const k of Object.keys(s.plan)) if(!Array.isArray(s.plan[k])) delete s.plan[k];
   for(const k of ["appt","ui","benefit","lightRule"])
     if(!s[k] || typeof s[k] !== "object") s[k] = b[k];
+  for(const k of ["areas","slots"])
+    if(!Array.isArray(s[k]) || !s[k].length) s[k] = b[k];
   if(s.habits && !Array.isArray(s.habits)) s.habits = null;
   for(const k of Object.keys(s.daily)){
     const d = s.daily[k];
@@ -1081,26 +1123,68 @@ function ring(done, total, color, big, label){
     </svg><b>${esc(big)}</b>${esc(label)}</div>`;
 }
 
+const areaOf = id => S.areas.find(a => a.id === id) || S.areas[0];
+
+/* その日の順番を決める。
+   1) 急ぎの印がついた領域 → 2) 曜日の主役 → 3) 残り
+   一番いい枠（午前）から順に入る。手で組み替えたらそれが勝つ。 */
+function flowOrder(key){
+  const d = new Date(key + "T00:00:00");
+  const lead = MODE_BASE[d.getDay()] === "motion" ? "motion" : "plugin";
+  const ids = S.areas.map(a => a.id);
+  const order = S.areas.filter(a => a.urgent).map(a => a.id);
+  if(!order.includes(lead) && ids.includes(lead)) order.push(lead);
+  for(const id of ids) if(!order.includes(id)) order.push(id);
+  return order;
+}
+
+// 枠ごとに「どの領域をやるか」。手動の割り当てがあればそれを使う
+function flowFor(key, mode){
+  const order = flowOrder(key);
+  const man = (S.daily[key] && S.daily[key].flow) || {};
+  const slots = mode === "light" ? [S.slots[1]] : S.slots;   // 軽い日は午後だけ
+  return slots.map((s, i) => ({ slot: s, areaId: man[s.id] || order[i % order.length] }));
+}
+
 function modeView(){
   const m = todayMode();
+  const key = ymd(now());
   const card = document.getElementById("modeCard");
   card.classList.toggle("light", m.mode === "light");
   card.classList.toggle("rest", m.mode === "rest");
 
-  const T = {
-    plugin: ["プラグイン開発", "13:30 - 16:30 の3時間　1テーマだけ"],
-    motion: ["ワンモーション", "13:30 - 16:30 の3時間　アプリに入れるまでが納品"],
-    light:  ["短めにする日", "13:30 - 15:00 の90分"],
-    rest:   ["制作はお休み", "予定を入れない日です"]
-  }[m.mode];
+  const rec = dayRec(key);
+  // 「アプリで動いているのを見た」は、その日にモーションの枠がある日だけ聞く
+  const isMotion = m.mode !== "rest" &&
+    flowFor(key, m.mode).some(f => f.areaId === "motion");
+  let html = `<div class="lab">きょうの流れ</div>`;
 
-  const rec = dayRec(ymd(now()));
-  const isMotion = m.mode === "motion";
-  let html = `<div class="lab">きょうの制作</div>
-    <div class="big" style="font-size:clamp(19px,5.2vw,26px)">${T[0]}</div>
-    <div class="sub">${T[1]}</div>`;
-  // 短くする理由は必ず数字で示す。納得できない指示には従えないため
-  if(m.why) html += `<div class="why">${esc(m.why)}</div>`;
+  if(m.mode === "rest"){
+    html += `<div class="big" style="font-size:clamp(19px,5.2vw,26px)">制作はお休み</div>
+      <div class="sub">予定を入れない日です</div>`;
+  } else {
+    const flow = flowFor(key, m.mode);
+    html += `<div class="flow">` + flow.map(f => {
+      const a = areaOf(f.areaId);
+      const done = (rec.slotDone || {})[f.slot.id];
+      return `<div class="fl${done ? " done" : ""}">
+        <span class="flbar" style="background:${a.color}"></span>
+        <button class="flmain" data-slot="${f.slot.id}">
+          <span class="fltime">${f.slot.label}<br><b>${esc(f.slot.from)}</b></span>
+          <span class="flname">${esc(a.label)}${a.urgent ? `<span class="chip late">急ぎ</span>` : ""}
+            ${a.note ? `<span class="flnote">${esc(a.note)}</span>` : ""}</span>
+        </button>
+        <button class="fltick${done ? " on" : ""}" data-slotdone="${f.slot.id}">✓</button>
+      </div>`;
+    }).join("") + `</div>`;
+
+    const urg = S.areas.filter(a => a.urgent);
+    html += `<div class="${urg.length ? "why" : "sub"}" style="margin-top:9px">${
+      urg.length ? `${esc(urg.map(a=>a.label).join("・"))} に急ぎの印。上の枠に入れています`
+                 : "急ぎの印がないので、曜日どおりの順番です"}</div>`;
+    if(m.why) html += `<div class="why">${esc(m.why)}</div>`;
+    html += `<button class="btn ghost sm" id="flowEdit" style="margin-top:10px">順番と急ぎを決める</button>`;
+  }
 
   // リング3つ: 今日の毎日の分／今週のモーション／のこり用事
   const HL = habitList();
@@ -1277,11 +1361,14 @@ function autoBlocks(key){
   if(h.wake) out.push({auto:true, cat:"sleep", text:"睡眠", a:TL_START, b:onTl(toMin(h.wake))});
   if(hn.bed) out.push({auto:true, cat:"sleep", text:"睡眠", a:onTl(toMin(hn.bed)), b:TL_END});
 
-  const base = MODE_BASE[d.getDay()];
-  if(base !== "rest"){
-    const light = (S.daily[key] && S.daily[key].light);
-    out.push({auto:true, cat:"make", text: base === "motion" ? "モーション" : "プラグイン",
-              a: 13*60+30, b: light ? 15*60 : 16*60+30});
+  // 制作は「きょうの流れ」から。枠ごとに領域の色で並ぶ
+  if(MODE_BASE[d.getDay()] !== "rest"){
+    const mode = (S.daily[key] && S.daily[key].light) ? "light" : "work";
+    for(const f of flowFor(key, mode)){
+      const a = areaOf(f.areaId);
+      out.push({auto:true, color:a.color, text:a.label,
+                a: onTl(toMin(f.slot.from)), b: onTl(toMin(f.slot.to))});
+    }
   }
   // 通院は時刻がなくても暦に出す（時刻なしは朝の枠に置く）
   if(S.appt && S.appt.date === key){
@@ -1854,7 +1941,7 @@ function addSpend(amt, cat, pay){
 
 /* ---------- events ---------- */
 document.addEventListener("click", e => {
-  const t = e.target.closest("[data-pad],[data-delspend],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate],[data-habit],[data-task],[data-deltask],[data-delplan],[data-gotab],[data-calnav],[data-calday],[data-err],[data-delerr],[data-applied],[data-delhabit],[data-plancat],[data-delplan2],[data-errsort],[data-errprio],[data-paysort],[data-subsort],[data-planit],[data-unplan],[data-mcnav],#lightBtn");
+  const t = e.target.closest("[data-pad],[data-delspend],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate],[data-habit],[data-task],[data-deltask],[data-delplan],[data-gotab],[data-calnav],[data-calday],[data-err],[data-delerr],[data-applied],[data-delhabit],[data-plancat],[data-delplan2],[data-errsort],[data-errprio],[data-paysort],[data-subsort],[data-planit],[data-unplan],[data-mcnav],[data-slot],[data-slotdone],[data-urgent],#lightBtn,#flowEdit");
   if(!t) return;
 
   if(t.dataset.delhabit){
@@ -1866,6 +1953,30 @@ document.addEventListener("click", e => {
   if(t.dataset.gotab){ setTab(t.dataset.gotab); return; }
   if(t.dataset.calnav || t.dataset.calday){ /* 見るだけの操作は読み取り専用でも通す */ }
   else if(!canWrite()) return;
+
+  if(t.id === "flowEdit"){ openSettings(true); return; }
+  if(t.dataset.urgent){
+    const a = areaOf(t.dataset.urgent);
+    a.urgent = !a.urgent; save(); render(); settingsView();
+    toast(a.urgent ? `${a.label} を急ぎにしました` : "急ぎを外しました");
+    return;
+  }
+  // 枠をタップすると領域が順に入れ替わる。長押しやドラッグは要らない
+  if(t.dataset.slot){
+    const rec = dayRec(ymd(now()));
+    const cur = (rec.flow || {})[t.dataset.slot]
+      || flowFor(ymd(now()), todayMode().mode).find(f => f.slot.id === t.dataset.slot).areaId;
+    const ids = S.areas.map(a => a.id);
+    rec.flow = rec.flow || {};
+    rec.flow[t.dataset.slot] = ids[(ids.indexOf(cur) + 1) % ids.length];
+    save(); render(); return;
+  }
+  if(t.dataset.slotdone){
+    const rec = dayRec(ymd(now()));
+    rec.slotDone = rec.slotDone || {};
+    rec.slotDone[t.dataset.slotdone] = !rec.slotDone[t.dataset.slotdone];
+    save(); render(); return;
+  }
 
   if(t.id === "lightBtn"){ dayRec(ymd(now())).light = true; save(); render(); return; }
   if(t.dataset.applied){
@@ -2269,6 +2380,18 @@ document.getElementById("spAmt").addEventListener("keydown", e => {
 // inline edits
 document.addEventListener("change", e => {
   const el = e.target;
+  if(el.dataset.area){
+    if(!canWrite()) return render();
+    const a = areaOf(el.dataset.aid);
+    if(a){ a.note = el.value; save(); modeView(); }
+    return;
+  }
+  if(el.dataset.slotedit){
+    if(!canWrite()) return render();
+    const s = S.slots.find(x => x.id === el.dataset.sid);
+    if(s){ s[el.dataset.slotedit] = el.value; save(); render(); }
+    return;
+  }
   // やることの時刻（こよみの日詳細で入れる）
   if(el.dataset.etime){
     if(!canWrite()) return render();
@@ -2675,6 +2798,24 @@ function settingsView(){
     if(document.activeElement !== e) e.value = v; };
   set("ruleSteps", R.steps); set("ruleSleep", R.sleepH);
   set("cardCap2", +S.cardCap || 0);
+
+  document.getElementById("areaEdit").innerHTML = S.areas.map(a => `
+    <div class="item" style="padding:9px 0">
+      <span style="width:4px;align-self:stretch;border-radius:2px;flex:none;background:${a.color}"></span>
+      <div class="grow">
+        <div class="nm">${esc(a.label)}</div>
+        <input placeholder="急ぎの理由（例: FBが来た）" value="${esc(a.note || "")}"
+          data-area="note" data-aid="${a.id}" style="margin-top:5px;font-size:13px">
+      </div>
+      <button class="btn ${a.urgent ? "" : "ghost "}sm" data-urgent="${a.id}">急ぎ</button>
+    </div>`).join("");
+
+  document.getElementById("slotEdit").innerHTML = S.slots.map(s => `
+    <div class="edit-grid" style="grid-template-columns:56px repeat(2,minmax(0,1fr))">
+      <div class="dim">${esc(s.label)}</div>
+      <input type="time" value="${esc(s.from)}" data-slotedit="from" data-sid="${s.id}">
+      <input type="time" value="${esc(s.to)}" data-slotedit="to" data-sid="${s.id}">
+    </div>`).join("");
 }
 
 document.getElementById("cardCap2").addEventListener("input", e => {
