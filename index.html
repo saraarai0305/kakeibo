@@ -489,6 +489,14 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
       <span class="syncdot" id="syncDot"></span>
       <span class="dim grow" id="syncMsg">PCとiPhoneを自動でそろえます。</span>
     </div>
+    <div id="syncIdBox" hidden style="background:var(--card2);border:1px solid var(--line);
+         border-radius:11px;padding:11px;margin-bottom:10px">
+      <div class="tiny" style="margin-bottom:5px">この端末の Gist ID（2台目でこれを入れます）</div>
+      <div class="row" style="gap:8px">
+        <code id="syncIdText" class="grow" style="font-size:13px;word-break:break-all"></code>
+        <button class="btn ghost sm" id="syncIdCopy">コピー</button>
+      </div>
+    </div>
     <details id="syncSetup">
       <summary>同期をはじめる（端末ごとに1回だけ）</summary>
       <div class="tiny" style="margin:9px 0">
@@ -1594,10 +1602,17 @@ function syncPaint(state, msg){
   const dot = document.getElementById("syncDot");
   dot.className = "syncdot" + (state ? " " + state : "");
   document.getElementById("syncMsg").textContent = msg;
-  const on = !!syncCfg().token;
+  const c = syncCfg(), on = !!c.token;
   document.getElementById("syncState").textContent = on ? "オン" : "オフ";
-  document.getElementById("syncSetup").hidden = on;
   document.getElementById("syncOff").hidden = !on;
+
+  // Gist ID は常に見える場所に出す。設定パネルは畳むだけで hidden にしない
+  // （hidden にすると高さが変わって画面が上へ飛ぶ）
+  const box = document.getElementById("syncIdBox");
+  box.hidden = !c.gistId;
+  if(c.gistId) document.getElementById("syncIdText").textContent = c.gistId;
+  const setup = document.getElementById("syncSetup");
+  if(on) setup.open = false;
 }
 
 async function gistFetch(path, opts){
@@ -1704,6 +1719,18 @@ document.getElementById("syncStart").addEventListener("click", async ()=>{
     startSyncLoop();
   }catch(e){
     syncPaint("err", "接続できませんでした（" + e.message + "）。トークンの権限を確認してください");
+  }
+});
+
+document.getElementById("syncIdCopy").addEventListener("click", async ()=>{
+  const id = syncCfg().gistId || "";
+  try{ await navigator.clipboard.writeText(id); toast("Gist IDをコピーしました"); }
+  catch(e){
+    // クリップボードが使えない環境では選択状態にして手でコピーしてもらう
+    const r = document.createRange();
+    r.selectNodeContents(document.getElementById("syncIdText"));
+    const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+    toast("長押しでコピーしてください");
   }
 });
 
