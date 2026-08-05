@@ -150,6 +150,31 @@ body[data-tab="pay"]   [data-pg="pay"]{display:block}
   border:1px solid var(--line);border-radius:99px;padding:4px 11px}
 .streak b{color:var(--ok);font-size:14px}
 
+/* ---- mode (体力予算) ---- */
+.mode{padding:18px}
+.mode .lab{font-size:12px;color:var(--faint);letter-spacing:.08em;margin-bottom:5px}
+.mode .big{font-size:clamp(22px,6.5vw,34px);font-weight:800;line-height:1.2}
+.mode .sub{font-size:13px;color:var(--dim);margin-top:6px}
+.mode.light{background:color-mix(in srgb,var(--warn) 10%,var(--card));
+  border-color:color-mix(in srgb,var(--warn) 38%,var(--line))}
+.mode.light .big{color:var(--warn)}
+.mode.rest .big{color:var(--dim)}
+.mode .why{font-size:12.5px;color:var(--warn);margin-top:7px}
+.applied{display:flex;align-items:center;gap:9px;margin-top:13px;
+  border-top:1px solid var(--line);padding-top:12px;cursor:pointer}
+.applied .nm{font-size:14px}
+
+/* ---- errands ---- */
+.err-done{opacity:.45}
+.err-due{font-size:11px;color:var(--dim)}
+.err-due.over{color:var(--warn)}
+
+/* ---- sync ---- */
+.syncdot{width:8px;height:8px;border-radius:50%;background:var(--faint);flex:none}
+.syncdot.ok{background:var(--ok)}
+.syncdot.busy{background:var(--accent)}
+.syncdot.err{background:var(--bad)}
+
 /* ---- big goal ---- */
 .goal{background:linear-gradient(155deg,var(--card),var(--card2));padding:22px 18px}
 .goal .lab{font-size:12px;color:var(--faint);letter-spacing:.08em;margin-bottom:6px}
@@ -188,6 +213,9 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
     <div class="streak" id="streakBox">—</div>
   </header>
 
+  <!-- ===== MODE (体力予算) ===== -->
+  <div class="card mode" id="modeCard" data-pg="today"></div>
+
   <!-- ===== BIG GOAL ===== -->
   <div class="card goal" id="bigGoal" data-pg="today"></div>
 
@@ -218,6 +246,21 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
       </div>
       <div class="tiny" style="margin-top:7px">ここに入れたものが、明日の朝そのまま「今日やること」に出ます。</div>
     </details>
+  </div>
+
+  <!-- ===== ERRANDS ===== -->
+  <div class="card" data-pg="today">
+    <h2>一回で終わる用事 <span class="tiny" id="errCount"></span></h2>
+    <div id="errList"></div>
+    <div class="row" style="gap:8px;margin-top:10px">
+      <input id="errNew" placeholder="用事（例: ボタンの材料を買う）">
+      <button class="btn" id="errAdd">追加</button>
+    </div>
+    <div class="row" style="gap:8px;margin-top:7px">
+      <input id="errNote" placeholder="行き先・持ち物（任意）">
+      <input type="date" id="errDue" style="max-width:150px">
+    </div>
+    <div class="tiny" style="margin-top:7px">2段階あるものは2件に分けてください（材料を買う／取り付ける）。済んだものは消さずに残ります。</div>
   </div>
 
   <!-- ===== SHORTFALL ===== -->
@@ -439,6 +482,29 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
     </details>
   </div>
 
+  <!-- ===== SYNC ===== -->
+  <div class="card" data-pg="money">
+    <h2>同期 <span class="tiny" id="syncState">オフ</span></h2>
+    <div class="row" style="gap:8px;margin-bottom:10px">
+      <span class="syncdot" id="syncDot"></span>
+      <span class="dim grow" id="syncMsg">PCとiPhoneを自動でそろえます。</span>
+    </div>
+    <details id="syncSetup">
+      <summary>同期をはじめる（端末ごとに1回だけ）</summary>
+      <div class="tiny" style="margin:9px 0">
+        GitHubの<b>非公開Gist</b>にだけデータを置きます。他人からは見えません。<br>
+        1. github.com/settings/tokens → Generate new token (classic)<br>
+        2. 権限は <b>gist だけ</b>にチェック（他は全部オフ）<br>
+        3. 出てきた文字列を下に貼る。<b>この端末の中だけに保存され、送信もバックアップもされません</b>
+      </div>
+      <input id="syncToken" type="password" placeholder="GitHubトークンを貼る" autocomplete="off">
+      <input id="syncGist" placeholder="Gist ID（2台目以降だけ。1台目は空のまま）" style="margin-top:7px">
+      <button class="btn" id="syncStart" style="width:100%;margin-top:9px">同期を開始</button>
+      <div class="tiny" id="syncGistOut" style="margin-top:8px"></div>
+    </details>
+    <button class="btn ghost sm" id="syncOff" style="width:100%;margin-top:9px" hidden>同期を止める（この端末だけ）</button>
+  </div>
+
   <!-- ===== BACKUP ===== -->
   <div class="card" data-pg="money">
     <h2>バックアップ</h2>
@@ -511,6 +577,12 @@ function seed(){
     health: {},         // "2026-08-02" -> {steps, bed:"23:40", wake:"07:30"}
     daily: {},          // "2026-08-03" -> {habits:{med_m:true,...}, tasks:[{id,text,done}]}
     motion: null,       // 自動投稿/schedule.json の取り込み（コミット禁止データ、端末内のみ）
+    errands: [          // 一回で終わる用事。溜まって圧にならないよう全件出す
+      {id:uid(), text:"ボタンの修理: 材料を買う", note:"コーナン", due:"", done:false},
+      {id:uid(), text:"ボタンの修理: 取り付ける", note:"", due:"", done:false},
+      {id:uid(), text:"返信する", note:"", due:"", done:false},
+      {id:uid(), text:"シェアハウスのイベントの返事", note:"", due:"", done:false}
+    ],
     ui: { pay: "cash" },
     doneFixed: {},      // "fixedId:2026-08" -> true
     doneIncome: {},     // "incomeId:2026-08" -> true（入金した月）
@@ -541,6 +613,7 @@ function save(){
     try{ localStorage.setItem(KEY, JSON.stringify(S)); }
     catch(e){ toast("保存できませんでした"); console.error(e); }
     paintSaved();
+    schedulePush();
   }, 150);
 }
 
@@ -585,7 +658,7 @@ function calc(){
 }
 
 /* ---------- render ---------- */
-function render(){ bigGoalView(); streakView(); heroView(); todayView(); apptView(); spendView(); cardView(); fixedView(); subsView(); incomeView(); benefitView(); acctView(); healthView(); icsView(); calView(); paintSaved(); }
+function render(){ modeView(); errView(); bigGoalView(); streakView(); heroView(); todayView(); apptView(); spendView(); cardView(); fixedView(); subsView(); incomeView(); benefitView(); acctView(); healthView(); icsView(); calView(); paintSaved(); }
 
 /* ---------- タブ ---------- */
 const TABS = ["today","money","cal","body","pay"];
@@ -623,19 +696,96 @@ function bigGoalView(){
     `<div class="lab">${lab}</div><div class="big${done ? " done" : ""}">${esc(big)}</div><div class="sub">${esc(sub)}</div>`;
 }
 
-function hasRecord(k){
-  const r = S.daily[k];
-  if(r && (Object.values(r.habits || {}).some(Boolean) || (r.tasks || []).some(t => t.done))) return true;
-  if(S.health[k]) return true;
-  return S.spends.some(s => s.d === k);
+/* ---------- 今週◯/3本（連続日数は意図的に持たない） ---------- */
+function weekRange(d){
+  const mon = new Date(d);
+  mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7));   // 月曜始まり
+  mon.setHours(0,0,0,0);
+  const sun = new Date(mon); sun.setDate(sun.getDate() + 6);
+  return [ymd(mon), ymd(sun)];
 }
 function streakView(){
-  let n = 0;
-  const c = new Date();
-  if(!hasRecord(ymd(c))) c.setDate(c.getDate() - 1);
-  while(hasRecord(ymd(c))){ n++; c.setDate(c.getDate() - 1); }
-  document.getElementById("streakBox").innerHTML =
-    n > 0 ? `連続 <b>${n}</b> 日` : "今日から";
+  const [a, b] = weekRange(now());
+  const days = (S.motion && Array.isArray(S.motion.days)) ? S.motion.days : [];
+  const n = days.filter(x => x.status === "posted" && x.date >= a && x.date <= b).length;
+  const box = document.getElementById("streakBox");
+  box.innerHTML = `今週 <b${n >= 3 ? ` style="color:var(--accent)"` : ""}>${n}</b>/3本`;
+}
+
+/* ---------- 今日のモード（体力予算） ---------- */
+const MODE_BASE = ["rest","plugin","motion","plugin","motion","plugin","motion"]; // 日→土
+function yesterdayKey(){ const d = now(); d.setDate(d.getDate() - 1); return ymd(d); }
+
+function todayMode(){
+  const base = MODE_BASE[now().getDay()];
+  const rec = S.daily[ymd(now())];
+  if(base === "rest") return {mode:"rest"};
+  if(rec && rec.light) return {mode:"light", why:"「今日は軽くする」を押した日です"};
+
+  const y = S.health[yesterdayKey()] || {};
+  if(y.steps != null && y.steps >= 12000)
+    return {mode:"light", why:`昨日 ${y.steps.toLocaleString("ja-JP")}歩　無理をしない日です`};
+  const sm = sleepMin(y.bed, y.wake);
+  if(sm != null && sm < 300)
+    return {mode:"light", why:`昨日の睡眠 ${fmtSleep(sm)}　無理をしない日です`};
+
+  return {mode: base};
+}
+
+function modeView(){
+  const m = todayMode();
+  const card = document.getElementById("modeCard");
+  card.classList.toggle("light", m.mode === "light");
+  card.classList.toggle("rest", m.mode === "rest");
+
+  const T = {
+    plugin: ["プラグイン 3時間", "13:30 - 16:30　1テーマだけ"],
+    motion: ["モーション 3時間", "13:30 - 16:30　アプリに入れるまでが納品"],
+    light:  ["今日は軽い日 90分", "できる分だけ。潰れた日は数えません"],
+    rest:   ["休み", "予定を入れない日です"]
+  }[m.mode];
+
+  const rec = S.daily[ymd(now())] || {habits:{}};
+  const isMotion = m.mode === "motion";
+  let html = `<div class="lab">今日のモード</div>
+    <div class="big">${T[0]}</div>
+    <div class="sub">${T[1]}</div>`;
+  if(m.why) html += `<div class="why">${esc(m.why)}</div>`;
+  if(isMotion)
+    html += `<label class="applied" data-applied="1">
+      <button class="tick ${rec.habits.applied ? "on" : ""}">✓</button>
+      <span class="nm ${rec.habits.applied ? "done-row" : ""}">アプリの画面で動いているのを見た</span></label>`;
+  if(m.mode !== "rest" && m.mode !== "light")
+    html += `<button class="btn ghost sm" id="lightBtn" style="margin-top:12px">今日は軽くする</button>`;
+  card.innerHTML = html;
+}
+
+/* ---------- 一回で終わる用事 ---------- */
+function errView(){
+  const list = S.errands.slice().sort((a,b) => {
+    if(a.done !== b.done) return a.done ? 1 : -1;
+    if(!a.due && !b.due) return 0;
+    if(!a.due) return 1;
+    if(!b.due) return -1;
+    return a.due < b.due ? -1 : 1;
+  });
+  const left = S.errands.filter(e => !e.done).length;
+  document.getElementById("errCount").textContent = `のこり ${left}件`;
+
+  const tk = ymd(now());
+  document.getElementById("errList").innerHTML = list.length
+    ? list.map(e => {
+        const over = e.due && !e.done && e.due < tk;
+        const due = e.due
+          ? `<span class="err-due${over ? " over" : ""}">${e.due.slice(5).replace("-","/")}まで</span>` : "";
+        const note = e.note ? `<span class="err-due">　${esc(e.note)}</span>` : "";
+        return `<div class="item ${e.done ? "err-done" : ""}">
+          <button class="tick ${e.done ? "on" : ""}" data-err="${e.id}">✓</button>
+          <div class="grow"><div class="nm ${e.done ? "done-row" : ""}">${esc(e.text)}</div>
+            <div class="mt">${due}${note}</div></div>
+          <button class="del" data-delerr="${e.id}">×</button></div>`;
+      }).join("")
+    : `<div class="tiny">用事はありません。</div>`;
 }
 
 /* ---------- こよみ（月カレンダー） ---------- */
@@ -748,7 +898,7 @@ function calDetail(){
 }
 
 /* ---------- 今日やること ---------- */
-const HABITS = [["med_m","薬 朝"],["med_d","薬 昼"],["med_n","薬 夜"],["out","外に出た"],
+const HABITS = [["med_m","薬 朝"],["med_d","薬 昼"],["med_n","薬 夜"],["out","外に出た"],["cook","自炊"],
                 ["bath","風呂"],["teeth","歯磨き"],["dev","制作"]];
 const dayRec = k => S.daily[k] || (S.daily[k] = {habits:{}, tasks:[]});
 const tomorrowKey = () => { const d = now(); d.setDate(d.getDate()+1); return ymd(d); };
@@ -1036,8 +1186,23 @@ function addSpend(amt, cat, pay){
 
 /* ---------- events ---------- */
 document.addEventListener("click", e => {
-  const t = e.target.closest("[data-pad],[data-delspend],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate],[data-habit],[data-task],[data-deltask],[data-delplan],[data-tab],[data-calnav],[data-calday]");
+  const t = e.target.closest("[data-pad],[data-delspend],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate],[data-habit],[data-task],[data-deltask],[data-delplan],[data-tab],[data-calnav],[data-calday],[data-err],[data-delerr],[data-applied],#lightBtn");
   if(!t) return;
+
+  if(t.id === "lightBtn"){ dayRec(ymd(now())).light = true; save(); render(); return; }
+  if(t.dataset.applied){
+    const rec = dayRec(ymd(now()));
+    rec.habits.applied = !rec.habits.applied;
+    save(); render(); return;
+  }
+  if(t.dataset.err){
+    const e = S.errands.find(x => x.id === t.dataset.err);
+    if(e){ e.done = !e.done; e.doneAt = e.done ? ymd(now()) : null; save(); errView(); }
+    return;
+  }
+  if(t.dataset.delerr){
+    S.errands = S.errands.filter(x => x.id !== t.dataset.delerr); save(); errView(); return;
+  }
 
   if(t.dataset.tab){ setTab(t.dataset.tab); return; }
   if(t.dataset.calnav){ calCursor = addMonths(calCursor, +t.dataset.calnav); calSel = null; calView(); return; }
@@ -1333,6 +1498,18 @@ document.getElementById("cardCap").addEventListener("input", e => {
   S.cardCap = Math.max(0, Math.round(+e.target.value) || 0); save(); cardView();
 });
 
+function addErrand(){
+  const el = document.getElementById("errNew"), text = el.value.trim();
+  if(!text) return toast("内容を入れてください");
+  const noteEl = document.getElementById("errNote"), dueEl = document.getElementById("errDue");
+  S.errands.push({id:uid(), text, note:noteEl.value.trim(), due:dueEl.value, done:false});
+  el.value = ""; noteEl.value = ""; dueEl.value = "";
+  save(); errView(); toast("追加しました");
+}
+document.getElementById("errAdd").addEventListener("click", addErrand);
+document.getElementById("errNew").addEventListener("keydown", e => {
+  if(e.key === "Enter") addErrand(); });
+
 document.getElementById("taskAdd").addEventListener("click", ()=> addTask(ymd(now()), "taskNew"));
 document.getElementById("planAdd").addEventListener("click", ()=> addTask(tomorrowKey(), "planNew"));
 document.getElementById("taskNew").addEventListener("keydown", e => {
@@ -1402,6 +1579,132 @@ document.getElementById("moPaste").addEventListener("click", async ()=>{
   catch(e){ toast("クリップボードから読めませんでした"); }
 });
 
+/* ---------- 自動同期（GitHubの非公開Gist） ----------
+   トークンは S とは別のキーに置く。だから書き出しにも同期データにも含まれない。 */
+const SYNC_KEY = "mainichi.sync";
+const GIST_FILE = "mainichi-data.json";
+let syncTimer = null, pullTimer = null, syncing = false;
+
+function syncCfg(){
+  try{ return JSON.parse(localStorage.getItem(SYNC_KEY)) || {}; }catch(e){ return {}; }
+}
+function setSyncCfg(c){ localStorage.setItem(SYNC_KEY, JSON.stringify(c)); }
+
+function syncPaint(state, msg){
+  const dot = document.getElementById("syncDot");
+  dot.className = "syncdot" + (state ? " " + state : "");
+  document.getElementById("syncMsg").textContent = msg;
+  const on = !!syncCfg().token;
+  document.getElementById("syncState").textContent = on ? "オン" : "オフ";
+  document.getElementById("syncSetup").hidden = on;
+  document.getElementById("syncOff").hidden = !on;
+}
+
+async function gistFetch(path, opts){
+  const c = syncCfg();
+  const r = await fetch("https://api.github.com" + path, Object.assign({
+    headers: {
+      "Authorization": "Bearer " + c.token,
+      "Accept": "application/vnd.github+json"
+    }
+  }, opts || {}));
+  if(!r.ok) throw new Error(`GitHub ${r.status}`);
+  return r.json();
+}
+
+// 保存データ本体（トークンは S に入っていないので自然に除外される）
+const payload = () => JSON.stringify(S, null, 2);
+
+async function pushRemote(){
+  const c = syncCfg();
+  if(!c.token || !c.gistId || syncing) return;
+  syncing = true; syncPaint("busy", "送信中…");
+  try{
+    await gistFetch(`/gists/${c.gistId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ files: { [GIST_FILE]: { content: payload() } } })
+    });
+    c.lastSync = new Date().toISOString(); setSyncCfg(c);
+    syncPaint("ok", "同期済み " + new Date().toLocaleTimeString("ja-JP"));
+  }catch(e){
+    syncPaint("err", "送信できませんでした（" + e.message + "）");
+  }finally{ syncing = false; }
+}
+
+async function pullRemote(silent){
+  const c = syncCfg();
+  if(!c.token || !c.gistId || syncing) return;
+  syncing = true;
+  if(!silent) syncPaint("busy", "受信中…");
+  try{
+    const g = await gistFetch(`/gists/${c.gistId}`);
+    const f = g.files && g.files[GIST_FILE];
+    if(f && f.content){
+      const remote = JSON.parse(f.content);
+      // 新しいほうを採用。同時刻なら何もしない
+      if(remote.savedAt && (!S.savedAt || remote.savedAt > S.savedAt)){
+        S = Object.assign(seed(), remote);
+        localStorage.setItem(KEY, JSON.stringify(S));
+        render();
+        toast("最新のデータを受け取りました");
+      }
+    }
+    c.lastSync = new Date().toISOString(); setSyncCfg(c);
+    syncPaint("ok", "同期済み " + new Date().toLocaleTimeString("ja-JP"));
+  }catch(e){
+    syncPaint("err", "受信できませんでした（" + e.message + "）");
+  }finally{ syncing = false; }
+}
+
+function schedulePush(){
+  if(!syncCfg().token) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(pushRemote, 3000);   // 入力が落ち着いてから送る
+}
+
+function startSyncLoop(){
+  clearInterval(pullTimer);
+  if(!syncCfg().token) return;
+  pullRemote(true);
+  pullTimer = setInterval(() => { if(!document.hidden) pullRemote(true); }, 45000);
+}
+
+document.getElementById("syncStart").addEventListener("click", async ()=>{
+  const token = document.getElementById("syncToken").value.trim();
+  const gistId = document.getElementById("syncGist").value.trim();
+  if(!token) return toast("トークンを貼ってください");
+  setSyncCfg({ token, gistId });
+  syncPaint("busy", "接続中…");
+  try{
+    if(gistId){
+      await pullRemote();
+    }else{
+      const g = await gistFetch("/gists", {
+        method: "POST",
+        body: JSON.stringify({
+          description: "mainichi sync (private)", public: false,
+          files: { [GIST_FILE]: { content: payload() } }
+        })
+      });
+      setSyncCfg({ token, gistId: g.id });
+      document.getElementById("syncGistOut").innerHTML =
+        `できました。<b>2台目ではこのGist IDを入れてください:</b><br><code>${esc(g.id)}</code>`;
+      syncPaint("ok", "同期を開始しました");
+    }
+    document.getElementById("syncToken").value = "";
+    startSyncLoop();
+  }catch(e){
+    syncPaint("err", "接続できませんでした（" + e.message + "）。トークンの権限を確認してください");
+  }
+});
+
+document.getElementById("syncOff").addEventListener("click", ()=>{
+  localStorage.removeItem(SYNC_KEY);
+  clearInterval(pullTimer);
+  syncPaint("", "この端末の同期を止めました。データは残っています。");
+  toast("同期を止めました");
+});
+
 // backup
 document.getElementById("expBtn").addEventListener("click", ()=>{
   const blob = new Blob([JSON.stringify(S, null, 2)], {type:"application/json"});
@@ -1423,12 +1726,17 @@ document.getElementById("impFile").addEventListener("change", async e => {
   e.target.value = "";
 });
 
-// re-render when the day may have changed
-document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) render(); });
+// re-render when the day may have changed / 戻ってきたら相手側の変更も取りに行く
+document.addEventListener("visibilitychange", ()=>{
+  if(!document.hidden){ render(); pullRemote(true); }
+});
 
 setTab(S.ui.tab || "today");
 importFromHash();
 render();
+syncPaint(syncCfg().token ? "ok" : "", syncCfg().token
+  ? "自動でそろえています" : "PCとiPhoneを自動でそろえます。");
+startSyncLoop();
 
 if("serviceWorker" in navigator &&
    (location.protocol === "https:" || location.hostname === "localhost")){
