@@ -160,6 +160,14 @@ body[data-tab="pay"]   [data-pg="pay"]{display:block}
 .mode.light .big{color:var(--warn)}
 .mode.rest .big{color:var(--dim)}
 .mode .why{font-size:12.5px;color:var(--warn);margin-top:7px}
+.mode{background:linear-gradient(152deg,var(--card2),var(--card));border-color:var(--line)}
+.rings{display:flex;gap:10px;justify-content:space-around;margin-top:14px;
+  border-top:1px solid var(--line);padding-top:13px}
+.ring{text-align:center;font-size:11px;color:var(--dim);flex:1}
+.ring svg{display:block;margin:0 auto 4px}
+.ring b{display:block;color:var(--fg);font-size:13px;font-weight:700;
+  font-variant-numeric:tabular-nums;margin-bottom:1px}
+.habits .pad i{display:block;font-style:normal;font-size:16px;line-height:1;margin-bottom:3px}
 .applied{display:flex;align-items:center;gap:9px;margin-top:13px;
   border-top:1px solid var(--line);padding-top:12px;cursor:pointer}
 .applied .nm{font-size:14px}
@@ -178,6 +186,18 @@ body[data-tab="pay"]   [data-pg="pay"]{display:block}
 .ptr.ready{background:var(--accent);color:#fff;border-color:var(--accent)}
 .ptr.spin svg{animation:ptrspin .8s linear infinite}
 @keyframes ptrspin{to{transform:rotate(360deg)}}
+
+/* ---- settings sheet ---- */
+.gear{font-size:17px;color:var(--dim);padding:4px 6px;border-radius:9px;flex:none;line-height:1}
+.gear:active{background:var(--card2)}
+.sheet{position:fixed;inset:0;z-index:20;background:var(--bg);overflow-y:auto;
+  padding:env(safe-area-inset-top) 0 calc(env(safe-area-inset-bottom) + 30px)}
+.sheethd{display:flex;align-items:center;gap:9px;max-width:560px;margin:0 auto;
+  padding:12px 14px;border-bottom:1px solid var(--line);
+  position:sticky;top:0;background:var(--bg);z-index:1}
+.sheetbody{max-width:560px;margin:0 auto;padding:14px 14px 0}
+.sheetbody .card{margin-bottom:12px}
+body.sheetopen{overflow:hidden}
 
 /* ---- read only ---- */
 body[data-ro="1"] .rocover{display:block}
@@ -235,6 +255,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
     <div class="mini-logo"><i></i><i></i><i></i></div>
     <div class="t">まいにち</div>
     <div class="streak" id="streakBox">—</div>
+    <button class="gear" id="settingsOpen" aria-label="設定">⚙</button>
   </header>
 
   <!-- ===== MODE (体力予算) ===== -->
@@ -326,7 +347,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   </div>
 
   <!-- ===== CALENDAR EXPORT ===== -->
-  <div class="card" data-pg="pay">
+  <div class="card" data-pg="pay" id="icsCard">
     <h2>カレンダーに書き出す</h2>
     <div class="dim" style="margin-bottom:10px">
       .icsファイルを作ります。iPhoneで開くとカレンダーに追加でき、TimeTreeにも表示されます。
@@ -507,7 +528,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   </div>
 
   <!-- ===== SYNC ===== -->
-  <div class="card" data-pg="money">
+  <div class="card" data-pg="money" id="syncCard">
     <h2>同期 <span class="tiny" id="syncState">オフ</span></h2>
     <div class="row" style="gap:8px;margin-bottom:10px">
       <span class="syncdot" id="syncDot"></span>
@@ -551,7 +572,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   </div>
 
   <!-- ===== BACKUP ===== -->
-  <div class="card" data-pg="money">
+  <div class="card" data-pg="money" id="backupCard">
     <h2>バックアップ</h2>
     <div class="dim" style="margin-bottom:10px">iPhoneのSafariは、しばらく開かないと保存データを消すことがあります。ときどき書き出してください。</div>
     <div class="row" style="gap:8px">
@@ -568,6 +589,41 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   </footer>
 </div>
 
+<div class="sheet" id="settingsSheet" hidden>
+  <div class="sheethd">
+    <div class="mini-logo"><i></i><i></i><i></i></div>
+    <div class="t" style="flex:1;font-weight:700">設定</div>
+    <button class="btn ghost sm" id="settingsClose">閉じる</button>
+  </div>
+  <div class="sheetbody">
+
+    <div class="card">
+      <h2>暮らしの設定</h2>
+      <div style="font-size:14px;font-weight:600;margin-bottom:7px">毎日つけるもの</div>
+      <div class="habits" id="habitEditRow"></div>
+      <div class="row" style="gap:8px;margin-top:9px">
+        <input id="habitNewIcon" placeholder="記号" style="max-width:70px" maxlength="2">
+        <input id="habitNewLabel" placeholder="項目名（例: ストレッチ）">
+        <button class="btn" id="habitAdd">足す</button>
+      </div>
+      <div class="tiny" style="margin-top:6px">押すと外せます。季節や体調で変えて構いません。</div>
+
+      <div style="font-size:14px;font-weight:600;margin:16px 0 7px">軽い日にする条件</div>
+      <div class="edit-grid" style="grid-template-columns:1fr 110px">
+        <div class="dim">前日の歩数がこれ以上</div>
+        <input type="number" inputmode="numeric" id="ruleSteps">
+      </div>
+      <div class="edit-grid" style="grid-template-columns:1fr 110px">
+        <div class="dim">前日の睡眠がこれ未満（時間）</div>
+        <input type="number" inputmode="decimal" step="0.5" id="ruleSleep">
+      </div>
+      <div class="tiny" style="margin-top:6px">どちらかに当てはまると、その日は3時間ではなく90分になります。</div>
+    </div>
+
+    <div id="settingsSlot"></div>
+  </div>
+</div>
+
 <nav class="tabbar">
   <button data-gotab="today">きょう</button>
   <button data-gotab="money">おかね</button>
@@ -579,7 +635,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 
 <script>
 "use strict";
-const BUILD = "2026-08-05-c";   // version.txt と一致させること
+const BUILD = "0.3.0";          // version.txt と一致させること
 const KEY = "mainichi.v1";
 let staleBuild = false;         // 古い版のまま開きっぱなしになっていないか
 const CATS = ["食費","日用品","交通","医療","交際","その他"];
@@ -623,6 +679,8 @@ function seed(){
     cardCap: 0,         // 今月カードで使ってよい上限
     health: {},         // "2026-08-02" -> {steps, bed:"23:40", wake:"07:30"}
     daily: {},          // "2026-08-03" -> {habits:{med_m:true,...}, tasks:[{id,text,done}]}
+    habits: null,       // null なら既定。設定で編集すると配列になる
+    lightRule: { steps:12000, sleepH:5 },
     motion: null,       // 自動投稿/schedule.json の取り込み（コミット禁止データ、端末内のみ）
     errands: [          // 一回で終わる用事。溜まって圧にならないよう全件出す
       {id:uid(), text:"ボタンの修理: 材料を買う", note:"コーナン", due:"", done:false},
@@ -721,18 +779,49 @@ function setTab(t){
 
 /* ---------- でかでか目標とストリーク ---------- */
 function bigGoalView(){
-  const rec = S.daily[ymd(now())] || {habits:{}, tasks:[]};
+  const tk = ymd(now()), h = now().getHours();
+  const rec = S.daily[tk] || {habits:{}, tasks:[]};
   const undone = rec.tasks.filter(t => !t.done);
   const tomo = S.daily[tomorrowKey()];
-  let lab = "今日の目標", big = "", sub = "", done = false;
+  const HL = habitList();
+  const hdone = HL.filter(x => rec.habits[x.id]).length;
+  const el = document.getElementById("bigGoal");
 
-  if(now().getHours() >= 19 && (!tomo || !tomo.tasks.length)){
-    lab = "今夜のうちに";
-    big = "明日を決める";
-    sub = "「明日やることを決める」に1つ入れるだけで、明日の朝が変わります";
-  } else if(undone.length){
+  // 21時以降は「返す」画面にする。できた数を数えて、言葉で返す
+  if(h >= 21){
+    const tdone = rec.tasks.filter(t => t.done).length;
+    const errDone = S.errands.filter(e => e.done && e.doneAt === tk).length;
+    const total = hdone + tdone + errDone;
+    const sp = S.spends.filter(s => s.d === tk).length;
+    const bits = [];
+    if(hdone) bits.push(`毎日の分 ${hdone}`);
+    if(tdone) bits.push(`タスク ${tdone}`);
+    if(errDone) bits.push(`用事 ${errDone}`);
+    if(sp) bits.push(`記録 ${sp}`);
+    const word = total >= 6 ? "よくやりました" : total >= 3 ? "十分です" :
+                 total >= 1 ? "ひとつでも、やりました" : "今日は休みでいい日です";
+    const nextLine = (!tomo || !tomo.tasks.length)
+      ? "明日やることを1つ決めておくと、朝がすこし楽になります"
+      : `明日は「${tomo.tasks[0].text}」から`;
+    el.className = "card goal";
+    el.innerHTML = `<div class="lab">今日のおわり</div>
+      <div class="big${total ? " done" : ""}">${esc(word)}</div>
+      <div class="sub">${bits.length ? esc(bits.join("　")) : "記録はありませんでした"}</div>
+      <div class="sub" style="margin-top:9px;color:var(--faint)">${esc(nextLine)}</div>`;
+    return;
+  }
+
+  let lab = "今日の一番", big = "", sub = "", done = false;
+  const err = S.errands.filter(e => !e.done && e.due)
+    .sort((a,b) => a.due < b.due ? -1 : 1)[0];
+
+  if(undone.length){
     big = undone[0].text;
-    sub = undone.length > 1 ? `これが終わったら、あと${undone.length - 1}件` : "これが終われば今日のタスクは全部終わり";
+    sub = undone.length > 1 ? `これが終わったら、あと${undone.length - 1}件` : "これが終われば今日のタスクは終わり";
+  } else if(err && err.due <= tk){
+    lab = "期限がきています";
+    big = err.text;
+    sub = err.note || "「一回で終わる用事」から";
   } else if(rec.tasks.length){
     big = "全部できた"; done = true;
     sub = `今日のタスク${rec.tasks.length}件、完了。`;
@@ -740,7 +829,8 @@ function bigGoalView(){
     big = "今日やることを決める";
     sub = "下のリストに1つ追加するところから";
   }
-  document.getElementById("bigGoal").innerHTML =
+  el.className = "card goal";
+  el.innerHTML =
     `<div class="lab">${lab}</div><div class="big${done ? " done" : ""}">${esc(big)}</div><div class="sub">${esc(sub)}</div>`;
 }
 
@@ -770,14 +860,28 @@ function todayMode(){
   if(base === "rest") return {mode:"rest"};
   if(rec && rec.light) return {mode:"light", why:"「今日は軽くする」を押した日です"};
 
+  const R = S.lightRule || {steps:12000, sleepH:5};
   const y = S.health[yesterdayKey()] || {};
-  if(y.steps != null && y.steps >= 12000)
+  if(y.steps != null && R.steps > 0 && y.steps >= R.steps)
     return {mode:"light", why:`昨日 ${y.steps.toLocaleString("ja-JP")}歩　無理をしない日です`};
   const sm = sleepMin(y.bed, y.wake);
-  if(sm != null && sm < 300)
+  if(sm != null && R.sleepH > 0 && sm < R.sleepH * 60)
     return {mode:"light", why:`昨日の睡眠 ${fmtSleep(sm)}　無理をしない日です`};
 
   return {mode: base};
+}
+
+// ドーナツ。r=16 の円周は約100.5なので、そのまま％として使える
+function ring(done, total, color, big, label){
+  const p = total > 0 ? Math.max(0, Math.min(done / total, 1)) : 0;
+  const c = 2 * Math.PI * 16;
+  return `<div class="ring">
+    <svg width="46" height="46" viewBox="0 0 46 46">
+      <circle cx="23" cy="23" r="16" fill="none" stroke="var(--card2)" stroke-width="5"/>
+      <circle cx="23" cy="23" r="16" fill="none" stroke="${color}" stroke-width="5"
+        stroke-linecap="round" stroke-dasharray="${(c*p).toFixed(1)} ${c.toFixed(1)}"
+        transform="rotate(-90 23 23)"/>
+    </svg><b>${esc(big)}</b>${esc(label)}</div>`;
 }
 
 function modeView(){
@@ -799,6 +903,20 @@ function modeView(){
     <div class="big">${T[0]}</div>
     <div class="sub">${T[1]}</div>`;
   if(m.why) html += `<div class="why">${esc(m.why)}</div>`;
+
+  // リング3つ: 今日の毎日の分／今週のモーション／のこり用事
+  const HL = habitList();
+  const hdone = HL.filter(x => rec.habits[x.id]).length;
+  const [wa, wb] = weekRange(now());
+  const mdays = (S.motion && Array.isArray(S.motion.days)) ? S.motion.days : [];
+  const wk = mdays.filter(x => x.status === "posted" && x.date >= wa && x.date <= wb).length;
+  const errLeft = S.errands.filter(e => !e.done).length;
+  const errAll = Math.max(S.errands.length, 1);
+  html += `<div class="rings">
+    ${ring(hdone, HL.length, "var(--ok)", `${hdone}/${HL.length}`, "毎日の分")}
+    ${ring(wk, 3, "var(--accent)", `${wk}/3`, "今週の本数")}
+    ${ring(errAll - errLeft, errAll, "var(--warn)", `${errLeft}件`, "のこり用事")}
+  </div>`;
   if(isMotion)
     html += `<label class="applied" data-applied="1">
       <button class="tick ${rec.habits.applied ? "on" : ""}">✓</button>
@@ -907,7 +1025,7 @@ function calDetail(){
   const dues = duesOn(key);
 
   let html = `<div style="font-weight:700;margin-bottom:6px">${dt.getMonth()+1}月${dt.getDate()}日（${"日月火水木金土"[dt.getDay()]}）</div>`;
-  const habitsDone = HABITS.filter(([id]) => rec.habits[id]).map(([,l]) => l);
+  const habitsDone = habitList().filter(h => rec.habits[h.id]).map(h => h.label);
   if(habitsDone.length) html += `<div class="tiny" style="margin-bottom:4px">できたこと: ${habitsDone.join("・")}</div>`;
   html += rec.tasks.map(t => `<div class="item" style="padding:7px 0">
       <span style="width:20px;color:${t.done ? "var(--ok)" : "var(--faint)"}">${t.done ? "✓" : "・"}</span>
@@ -946,17 +1064,24 @@ function calDetail(){
 }
 
 /* ---------- 今日やること ---------- */
-const HABITS = [["med_m","薬 朝"],["med_d","薬 昼"],["med_n","薬 夜"],["out","外に出た"],["cook","自炊"],
-                ["bath","風呂"],["teeth","歯磨き"],["dev","制作"]];
+const HABITS_DEFAULT = [
+  {id:"med_m", icon:"◍", label:"薬 朝"},  {id:"med_d", icon:"◍", label:"薬 昼"},
+  {id:"med_n", icon:"◍", label:"薬 夜"},  {id:"out",   icon:"↗", label:"外に出た"},
+  {id:"cook",  icon:"▮", label:"自炊"},   {id:"bath",  icon:"♨", label:"風呂"},
+  {id:"teeth", icon:"▤", label:"歯磨き"}, {id:"dev",   icon:"▲", label:"制作"}
+];
+const habitList = () => (S.habits && S.habits.length) ? S.habits : HABITS_DEFAULT;
 const dayRec = k => S.daily[k] || (S.daily[k] = {habits:{}, tasks:[]});
 const tomorrowKey = () => { const d = now(); d.setDate(d.getDate()+1); return ymd(d); };
 
 function todayView(){
   const rec = S.daily[ymd(now())] || {habits:{}, tasks:[]};
-  const done = HABITS.filter(([id]) => rec.habits[id]).length;
-  document.getElementById("habitCount").textContent = `毎日の分 ${done}/${HABITS.length}`;
-  document.getElementById("habitRow").innerHTML = HABITS.map(([id,label]) =>
-    `<button class="pad ${rec.habits[id] ? "on" : ""}" data-habit="${id}">${label}</button>`).join("");
+  const HL = habitList();
+  const done = HL.filter(h => rec.habits[h.id]).length;
+  document.getElementById("habitCount").textContent = `${done}/${HL.length}`;
+  document.getElementById("habitRow").innerHTML = HL.map(h =>
+    `<button class="pad ${rec.habits[h.id] ? "on" : ""}" data-habit="${h.id}">
+       <i>${esc(h.icon || "・")}</i>${esc(h.label)}</button>`).join("");
 
   document.getElementById("taskList").innerHTML = rec.tasks.length
     ? rec.tasks.map(t => `<div class="item">
@@ -1027,15 +1152,32 @@ function heroView(){
   } else sc.hidden = true;
 }
 
+// よく使う「金額×分類」を直近から学習してパッドにする。手入力の回数を減らすため
+function learnedPads(){
+  const cut = new Date(); cut.setDate(cut.getDate() - 60);
+  const key = s => `${s.amt}|${s.cat}`;
+  const count = {};
+  for(const s of S.spends){
+    if(s.d < ymd(cut)) continue;
+    count[key(s)] = (count[key(s)] || 0) + 1;
+  }
+  const top = Object.entries(count).sort((a,b) => b[1] - a[1]).slice(0, 3)
+    .map(([k]) => { const [a, c] = k.split("|"); return [ +a, c ]; });
+  while(top.length < 3) top.push(PADS[top.length]);
+  return top.concat([[null, "手入力"]]);
+}
+
 function spendView(){
   const pads = document.getElementById("pads");
-  if(!pads.dataset.built){
-    pads.innerHTML = PADS.map((p,i)=>
-      `<button class="pad" data-pad="${i}">${p[0]?yen(p[0]):"＋"}<small>${p[1]}</small></button>`
-    ).join("");
-    const sel = document.getElementById("spCat");
+  const list = learnedPads();
+  pads.innerHTML = list.map((p,i)=>
+    `<button class="pad" data-pad="${i}">${p[0]?yen(p[0]):"＋"}<small>${esc(p[1])}</small></button>`
+  ).join("");
+  pads.dataset.map = JSON.stringify(list);
+  const sel = document.getElementById("spCat");
+  if(!sel.dataset.built){
     sel.innerHTML = CATS.map(c=>`<option>${c}</option>`).join("");
-    pads.dataset.built = "1";
+    sel.dataset.built = "1";
   }
   document.querySelectorAll("#paySeg button").forEach(b =>
     b.classList.toggle("on", b.dataset.pay === (S.ui.pay || "cash")));
@@ -1236,8 +1378,14 @@ function addSpend(amt, cat, pay){
 
 /* ---------- events ---------- */
 document.addEventListener("click", e => {
-  const t = e.target.closest("[data-pad],[data-delspend],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate],[data-habit],[data-task],[data-deltask],[data-delplan],[data-gotab],[data-calnav],[data-calday],[data-err],[data-delerr],[data-applied],#lightBtn");
+  const t = e.target.closest("[data-pad],[data-delspend],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate],[data-habit],[data-task],[data-deltask],[data-delplan],[data-gotab],[data-calnav],[data-calday],[data-err],[data-delerr],[data-applied],[data-delhabit],#lightBtn");
   if(!t) return;
+
+  if(t.dataset.delhabit){
+    if(!canWrite()) return;
+    S.habits = habitList().filter(h => h.id !== t.dataset.delhabit);
+    save(); render(); settingsView(); return;
+  }
 
   if(t.dataset.gotab){ setTab(t.dataset.gotab); return; }
   if(t.dataset.calnav || t.dataset.calday){ /* 見るだけの操作は読み取り専用でも通す */ }
@@ -1262,7 +1410,8 @@ document.addEventListener("click", e => {
   if(t.dataset.calday){ calSel = (calSel === t.dataset.calday) ? null : t.dataset.calday; calView(); return; }
 
   if(t.dataset.pad !== undefined){
-    const [amt, cat] = PADS[+t.dataset.pad];
+    const map = JSON.parse(document.getElementById("pads").dataset.map || "[]");
+    const [amt, cat] = map[+t.dataset.pad] || [null, ""];
     if(amt === null){ document.getElementById("spAmt").focus(); return; }
     addSpend(amt, cat); return;
   }
@@ -1639,6 +1788,7 @@ document.getElementById("moPaste").addEventListener("click", async ()=>{
    トークンは S とは別のキーに置く。だから書き出しにも同期データにも含まれない。 */
 const SYNC_KEY = "mainichi.sync";
 const GIST_FILE = "mainichi-data.json";
+const INBOX_FILE = "inbox.txt";   // ショートカットがここへ書き、アプリが取り込んで空にする
 let syncTimer = null, pullTimer = null, syncing = false;
 
 // 中身の量。時刻だけで勝敗を決めると、開きっぱなしの空の端末が勝ててしまう
@@ -1691,7 +1841,7 @@ function syncPaint(state, msg){
   if(on) setup.open = false;
   restorePaint(); rolePaint();
   document.getElementById("buildBox").textContent =
-    `版 ${BUILD}${staleBuild ? "（古い・開き直してください）" : ""}　この端末の記録量 ${richness(S)}`;
+    `Ver. ${BUILD}${staleBuild ? "（古い・開き直してください）" : ""}　記録量 ${richness(S)}`;
 }
 
 async function gistFetch(path, opts){
@@ -1764,6 +1914,21 @@ async function pullRemote(silent, force){
         toast("最新のデータを受け取りました");
       }
     }
+    // 受信箱: ショートカットが置いていった行を取り込んで、空にする
+    const box = g.files && g.files[INBOX_FILE];
+    if(box && box.content && c.role !== "ro"){
+      let n = 0;
+      for(const line of box.content.split(/\r?\n/)) if(applyHealthLine(line)) n++;
+      if(n){
+        await gistFetch(`/gists/${c.gistId}`, {
+          method: "PATCH",
+          body: JSON.stringify({ files: { [INBOX_FILE]: { content: "-" } } })
+        });
+        save(); render();
+        toast(`からだの記録 ${n}件 取り込みました`);
+      }
+    }
+
     c.lastSync = new Date().toISOString(); setSyncCfg(c);
     syncPaint("ok", "同期済み " + new Date().toLocaleTimeString("ja-JP"));
   }catch(e){
@@ -1919,6 +2084,56 @@ document.getElementById("restoreBtn").addEventListener("click", ()=>{
     toast("戻しました");
   }catch(e){ toast("戻せませんでした"); console.error(e); }
 });
+
+/* ---------- 設定シート ---------- */
+// 既存のカードを「移動」させる。作り直さないので今動いている処理はそのまま生きる
+(function buildSettings(){
+  const slot = document.getElementById("settingsSlot");
+  ["syncCard","icsCard","backupCard"].forEach(id => {
+    const el = document.getElementById(id);
+    if(el){ el.removeAttribute("data-pg"); slot.appendChild(el); }
+  });
+})();
+
+function openSettings(open){
+  document.getElementById("settingsSheet").hidden = !open;
+  document.body.classList.toggle("sheetopen", open);
+  if(open){ settingsView(); window.scrollTo(0,0); }
+}
+document.getElementById("settingsOpen").addEventListener("click", ()=> openSettings(true));
+document.getElementById("settingsClose").addEventListener("click", ()=> openSettings(false));
+
+function settingsView(){
+  const HL = habitList();
+  document.getElementById("habitEditRow").innerHTML = HL.map(h =>
+    `<button class="pad" data-delhabit="${esc(h.id)}"><i>${esc(h.icon || "・")}</i>${esc(h.label)}</button>`).join("")
+    || `<div class="tiny">項目がありません</div>`;
+  const R = S.lightRule || (S.lightRule = {steps:12000, sleepH:5});
+  const set = (id,v) => { const e = document.getElementById(id);
+    if(document.activeElement !== e) e.value = v; };
+  set("ruleSteps", R.steps); set("ruleSleep", R.sleepH);
+}
+
+document.getElementById("habitAdd").addEventListener("click", ()=>{
+  if(!canWrite()) return;
+  const lab = document.getElementById("habitNewLabel").value.trim();
+  if(!lab) return toast("項目名を入れてください");
+  const icon = document.getElementById("habitNewIcon").value.trim() || "・";
+  S.habits = habitList().slice();
+  S.habits.push({id:uid(), icon, label:lab});
+  document.getElementById("habitNewLabel").value = "";
+  document.getElementById("habitNewIcon").value = "";
+  save(); render(); settingsView(); toast("足しました");
+});
+
+for(const [id, key] of [["ruleSteps","steps"],["ruleSleep","sleepH"]]){
+  document.getElementById(id).addEventListener("input", e => {
+    if(!canWrite()) return;
+    const R = S.lightRule || (S.lightRule = {});
+    R[key] = Math.max(0, +e.target.value || 0);
+    save(); modeView();
+  });
+}
 
 document.getElementById("roleSeg").addEventListener("click", e => {
   const b = e.target.closest("[data-role]"); if(!b) return;
