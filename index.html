@@ -234,6 +234,34 @@ body[data-ro="1"] .rocover{display:block}
 .calcell .ck{color:var(--ok);font-weight:700}
 .calcell .sp{color:var(--fg);font-variant-numeric:tabular-nums}
 .calcell .due{color:var(--warn)}
+
+/* 予定は色の帯で示す。記号は使わない */
+.cbars{display:flex;flex-direction:column;gap:1.5px;width:100%;margin-top:2px}
+.cbars i{display:block;height:3px;border-radius:2px}
+.cname{font-size:8.5px;line-height:1.25;color:var(--dim);width:100%;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
+.legend{display:flex;flex-wrap:wrap;gap:5px 11px;margin-top:11px;
+  border-top:1px solid var(--line);padding-top:10px}
+.legend span{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--dim)}
+.legend i{width:10px;height:10px;border-radius:3px;display:block;flex:none}
+
+/* 1日の時間割 */
+.tl{position:relative;margin-top:10px;border-top:1px solid var(--line)}
+.tlrow{display:grid;grid-template-columns:38px 1fr;height:26px;
+  border-bottom:1px solid color-mix(in srgb,var(--line) 55%,transparent)}
+.tlrow > b{font-size:10px;color:var(--faint);font-weight:400;
+  font-variant-numeric:tabular-nums;padding-top:1px}
+.tlblocks{position:absolute;left:38px;right:0;top:0;bottom:0;pointer-events:none}
+.blk{position:absolute;left:0;right:0;border-radius:6px;padding:2px 7px;
+  font-size:11px;line-height:1.25;color:#0D1015;font-weight:600;overflow:hidden;
+  pointer-events:auto}
+.blk.auto{opacity:.82}
+.blk small{display:block;font-size:9px;font-weight:500;opacity:.75}
+.addrow{display:grid;grid-template-columns:76px 76px 1fr auto;gap:6px;margin-top:10px;align-items:center}
+.catseg{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.catseg button{font-size:11px;padding:5px 10px;border-radius:99px;
+  border:1px solid var(--line);color:var(--dim);background:var(--card2)}
+.catseg button.on{color:#0D1015;font-weight:700;border-color:transparent}
 .edit-grid .hd{font-size:10px;color:var(--faint);text-align:center}
 .del{color:var(--faint);font-size:19px;line-height:1;padding:0 5px}
 footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;line-height:1.7}
@@ -511,16 +539,19 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   </div>
 
   <!-- ===== CALENDAR PAGE ===== -->
-  <div class="card" data-pg="cal">
-    <div class="row between" style="margin-bottom:9px">
+  <div class="card lead" data-pg="cal">
+    <div class="row between" style="margin-bottom:11px">
       <button class="btn ghost sm" data-calnav="-1">‹</button>
       <div style="font-weight:700;font-size:16px" id="calTitle">—</div>
       <button class="btn ghost sm" data-calnav="1">›</button>
     </div>
-    <div class="calgrid" id="calHead" style="margin-bottom:3px"></div>
+    <div class="calgrid" id="calHead" style="margin-bottom:4px"></div>
     <div class="calgrid" id="calBody"></div>
-    <div class="tiny" style="margin-top:8px">✓=できたこと（習慣＋タスク）　数字=使った額　●=支払い・予定　▶=ワンモーション</div>
-    <div id="calDetail" style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px"></div>
+    <div class="legend" id="calLegend"></div>
+  </div>
+
+  <div class="card" data-pg="cal">
+    <div id="calDetail"></div>
     <details style="margin-top:10px">
       <summary>ワンモーションの納品予定を取り込む（PC）</summary>
       <div class="tiny" id="moInfo" style="margin:8px 0">未取り込み</div>
@@ -649,7 +680,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.4.0";          // version.txt と一致させること
+const BUILD = "0.5.0";          // version.txt と一致させること
 const KEY = "mainichi.v1";
 let staleBuild = false;         // 古い版のまま開きっぱなしになっていないか
 const CATS = ["食費","日用品","交通","医療","交際","その他"];
@@ -687,6 +718,7 @@ function seed(){
       {id:"benefit", name:"手当", amt:0, day:15, benefit:true}
     ],
     spends: [],
+    plan: {},           // "2026-08-05" -> [{id, from:"13:30", to:"16:30", cat, text}]
     subs: [],           // {id, name, amt, cycle:"m"|"y", day}
     appt: { date:"", time:"", place:"", alias:"", memo:"" },
     icsAmount: false,   // カレンダーに金額を入れるか
@@ -719,8 +751,9 @@ function normalize(o){
   const s = Object.assign(b, o || {});
   for(const k of ["accounts","fixed","incomes","spends","subs","errands"])
     if(!Array.isArray(s[k])) s[k] = b[k];
-  for(const k of ["health","daily","doneFixed","doneIncome","benefitMonths"])
+  for(const k of ["health","daily","doneFixed","doneIncome","benefitMonths","plan"])
     if(!s[k] || typeof s[k] !== "object") s[k] = {};
+  for(const k of Object.keys(s.plan)) if(!Array.isArray(s.plan[k])) delete s.plan[k];
   for(const k of ["appt","ui","benefit","lightRule"])
     if(!s[k] || typeof s[k] !== "object") s[k] = b[k];
   if(s.habits && !Array.isArray(s.habits)) s.habits = null;
@@ -1002,9 +1035,62 @@ function errView(){
     : `<div class="tiny">用事はありません。</div>`;
 }
 
-/* ---------- こよみ（月カレンダー） ---------- */
+/* ---------- こよみ（月カレンダー＋その日の時間割） ---------- */
 let calCursor = ym(new Date());
 let calSel = null;
+let planCat = "life";
+
+// 区分。色そのものが意味なので、記号は使わない
+const TCATS = [
+  {id:"sleep", label:"睡眠",    color:"#5AC8E8"},
+  {id:"life",  label:"生活",    color:"#5ECFA0"},
+  {id:"make",  label:"制作",    color:"#F0A868"},
+  {id:"out",   label:"外出・用事", color:"#7AA7F0"},
+  {id:"learn", label:"勉強",    color:"#E28FC8"},
+  {id:"free",  label:"自由",    color:"#E6D45E"}
+];
+const catOf = id => TCATS.find(c => c.id === id) || TCATS[1];
+
+const TL_START = 4 * 60, TL_END = 28 * 60;          // 4:00 〜 翌4:00
+const toMin = t => { const [h,m] = String(t||"").split(":").map(Number);
+  return (isNaN(h) ? null : h * 60 + (m || 0)); };
+const toHHMM = m => `${String(Math.floor(m/60)%24).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`;
+// 4:00より前の時刻は「その日の深夜」＝翌日側として扱う
+const onTl = m => m == null ? null : (m < TL_START ? m + 1440 : m);
+
+// 予定は自動で埋まるぶんが多いほど手間が減る。記録から作れるものは作る
+function autoBlocks(key){
+  const out = [];
+  const d = new Date(key + "T00:00:00");
+  const h = S.health[key] || {};
+  const nx = new Date(d); nx.setDate(nx.getDate() + 1);
+  const hn = S.health[ymd(nx)] || {};
+
+  if(h.wake) out.push({auto:true, cat:"sleep", text:"睡眠", a:TL_START, b:onTl(toMin(h.wake))});
+  if(hn.bed) out.push({auto:true, cat:"sleep", text:"睡眠", a:onTl(toMin(hn.bed)), b:TL_END});
+
+  const base = MODE_BASE[d.getDay()];
+  if(base !== "rest"){
+    const light = (S.daily[key] && S.daily[key].light);
+    out.push({auto:true, cat:"make", text: base === "motion" ? "モーション" : "プラグイン",
+              a: 13*60+30, b: light ? 15*60 : 16*60+30});
+  }
+  if(S.appt && S.appt.date === key && S.appt.time){
+    const a = onTl(toMin(S.appt.time));
+    out.push({auto:true, cat:"out", text: S.appt.alias || "予定", a, b: a + 60});
+  }
+  for(const e of S.errands)
+    if(!e.done && e.due === key) out.push({auto:true, cat:"out", text:e.text, a:10*60, b:11*60});
+  return out.filter(x => x.a != null && x.b != null && x.b > x.a);
+}
+
+const planOf = key => (S.plan && S.plan[key]) ? S.plan[key] : [];
+function allBlocks(key){
+  return autoBlocks(key).concat(planOf(key).map(p => Object.assign({}, p,
+    {a:onTl(toMin(p.from)), b:onTl(toMin(p.to))})))
+    .filter(x => x.a != null && x.b != null && x.b > x.a)
+    .sort((x,y) => x.a - y.a);
+}
 
 function motionOn(key){
   return (S.motion && Array.isArray(S.motion.days))
@@ -1037,22 +1123,21 @@ function calView(){
   for(let i = 0; i < off; i++) cells.push(`<button class="calcell" disabled></button>`);
   for(let d = 1; d <= days; d++){
     const key = `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
-    const rec = S.daily[key];
-    const ck = rec
-      ? Object.values(rec.habits || {}).filter(Boolean).length + (rec.tasks || []).filter(t => t.done).length
-      : 0;
-    const spend = S.spends.filter(s => s.d === key).reduce((a,s) => a + (+s.amt||0), 0);
-    const dues = duesOn(key).length;
-    const mos = motionOn(key);
-    const rows = [];
-    if(ck) rows.push(`<span class="ck">✓${ck}</span>`);
-    if(spend) rows.push(`<span class="sp">${spend >= 10000 ? (spend/10000).toFixed(1)+"万" : spend.toLocaleString("ja-JP")}</span>`);
-    if(dues) rows.push(`<span class="due">●${dues > 1 ? dues : ""}</span>`);
-    if(mos.length) rows.push(`<span style="color:var(--accent);font-weight:700">▶D${mos[0].day}</span>`);
+    const blocks = allBlocks(key);
+    // 同じ区分は1本にまとめる。色だけで「その日に何があったか」が読める
+    const seen = [];
+    for(const b of blocks) if(!seen.includes(b.cat)) seen.push(b.cat);
+    const bars = seen.slice(0,4).map(c =>
+      `<i style="background:${catOf(c).color}"></i>`).join("");
+    const first = blocks.find(b => b.cat !== "sleep");
     cells.push(`<button class="calcell${key === tk ? " today" : ""}${key === calSel ? " sel" : ""}" data-calday="${key}">
-      <span class="dn">${d}</span>${rows.join("")}</button>`);
+      <span class="dn">${d}</span>
+      <span class="cbars">${bars}</span>
+      ${first ? `<span class="cname">${esc(first.text)}</span>` : ""}</button>`);
   }
   document.getElementById("calBody").innerHTML = cells.join("");
+  document.getElementById("calLegend").innerHTML = TCATS.map(c =>
+    `<span><i style="background:${c.color}"></i>${c.label}</span>`).join("");
 
   const mi = document.getElementById("moInfo");
   const mo = S.motion;
@@ -1063,16 +1148,48 @@ function calView(){
   calDetail();
 }
 
+function timeline(key){
+  const rows = [];
+  for(let m = TL_START; m < TL_END; m += 60)
+    rows.push(`<div class="tlrow"><b>${String(Math.floor(m/60)%24).padStart(2,"0")}:00</b><span></span></div>`);
+  const span = TL_END - TL_START, H = 26 * (span / 60);
+  const blocks = allBlocks(key).map(b => {
+    const a = Math.max(b.a, TL_START), z = Math.min(b.b, TL_END);
+    if(z <= a) return "";
+    const top = (a - TL_START) / span * H, hgt = (z - a) / span * H;
+    const c = catOf(b.cat);
+    return `<div class="blk${b.auto ? " auto" : ""}" style="top:${top.toFixed(1)}px;height:${Math.max(hgt-2,14).toFixed(1)}px;background:${c.color}"
+      ${b.id ? `data-delplan2="${b.id}"` : ""} title="${esc(b.text)}">${esc(b.text)}${
+      hgt > 30 ? `<small>${toHHMM(a % 1440)} - ${toHHMM(z % 1440)}</small>` : ""}</div>`;
+  }).join("");
+  return `<div class="tl" style="height:${H}px">${rows.join("")}
+    <div class="tlblocks">${blocks}</div></div>`;
+}
+
 function calDetail(){
   const box = document.getElementById("calDetail");
-  if(!calSel){ box.innerHTML = `<div class="tiny">日付をタップすると、その日の記録が出ます。</div>`; return; }
+  if(!calSel){ box.innerHTML = `<div class="tiny">日付をタップすると、その日の時間割と記録が出ます。</div>`; return; }
   const key = calSel, dt = new Date(key + "T00:00:00");
   const rec = S.daily[key] || {habits:{}, tasks:[]};
   const spends = S.spends.filter(s => s.d === key);
   const h = S.health[key];
   const dues = duesOn(key);
 
-  let html = `<div style="font-weight:700;margin-bottom:6px">${dt.getMonth()+1}月${dt.getDate()}日（${"日月火水木金土"[dt.getDay()]}）</div>`;
+  let html = `<div class="row between" style="margin-bottom:2px">
+      <div style="font-weight:700;font-size:16px">${dt.getMonth()+1}月${dt.getDate()}日（${"日月火水木金土"[dt.getDay()]}）</div>
+    </div>
+    ${timeline(key)}
+    <div class="catseg" id="planCatSeg">${TCATS.map(c =>
+      `<button data-planCat="${c.id}" style="${planCat===c.id?`background:${c.color};`:""}">${c.label}</button>`).join("")}</div>
+    <div class="addrow">
+      <input type="time" id="planFrom"><input type="time" id="planTo">
+      <input id="planText" placeholder="予定の名前">
+      <button class="btn" id="planAddBtn">追加</button>
+    </div>
+    <div class="tiny" style="margin:7px 0 12px">
+      薄い帯は記録から自動で出ています（睡眠・制作の時間・通院・期限のきた用事）。
+      自分で足した予定はタップで消せます。
+    </div>`;
   const habitsDone = habitList().filter(h => rec.habits[h.id]).map(h => h.label);
   if(habitsDone.length) html += `<div class="tiny" style="margin-bottom:4px">できたこと: ${habitsDone.join("・")}</div>`;
   html += rec.tasks.map(t => `<div class="item" style="padding:7px 0">
@@ -1431,7 +1548,7 @@ function addSpend(amt, cat, pay){
 
 /* ---------- events ---------- */
 document.addEventListener("click", e => {
-  const t = e.target.closest("[data-pad],[data-delspend],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate],[data-habit],[data-task],[data-deltask],[data-delplan],[data-gotab],[data-calnav],[data-calday],[data-err],[data-delerr],[data-applied],[data-delhabit],#lightBtn");
+  const t = e.target.closest("[data-pad],[data-delspend],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate],[data-habit],[data-task],[data-deltask],[data-delplan],[data-gotab],[data-calnav],[data-calday],[data-err],[data-delerr],[data-applied],[data-delhabit],[data-plancat],[data-delplan2],#lightBtn");
   if(!t) return;
 
   if(t.dataset.delhabit){
@@ -1460,7 +1577,19 @@ document.addEventListener("click", e => {
   }
 
   if(t.dataset.calnav){ calCursor = addMonths(calCursor, +t.dataset.calnav); calSel = null; calView(); return; }
-  if(t.dataset.calday){ calSel = (calSel === t.dataset.calday) ? null : t.dataset.calday; calView(); return; }
+  if(t.dataset.calday){
+    calSel = (calSel === t.dataset.calday) ? null : t.dataset.calday;
+    calView();
+    if(calSel) document.getElementById("calDetail").scrollIntoView({behavior:"smooth", block:"start"});
+    return;
+  }
+  if(t.dataset.plancat){ planCat = t.dataset.plancat; calDetail(); return; }
+  if(t.dataset.delplan2){
+    if(!canWrite()) return;
+    const arr = S.plan[calSel] || [];
+    S.plan[calSel] = arr.filter(p => p.id !== t.dataset.delplan2);
+    save(); calView(); toast("消しました"); return;
+  }
 
   if(t.dataset.pad !== undefined){
     const map = JSON.parse(document.getElementById("pads").dataset.map || "[]");
@@ -1825,6 +1954,18 @@ function applyMotionJSON(text){
   S.motion = obj; save(); render();
   toast(`ワンモーション予定 ${obj.days.length}件 取り込みました`);
 }
+document.addEventListener("click", e => {
+  if(e.target.id !== "planAddBtn") return;
+  if(!canWrite() || !calSel) return;
+  const from = document.getElementById("planFrom").value;
+  const to   = document.getElementById("planTo").value;
+  const text = document.getElementById("planText").value.trim();
+  if(!from || !to) return toast("開始と終了の時刻を入れてください");
+  if(!text) return toast("予定の名前を入れてください");
+  (S.plan[calSel] = S.plan[calSel] || []).push({id:uid(), from, to, cat:planCat, text});
+  save(); calView(); toast("追加しました");
+});
+
 document.getElementById("moFileBtn").addEventListener("click", ()=> document.getElementById("moFileInput").click());
 document.getElementById("moFileInput").addEventListener("change", async e => {
   const f = e.target.files[0]; if(!f) return;
