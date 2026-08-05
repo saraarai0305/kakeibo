@@ -404,6 +404,8 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
       <input id="errNote" placeholder="行き先・持ち物">
       <input type="date" id="errDue">
       <button class="btn" id="errAdd">追加</button>
+      <input type="time" id="errFrom"><input type="time" id="errTo">
+      <span class="tiny">時刻（任意）</span>
     </div>
     <div class="catseg" id="errPrioSeg"></div>
     <div class="tiny" style="margin-top:8px">「今日へ」を押すと上の「今日やること」に移ります。2段階あるものは2件に分けてください。</div>
@@ -777,7 +779,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.7.2";          // version.txt と一致させること
+const BUILD = "0.8.0";          // version.txt と一致させること
 const KEY = "mainichi.v1";
 let staleBuild = false;         // 古い版のまま開きっぱなしになっていないか
 const CATS = ["食費","日用品","交通","医療","交際","その他"];
@@ -873,7 +875,11 @@ function normalize(o){
       d.tasks = [];
     }
   }
-  for(const e of s.errands) if(!("plan" in e)) e.plan = null;
+  for(const e of s.errands){
+    if(!("plan" in e)) e.plan = null;
+    if(typeof e.from !== "string") e.from = "";
+    if(typeof e.to !== "string") e.to = "";
+  }
   return s;
 }
 
@@ -1162,11 +1168,12 @@ function errView(){
         const due = e.due
           ? `<span class="err-due${over ? " over" : ""}">${over ? "期限すぎ " : ""}${e.due.slice(5).replace("-","/")}まで</span>` : "";
         const note = e.note ? `<span class="err-due">　${esc(e.note)}</span>` : "";
+        const tm = (e.from && e.to) ? `<span class="err-due">　${esc(e.from)}-${esc(e.to)}</span>` : "";
         return `<div class="item ${e.done ? "err-done" : ""}">
           <button class="tick ${e.done ? "on" : ""}" data-err="${e.id}">✓</button>
           <span style="width:4px;align-self:stretch;border-radius:2px;flex:none;background:${e.done?"transparent":p.color}"></span>
           <div class="grow"><div class="nm ${e.done ? "done-row" : ""}">${esc(e.text)}</div>
-            <div class="mt">${e.done ? "" : `<span class="err-due">${p.label}</span>`}${due ? "　"+due : ""}${note}</div></div>
+            <div class="mt">${e.done ? "" : `<span class="err-due">${p.label}</span>`}${due ? "　"+due : ""}${tm}${note}</div></div>
           ${e.done ? "" : `<button class="btn ghost sm" data-planit="${e.id}">今日へ</button>`}
           <button class="del" data-delerr="${e.id}">×</button></div>`;
       }).join("")
@@ -1276,13 +1283,22 @@ function autoBlocks(key){
     out.push({auto:true, cat:"make", text: base === "motion" ? "モーション" : "プラグイン",
               a: 13*60+30, b: light ? 15*60 : 16*60+30});
   }
-  if(S.appt && S.appt.date === key && S.appt.time){
-    const a = onTl(toMin(S.appt.time));
-    out.push({auto:true, cat:"out", text: S.appt.alias || "予定", a, b: a + 60});
+  // 通院は時刻がなくても暦に出す（時刻なしは朝の枠に置く）
+  if(S.appt && S.appt.date === key){
+    const a = S.appt.time ? onTl(toMin(S.appt.time)) : 9 * 60;
+    out.push({auto:true, cat:"out", text: S.appt.alias || "通院", a, b: a + 60});
   }
-  for(const e of S.errands)
-    if(!e.done && e.due === key) out.push({auto:true, cat:"out", text:e.text, a:10*60, b:11*60});
+  // やること: 時刻を入れたものだけ帯にする。色は優先度そのもの
+  for(const e of errandsOn(key))
+    if(e.from && e.to)
+      out.push({auto:true, errand:true, color: prioOf(e.prio).color, text: e.text,
+                a: onTl(toMin(e.from)), b: onTl(toMin(e.to))});
   return out.filter(x => x.a != null && x.b != null && x.b > x.a);
+}
+
+// その日に関係する「やること」= 今日に入れたもの と 期限がその日のもの
+function errandsOn(key){
+  return S.errands.filter(e => !e.done && (e.plan === key || e.due === key));
 }
 
 const planOf = key => (S.plan && S.plan[key]) ? S.plan[key] : [];
@@ -1325,20 +1341,31 @@ function calView(){
   for(let d = 1; d <= days; d++){
     const key = `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
     const blocks = allBlocks(key);
-    // 同じ区分は1本にまとめる。色だけで「その日に何があったか」が読める
-    const seen = [];
-    for(const b of blocks) if(!seen.includes(b.cat)) seen.push(b.cat);
-    const bars = seen.slice(0,4).map(c =>
-      `<i style="background:${catOf(c).color}"></i>`).join("");
-    const first = blocks.find(b => b.cat !== "sleep");
+    // 同じ色は1本にまとめる。色だけで「その日に何があったか」が読める
+    const cols = [];
+    for(const b of blocks){
+      const c = b.color || catOf(b.cat).color;
+      if(!cols.includes(c)) cols.push(c);
+    }
+    // 時刻なしの やること も、優先度の色で1本だけ足す
+    for(const e of errandsOn(key)){
+      if(e.from && e.to) continue;
+      const c = prioOf(e.prio).color;
+      if(!cols.includes(c)) cols.push(c);
+    }
+    const bars = cols.slice(0,4).map(c => `<i style="background:${c}"></i>`).join("");
+    const first = blocks.find(b => b.cat !== "sleep") || errandsOn(key)[0];
     cells.push(`<button class="calcell${key === tk ? " today" : ""}${key === calSel ? " sel" : ""}" data-calday="${key}">
       <span class="dn">${d}</span>
       <span class="cbars">${bars}</span>
       ${first ? `<span class="cname">${esc(first.text)}</span>` : ""}</button>`);
   }
   document.getElementById("calBody").innerHTML = cells.join("");
-  document.getElementById("calLegend").innerHTML = TCATS.map(c =>
-    `<span><i style="background:${c.color}"></i>${c.label}</span>`).join("");
+  document.getElementById("calLegend").innerHTML =
+    `<span class="hd" style="width:100%;margin-bottom:-2px">時間の区分</span>`
+    + TCATS.map(c => `<span><i style="background:${c.color}"></i>${c.label}</span>`).join("")
+    + `<span class="hd" style="width:100%;margin:6px 0 -2px">やることの優先度</span>`
+    + PRIOS.map(p => `<span><i style="background:${p.color}"></i>${p.label}</span>`).join("");
 
   const mi = document.getElementById("moInfo");
   const mo = S.motion;
@@ -1347,6 +1374,28 @@ function calView(){
     : "未取り込み";
 
   calDetail();
+}
+
+// その日の やること。ここで時刻を入れると、下の時間割に帯として並ぶ
+function errandRows(key){
+  const list = errandsOn(key);
+  if(!list.length) return "";
+  return `<div style="margin:8px 0 4px">` + list.map(e => {
+    const p = prioOf(e.prio);
+    const why = e.plan === key ? "今日やること" : "期限";
+    return `<div style="border-top:1px solid var(--line);padding:9px 0">
+      <div class="row" style="gap:10px">
+      <span style="width:4px;align-self:stretch;border-radius:2px;flex:none;background:${p.color}"></span>
+      <div class="grow">
+        <div class="nm">${esc(e.text)}</div>
+        <div class="mt">${why}　${p.label}</div>
+      </div>
+      </div>
+      <div class="edit-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));margin:6px 0 0">
+        <input type="time" value="${esc(e.from || "")}" data-etime="from" data-eid="${e.id}">
+        <input type="time" value="${esc(e.to || "")}" data-etime="to" data-eid="${e.id}">
+      </div>`;
+  }).join("") + `<div class="tiny" style="margin-top:6px">時刻を入れると、下の時間割に並びます。空のままでも構いません。</div></div>`;
 }
 
 function timeline(key){
@@ -1358,8 +1407,8 @@ function timeline(key){
     const a = Math.max(b.a, TL_START), z = Math.min(b.b, TL_END);
     if(z <= a) return "";
     const top = (a - TL_START) / span * H, hgt = (z - a) / span * H;
-    const c = catOf(b.cat);
-    return `<div class="blk${b.auto ? " auto" : ""}" style="top:${top.toFixed(1)}px;height:${Math.max(hgt-2,14).toFixed(1)}px;background:${c.color}"
+    const color = b.color || catOf(b.cat).color;
+    return `<div class="blk${b.auto ? " auto" : ""}" style="top:${top.toFixed(1)}px;height:${Math.max(hgt-2,14).toFixed(1)}px;background:${color}"
       ${b.id ? `data-delplan2="${b.id}"` : ""} title="${esc(b.text)}">${esc(b.text)}${
       hgt > 30 ? `<small>${toHHMM(a % 1440)} - ${toHHMM(z % 1440)}</small>` : ""}</div>`;
   }).join("");
@@ -1380,6 +1429,7 @@ function calDetail(){
       <div style="font-weight:700;font-size:16px">${dt.getMonth()+1}月${dt.getDate()}日（${"日月火水木金土"[dt.getDay()]}）</div>
     </div>
     ${rec.theme ? `<div class="dim" style="margin-bottom:4px">テーマ「${esc(rec.theme)}」</div>` : ""}
+    ${errandRows(key)}
     ${timeline(key)}
     <details style="margin-top:12px">
       <summary>予定を足す</summary>
@@ -2190,9 +2240,11 @@ function addErrand(){
   const el = document.getElementById("errNew"), text = el.value.trim();
   if(!text) return toast("内容を入れてください");
   const noteEl = document.getElementById("errNote"), dueEl = document.getElementById("errDue");
-  S.errands.push({id:uid(), text, note:noteEl.value.trim(), due:dueEl.value, prio:errPrio, done:false});
-  el.value = ""; noteEl.value = ""; dueEl.value = "";
-  save(); errView(); toast("追加しました");
+  const fromEl = document.getElementById("errFrom"), toEl = document.getElementById("errTo");
+  S.errands.push({id:uid(), text, note:noteEl.value.trim(), due:dueEl.value,
+                  from:fromEl.value, to:toEl.value, prio:errPrio, done:false, plan:null});
+  el.value = ""; noteEl.value = ""; dueEl.value = ""; fromEl.value = ""; toEl.value = "";
+  save(); render(); toast("追加しました");
 }
 document.getElementById("errAdd").addEventListener("click", addErrand);
 document.getElementById("errNew").addEventListener("keydown", e => {
@@ -2217,6 +2269,13 @@ document.getElementById("spAmt").addEventListener("keydown", e => {
 // inline edits
 document.addEventListener("change", e => {
   const el = e.target;
+  // やることの時刻（こよみの日詳細で入れる）
+  if(el.dataset.etime){
+    if(!canWrite()) return render();
+    const e = S.errands.find(x => x.id === el.dataset.eid);
+    if(e){ e[el.dataset.etime] = el.value; save(); calView(); }
+    return;
+  }
   const map = {fx:"fixed", ic:"incomes", ac:"accounts", sb:"subs"};
   if(Object.keys(map).some(a => el.dataset[a]) && !canWrite()){ render(); return; }
   for(const [attr, coll] of Object.entries(map)){
