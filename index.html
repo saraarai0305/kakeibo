@@ -997,7 +997,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.12.2";         // version.txt と一致させること
+const BUILD = "0.12.3";         // version.txt と一致させること
 const KEY = "mainichi.v1";
 let staleBuild = false;         // 古い版のまま開きっぱなしになっていないか
 const CATS = ["食費","日用品","交通","医療","交際","その他"];
@@ -1751,7 +1751,6 @@ function calDetail(){
     </div>
     ${rec.theme ? `<div class="dim" style="margin-bottom:4px">テーマ「${esc(rec.theme)}」</div>` : ""}
     ${errandRows(key)}
-    ${timeline(key)}
     <details style="margin-top:12px">
       <summary>予定を足す</summary>
       <div class="catseg" id="planCatSeg">${TCATS.map(c =>
@@ -1762,7 +1761,8 @@ function calDetail(){
         <button class="btn" id="planAddBtn">追加</button>
       </div>
       <div class="tiny" style="margin-top:8px">薄い帯は記録から自動で出ています。自分で足した予定はタップで消せます。</div>
-    </details>`;
+    </details>
+    ${timeline(key)}`;
   // 詳細はこの1行にまとめる。時間割が主役なので、記録は要約だけ
   const habitsDone = habitList().filter(h => rec.habits[h.id]).length;
   const spendSum = spends.reduce((a,s) => a + (+s.amt||0), 0);
