@@ -874,11 +874,14 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
     </div>
     <div class="health-section health-auto">
       <div class="health-section-head"><span class="health-icon">↻</span><div><b>歩数・睡眠の自動取り込み</b><span class="health-help" id="healthAutoState">同期を設定すると45秒ごとに確認します</span></div></div>
-      <button class="btn ghost sm" id="hPaste" data-icon="↻" style="width:100%;margin-top:10px">今すぐ取り込む</button>
+      <div class="row" style="gap:8px;margin-top:10px">
+        <button class="btn ghost sm grow" id="hPaste" data-icon="↻">今すぐ取り込む</button>
+        <button class="btn ghost sm grow" id="healthSyncSettings" data-icon="⚙">同期設定を開く</button>
+      </div>
       <details>
         <summary>自動取り込みの設定を見る</summary>
         <div class="tiny" style="margin-top:8px">
-          iPhoneのショートカットがヘルスケアから歩数・睡眠を非公開Gistの受信箱へ送ります。アプリを開いている間は45秒ごと、アプリを開き直した時にも自動で読み込みます。初回だけ「おかね → 端末の同期」を設定してください。iPhoneの仕様上、アプリを完全に終了した状態でWebアプリが裏側から読み込むことはできません。
+          iPhoneのショートカットがヘルスケアから歩数・睡眠を非公開Gistの受信箱へ送ります。初回は「同期設定を開く」から設定してください。アプリを開いている間は45秒ごと、アプリを開き直した時にも読み込みます。iPhoneの仕様上、アプリを完全に終了した状態でWebアプリが裏側から読み込むことはできません。
         </div>
       </details>
     </div>
@@ -951,7 +954,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 
   <!-- ===== SYNC ===== -->
   <div class="card" data-pg="money" id="syncCard">
-    <h2 class="section-title" data-icon="⇄">端末の同期 <span class="tiny" id="syncState">オフ</span></h2>
+    <h2 class="section-title" data-icon="⇄">同期の接続状態 <span class="tiny" id="syncState">オフ</span></h2>
     <div class="row" style="gap:8px;margin-bottom:10px">
       <span class="syncdot" id="syncDot"></span>
       <span class="dim grow" id="syncMsg">PCとiPhoneを自動でそろえます。</span>
@@ -1091,7 +1094,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.14.1";         // version.txt と一致させること
+const BUILD = "0.14.2";         // version.txt と一致させること
 const KEY = "mainichi.v1";
 let staleBuild = false;         // 古い版のまま開きっぱなしになっていないか
 const CATS = ["食費","日用品","交通","医療","交際","その他"];
@@ -2607,6 +2610,7 @@ function healthView(){
   if(auto){
     const c = syncCfg();
     if(!(c.token && c.gistId)) auto.textContent = "おかね → 端末の同期を設定すると自動になります";
+    else if(c.lastSyncError) auto.textContent = `同期エラー：${c.lastSyncError}`;
     else if(c.role === "ro") auto.textContent = "見るだけでは歩数を取り込みません。「記録する」に変更してください";
     else if(c.healthLastImport) auto.textContent = `同期オン・最終取り込み ${new Date(c.healthLastImport).toLocaleTimeString("ja-JP", {hour:"2-digit", minute:"2-digit"})}`;
     else auto.textContent = "同期オン・45秒ごとに確認中";
@@ -2787,7 +2791,7 @@ for(const [id, key] of [["hSteps","steps"],["hBed","bed"],["hWake","wake"],["hFa
 
 document.getElementById("hPaste").addEventListener("click", async ()=>{
   const c = syncCfg();
-  if(!c.token || !c.gistId) return toast("先に おかね → 端末の同期 を設定してください");
+  if(!c.token || !c.gistId) return toast("先に「同期設定を開く」から設定してください");
   await checkBuild(false);
   if(!staleBuild){
     const result = await pullRemote(false);
@@ -3069,7 +3073,7 @@ function setSyncCfg(c){ localStorage.setItem(SYNC_KEY, JSON.stringify(c)); }
 const isReadOnly = () => syncCfg().role === "ro";
 function canWrite(){
   if(!isReadOnly()) return true;
-  toast("読み取り専用です（おかね → 同期 で切り替え）");
+  toast("見るだけの端末です。「同期設定を開く」から切り替えてください");
   return false;
 }
 function rolePaint(){
@@ -3202,10 +3206,17 @@ async function pullRemote(silent, force){
       }
     }
 
-    c.lastSync = new Date().toISOString(); setSyncCfg(c);
+    c.lastSync = new Date().toISOString();
+    delete c.lastSyncError;
+    setSyncCfg(c);
+    healthView();
     syncPaint("ok", "同期済み " + new Date().toLocaleTimeString("ja-JP"));
     return {imported};
   }catch(e){
+    c.lastSyncError = e.message || "受信に失敗しました";
+    c.lastSync = new Date().toISOString();
+    setSyncCfg(c);
+    healthView();
     syncPaint("err", "受信できませんでした（" + e.message + "）");
     return {imported, error:e};
   }finally{ syncing = false; }
@@ -3376,7 +3387,7 @@ document.getElementById("restoreBtn").addEventListener("click", ()=>{
     }
   };
   group("連携", ["icsCard"]);        // ヘルスケアの手順は「からだ」の中に残す
-  group("端末と同期", ["syncCard"]);
+  group("同期・歩数連携", ["syncCard"]);
   group("データ", ["backupCard"]);
 })();
 
@@ -3387,6 +3398,10 @@ function openSettings(open){
 }
 document.getElementById("settingsOpen").addEventListener("click", ()=> openSettings(true));
 document.getElementById("settingsClose").addEventListener("click", ()=> openSettings(false));
+document.getElementById("healthSyncSettings").addEventListener("click", ()=>{
+  openSettings(true);
+  setTimeout(()=> document.getElementById("syncCard")?.scrollIntoView({behavior:"smooth", block:"start"}), 60);
+});
 
 function settingsView(){
   const HL = habitList();
@@ -3449,7 +3464,7 @@ document.getElementById("roleSeg").addEventListener("click", e => {
   const c = syncCfg();
   c.role = b.dataset.role === "ro" ? "ro" : "rw";
   setSyncCfg(c); rolePaint();
-  toast(c.role === "ro" ? "読み取り専用にしました" : "記録できるようにしました");
+  toast(c.role === "ro" ? "見るだけにしました" : "歩数を受け取る端末にしました");
   if(c.role === "rw") schedulePush();
 });
 
