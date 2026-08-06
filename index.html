@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>今日使えるお金</title>
+<title>生活ノート</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0B1017">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="今日使えるお金">
+<meta name="apple-mobile-web-app-title" content="生活ノート">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <style>
 :root{
@@ -175,19 +175,26 @@ details[open] > summary::before{content:"▾ "}
 .health-save-row .btn:disabled{opacity:.45;box-shadow:none}
 .health-tools{display:flex;align-items:center;gap:10px;margin-top:14px;padding-top:10px;border-top:1px solid color-mix(in srgb,var(--line) 75%,transparent)}
 .health-tools .sorts{margin:0}
-.health-chart-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:13px}
-.health-chart{padding:10px 9px 8px;border:1px solid color-mix(in srgb,var(--section-color) 28%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--section-color) 6%,var(--card2));min-width:0}
+.health-chart{padding:11px 10px 9px;border:1px solid color-mix(in srgb,var(--section-color) 28%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--section-color) 6%,var(--card2));min-width:0;margin-top:13px}
 .health-chart-title{font-size:11px;color:var(--dim);display:flex;justify-content:space-between;gap:6px}
 .health-chart-title b{color:var(--fg);font-size:12px}
-.health-chart svg{width:100%;height:74px;display:block;margin-top:6px}
+.health-chart svg{width:100%;height:172px;display:block;margin-top:7px;overflow:visible}
+.health-metrics{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.health-metrics button{display:inline-flex;align-items:center;gap:4px;padding:6px 8px;border:1px solid var(--line);border-radius:99px;background:var(--card2);color:var(--dim);font-size:11px;white-space:nowrap}
+.health-metrics button.on{border-color:currentColor;background:color-mix(in srgb,currentColor 14%,var(--card2));color:var(--fg)}
+.health-metrics .mi{font-size:14px;line-height:1}
+.health-chart-note{font-size:10.5px;color:var(--faint);line-height:1.4;margin-top:7px}
 .health-week-wrap{overflow-x:auto;margin:0 -4px;padding:0 4px 3px}
 .health-week{display:grid;grid-template-columns:repeat(7,minmax(78px,1fr));gap:7px;min-width:570px}
 .health-day{padding:9px 8px;border:1px solid var(--line);border-radius:12px;background:var(--card2);min-height:136px}
 .health-day.today{border-color:var(--accent);box-shadow:inset 0 2px 0 var(--accent)}
 .health-day.empty{opacity:.55}
-.health-day-head{display:flex;justify-content:space-between;gap:4px;font-size:10.5px;color:var(--dim)}
+.health-day-head{display:flex;justify-content:space-between;gap:4px;font-size:10.5px;color:var(--dim);font-variant-numeric:tabular-nums}
 .health-day-head b{color:var(--fg);font-size:12px}
-.health-day-steps{font-size:15px;font-weight:800;margin-top:10px;white-space:nowrap}
+.health-day-head.sat span{color:var(--accent)}
+.health-day-head.sun span{color:var(--bad)}
+.health-day-sleep{font-size:15px;font-weight:800;margin-top:10px;white-space:nowrap;color:var(--accent)}
+.health-day-sleep .mi{font-size:15px;margin-right:3px}
 .health-day-bar{height:5px;background:#111821;border-radius:99px;overflow:hidden;margin:6px 0 10px}
 .health-day-bar i{display:block;height:100%;background:var(--teal);border-radius:inherit}
 .health-day-meta{display:grid;gap:5px;color:var(--dim);font-size:10.5px}
@@ -195,6 +202,39 @@ details[open] > summary::before{content:"▾ "}
 .health-metric b{color:var(--fg);font-weight:750}
 .health-metric.body b{color:var(--teal)}
 .health-metric.mind b{color:var(--bad)}
+.health-metric.sleep b{color:var(--accent)}
+.health-metric .mi{display:inline-block;width:16px;margin-right:2px;text-align:center}
+.health-metric.steps b{color:var(--teal)}
+.hub-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.hub-icon{display:grid;place-items:center;width:40px;height:40px;border-radius:13px;background:color-mix(in srgb,var(--accent) 16%,var(--card2));border:1px solid color-mix(in srgb,var(--accent) 45%,var(--line));color:var(--accent);font-size:21px}
+.hub-head b{font-size:20px;line-height:1.2}
+.hub-head span{display:block;color:var(--dim);font-size:11px;margin-top:2px}
+.hub-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.hub-link{display:flex;align-items:center;gap:8px;min-height:58px;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--card2);text-align:left;color:var(--fg)}
+.hub-link .hi{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:color-mix(in srgb,var(--accent) 13%,var(--card));font-size:16px;color:var(--accent);flex:none}
+.hub-link b{display:block;font-size:13px}.hub-link small{display:block;color:var(--dim);font-size:10px;margin-top:2px}
+.cal-modes{display:flex;gap:6px;flex-wrap:wrap;margin:-2px 0 11px}
+.cal-modes button{padding:6px 12px;border:1px solid var(--line);border-radius:99px;background:var(--card2);color:var(--dim);font-size:11px}
+.cal-modes button.on{background:var(--accent);border-color:var(--accent);color:#0D1015;font-weight:800}
+.cal-week{display:grid;grid-template-columns:repeat(7,minmax(76px,1fr));gap:7px;overflow-x:auto;padding:1px 1px 5px}
+.cal-week-day{min-height:118px;padding:9px;border:1px solid var(--line);border-radius:12px;background:var(--card2)}
+.cal-week-day.today{border-color:var(--accent)}
+.cal-week-day b{display:block;font-size:13px}.cal-week-day .wd{font-size:10px;color:var(--dim)}
+.cal-week-day .witem{display:block;margin-top:8px;padding:6px;border-left:3px solid var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent);border-radius:5px;font-size:10.5px;line-height:1.35}
+.day-live{position:relative;margin-top:10px}.day-live .nowline{position:absolute;left:37px;right:0;z-index:2;border-top:2px solid var(--bad);pointer-events:none}
+.day-live .nowline b{position:absolute;right:0;top:-17px;color:var(--bad);font-size:10px;background:var(--card);padding-left:4px}
+.money-insights{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:12px 0}
+.money-insight{padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--card2);min-width:0}
+.money-insight span{display:block;color:var(--dim);font-size:10px}.money-insight b{display:block;margin-top:4px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.spend-pulse{display:grid;gap:8px;margin-bottom:10px}
+.pulse-row{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:7px;align-items:center;font-size:11px;color:var(--dim)}
+.pulse-row .bar{margin:0;height:7px}.pulse-row .bar i{background:var(--accent)}
+.pulse-row b{font-size:12px;color:var(--fg);white-space:nowrap}
+.pulse-title{font-size:11px;color:var(--faint);margin-bottom:5px}
+.credit-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:12px}
+.credit-stat{padding:8px;border:1px solid rgba(190,220,232,.14);border-radius:9px;background:rgba(6,15,22,.24)}
+.credit-stat span{display:block;color:#A7B8C6;font-size:10px;line-height:1.3}.credit-stat b{display:block;margin-top:4px;color:#DFF7EA;font-size:13px;white-space:nowrap}
+.credit-stat b.danger{color:#F19A8B}.credit-stat b.green{color:#55D3A5}
 @media (max-width:430px){
   .health-save-row{align-items:stretch;flex-direction:column}
   .health-save-row .btn{width:100%}
@@ -231,18 +271,19 @@ details[open] > summary::before{content:"▾ "}
 body{padding-bottom:calc(env(safe-area-inset-bottom) + 82px)}
 .wrap [data-pg]{display:none}
 [data-pg][hidden]{display:none !important}
+body[data-tab="home"]  [data-pg="home"]{display:block}
 body[data-tab="today"] [data-pg="today"]{display:block}
 body[data-tab="money"] [data-pg="money"]{display:block}
 body[data-tab="cal"]   [data-pg="cal"]{display:block}
 body[data-tab="body"]  [data-pg="body"]{display:block}
 body[data-tab="pay"]   [data-pg="pay"]{display:block}
 .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:8;
-  display:grid;grid-template-columns:repeat(5,1fr);gap:2px;
+  display:grid;grid-template-columns:repeat(6,1fr);gap:2px;
   padding:8px 10px calc(env(safe-area-inset-bottom) + 8px);
   background:color-mix(in srgb,var(--bg) 90%,transparent);
   backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
   border-top:1px solid var(--line);box-shadow:0 -12px 28px rgba(0,0,0,.16)}
-.tabbar button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:7px 2px 8px;border-radius:12px;font-size:11.5px;font-weight:650;color:var(--faint)}
+.tabbar button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:7px 1px 8px;border-radius:12px;font-size:10.5px;font-weight:650;color:var(--faint)}
 .tabbar .navico{display:grid;place-items:center;width:24px;height:22px;font-size:17px;line-height:1;color:currentColor}
 .tabbar button.on{background:var(--card2);color:var(--fg);box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
 .tabbar button.on .navico{color:var(--accent)}
@@ -470,10 +511,23 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 
   <header class="top">
     <div class="mini-logo"><i></i><i></i><i></i></div>
-    <div class="t">まいにち</div>
+    <div class="t">生活ノート</div>
     <div class="streak" id="streakBox">—</div>
     <button class="gear" id="settingsOpen" aria-label="設定を開く" title="設定を開く"><span class="gearico" aria-hidden="true">⚙</span><span class="geartxt">設定</span></button>
   </header>
+
+  <!-- ===== HOME HUB ===== -->
+  <div class="card lead" data-pg="home">
+    <div class="hub-head"><span class="hub-icon">⌂</span><div><b>生活ノート</b><span>今日の記録と生活の入口</span></div></div>
+    <div class="hub-grid">
+      <button class="hub-link" data-gotab="today"><span class="hi">☀</span><span><b>きょう</b><small>習慣・流れ・やること</small></span></button>
+      <button class="hub-link" data-gotab="body"><span class="hi">♡</span><span><b>からだとこころ</b><small>歩数・睡眠・調子</small></span></button>
+      <button class="hub-link" data-gotab="money"><span class="hi">¥</span><span><b>おかね</b><small>残高・支出・カード</small></span></button>
+      <button class="hub-link" data-gotab="cal"><span class="hi">▦</span><span><b>こよみ</b><small>予定を月・週・日で見る</small></span></button>
+      <button class="hub-link" data-gotab="pay"><span class="hi">↻</span><span><b>しはらい</b><small>固定費・サブスク・入金</small></span></button>
+      <button class="hub-link" id="hubSettings"><span class="hi">⚙</span><span><b>設定</b><small>同期・習慣・カード上限</small></span></button>
+    </div>
+  </div>
 
   <!-- ===== 今日のテーマ（自分で決める一言） ===== -->
   <div class="card goal lead" data-pg="today">
@@ -596,10 +650,11 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   <!-- ===== SPEND ===== -->
   <div class="card" data-pg="money">
     <h2 class="section-title" data-icon="¥">使ったら押す</h2>
-    <div class="tiny spend-help">上のボタンは直近によく使った「金額＋分類」です。押すだけで記録できます。</div>
-    <div class="pads" id="pads"></div>
+    <div class="tiny spend-help">入力した支出は下の分析に自動でまとまります。記録は金額と分類を選ぶだけです。</div>
+    <div id="spendPulse"></div>
     <div class="seg" id="paySeg">
       <button data-pay="cash" class="on">現金・引落</button>
+      <button data-pay="paypay">PayPay</button>
       <button data-pay="card">カード</button>
     </div>
     <div class="spendform">
@@ -631,6 +686,11 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
         <div><span class="credit-caption">月末の概算</span><span class="credit-number small" id="cardProj">¥0</span></div>
       </div>
       <div class="credit-meter"><div class="credit-meter-head"><span>上限までの使用率</span><b id="cardCapLabel">上限未設定</b></div><div class="bar"><i id="cardBar" style="width:0%"></i></div></div>
+      <div class="credit-stats">
+        <div class="credit-stat"><span>使用率</span><b id="cardUsage">—</b></div>
+        <div class="credit-stat"><span>1日あたりの上限ペース</span><b id="cardDailyBudget">—</b></div>
+        <div class="credit-stat"><span>上限まであと</span><b id="cardRemaining">—</b></div>
+      </div>
       <div class="credit-message" id="cardMsg">上限を決めると、超えそうかどうかが分かります。</div>
     </div>
     <details>
@@ -771,6 +831,9 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
       <button class="btn ghost sm" data-calnav="-1">‹</button>
       <div style="font-weight:700;font-size:16px" id="calTitle">—</div>
       <button class="btn ghost sm" data-calnav="1">›</button>
+    </div>
+    <div class="cal-modes" id="calModes">
+      <button data-calview="month">月</button><button data-calview="week">週</button><button data-calview="day">日</button>
     </div>
     <div class="calgrid" id="calHead" style="margin-bottom:4px"></div>
     <div class="calgrid" id="calBody"></div>
@@ -913,6 +976,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 </div>
 
 <nav class="tabbar">
+  <button data-gotab="home"><span class="navico" aria-hidden="true">⌂</span><span>ホーム</span></button>
   <button data-gotab="today"><span class="navico" aria-hidden="true">⌂</span><span>きょう</span></button>
   <button data-gotab="money"><span class="navico" aria-hidden="true">¥</span><span>おかね</span></button>
   <button data-gotab="cal"><span class="navico" aria-hidden="true">▦</span><span>こよみ</span></button>
@@ -931,7 +995,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.11.0";         // version.txt と一致させること
+const BUILD = "0.12.0";         // version.txt と一致させること
 const KEY = "mainichi.v1";
 let staleBuild = false;         // 古い版のまま開きっぱなしになっていないか
 const CATS = ["食費","日用品","交通","医療","交際","その他"];
@@ -1131,15 +1195,15 @@ function render(){
 }
 
 /* ---------- タブ ---------- */
-const TABS = ["today","money","cal","body","pay"];
-const TAB_LABELS = {today:"きょう", money:"おかね", cal:"こよみ", body:"からだ", pay:"しはらい"};
+const TABS = ["home","today","money","cal","body","pay"];
+const TAB_LABELS = {home:"ホーム",today:"きょう", money:"おかね", cal:"こよみ", body:"からだ", pay:"しはらい"};
 function setTab(t){
-  if(!TABS.includes(t)) t = "today";
+  if(!TABS.includes(t)) t = "home";
   const changed = document.body.dataset.tab !== t;
   S.ui.tab = t; save();
   document.body.dataset.tab = t;
   const title = document.querySelector(".top .t");
-  if(title) title.textContent = `まいにち / ${TAB_LABELS[t]}`;
+  if(title) title.textContent = `生活ノート / ${TAB_LABELS[t]}`;
   document.querySelectorAll(".tabbar button").forEach(b =>
     b.classList.toggle("on", b.dataset.gotab === t));
   if(changed) window.scrollTo(0, 0);   // 同じタブを押しただけならスクロールしない
@@ -1243,13 +1307,14 @@ function todayMode(){
 function ring(done, total, color, big, label){
   const p = total > 0 ? Math.max(0, Math.min(done / total, 1)) : 0;
   const c = 2 * Math.PI * 16;
-  return `<div class="ring">
+  const key = label.includes("習慣") ? "habit" : label.includes("モーション") ? "motion" : "tasks";
+  return `<button class="ring" data-ring="${key}" title="${esc(label)}へ移動">
     <svg width="46" height="46" viewBox="0 0 46 46">
       <circle cx="23" cy="23" r="16" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="5"/>
       <circle cx="23" cy="23" r="16" fill="none" stroke="${color}" stroke-width="5"
         stroke-linecap="round" stroke-dasharray="${(c*p).toFixed(1)} ${c.toFixed(1)}"
         transform="rotate(-90 23 23)"/>
-    </svg><b>${esc(big)}</b>${esc(label)}</div>`;
+    </svg><b>${esc(big)}</b>${esc(label)}</button>`;
 }
 
 const areaOf = id => S.areas.find(a => a.id === id) || S.areas[0];
@@ -1298,12 +1363,13 @@ function modeView(){
       const done = (rec.slotDone || {})[f.slot.id];
       return `<div class="fl${done ? " done" : ""}">
         <span class="flbar" style="background:${a.color}"></span>
-        <button class="flmain" data-slot="${f.slot.id}">
+        <button class="flmain" data-flowjump="${f.slot.id}" title="こよみの日表示で編集">
           <span class="fltime">${f.slot.label}<br><b>${esc(f.slot.from)}</b></span>
           <span class="flname">${esc(a.label)}${a.urgent ? `<span class="chip late">急ぎ</span>` : ""}
             ${a.note ? `<span class="flnote">${esc(a.note)}</span>` : ""}</span>
         </button>
         <button class="fltick${done ? " on" : ""}" data-slotdone="${f.slot.id}">✓</button>
+      </div>
       </div>`;
     }).join("") + `</div>`;
 
@@ -1312,7 +1378,6 @@ function modeView(){
       urg.length ? `${esc(urg.map(a=>a.label).join("・"))} に急ぎの印。上の枠に入れています`
                  : "急ぎの印がないので、曜日どおりの順番です"}</div>`;
     if(m.why) html += `<div class="why">${esc(m.why)}</div>`;
-    html += `<button class="btn ghost sm" id="flowEdit" style="margin-top:10px">順番と急ぎを決める</button>`;
   }
 
   // リング3つ: 今日の毎日の分／今週のモーション／のこり用事
@@ -1427,7 +1492,7 @@ function moneyCalView(){
     const v = byDay[key] || 0;
     // 使った額の大きさを、背景の濃さで見せる（数字を読まなくても分かる）
     const bg = v ? `background:color-mix(in srgb,var(--accent) ${Math.round(10 + v/maxD*46)}%,var(--card2))` : "";
-    cells.push(`<button class="calcell${key === tk ? " today" : ""}" style="${bg}" data-calday="${key}">
+    cells.push(`<button class="calcell${key === tk ? " today" : ""}" style="${bg}" data-mcday="${key}">
       <span class="dn">${d}</span>
       ${v ? `<span class="sp" style="font-size:9.5px">${yen(v)}</span>` : ""}</button>`);
   }
@@ -1437,6 +1502,9 @@ function moneyCalView(){
   if(!total){ box.innerHTML = `<div class="tiny">この月の支出の記録はまだありません。</div>`; return; }
 
   const rows = Object.entries(byCat).sort((a,b) => b[1] - a[1]);
+  const avg = total / Math.max(1, Object.keys(byDay).length);
+  const peak = Object.entries(byDay).sort((a,b)=>b[1]-a[1])[0];
+  const peakLabel = peak ? `${Number(peak[0].slice(-2))}日　${yen(peak[1])}` : "—";
   // 積み上げ1本で割合、その下に内訳。円グラフより細い差が読める
   const bar = rows.map(([c,v]) =>
     `<i style="width:${(v/total*100).toFixed(1)}%;background:${CAT_COLORS[c] || "#6F7C93"}"></i>`).join("");
@@ -1446,6 +1514,7 @@ function moneyCalView(){
       <span class="amt" style="font-size:19px;font-weight:800">${yen(total)}</span>
     </div>
     <div style="display:flex;height:11px;border-radius:6px;overflow:hidden;gap:1.5px">${bar}</div>
+    <div class="money-insights"><div class="money-insight"><span>月の合計</span><b>${yen(total)}</b></div><div class="money-insight"><span>1日平均</span><b>${yen(avg)}</b></div><div class="money-insight"><span>一番使った日</span><b>${peakLabel}</b></div></div>
     <div style="margin-top:9px">${rows.map(([c,v]) => `
       <div class="item" style="padding:8px 0">
         <span style="width:11px;height:11px;border-radius:3px;flex:none;background:${CAT_COLORS[c] || "#6F7C93"}"></span>
@@ -1458,7 +1527,8 @@ function moneyCalView(){
 
 /* ---------- こよみ（月カレンダー＋その日の時間割） ---------- */
 let calCursor = ym(new Date());
-let calSel = null;
+let calSel = ymd(new Date());
+let calViewMode = "month";
 let planCat = "life";
 
 // 区分。色そのものが意味なので、記号は使わない
@@ -1546,7 +1616,34 @@ function duesOn(key){
 function calView(){
   const [y, m] = calCursor.split("-").map(Number);
   document.getElementById("calTitle").textContent = `${y}年${m}月`;
-  document.getElementById("calHead").innerHTML =
+  document.querySelectorAll("[data-calview]").forEach(b => b.classList.toggle("on", b.dataset.calview === calViewMode));
+  const head = document.getElementById("calHead"), body = document.getElementById("calBody"), legend = document.getElementById("calLegend");
+
+  if(calViewMode === "day"){
+    const key = calSel || ymd(now());
+    head.innerHTML = "";
+    body.innerHTML = `<div class="day-live">${timeline(key)}</div>`;
+    legend.innerHTML = `<span class="hd" style="width:100%">${key} の予定。下に編集欄があります。</span>`;
+    calDetail();
+    return;
+  }
+  if(calViewMode === "week"){
+    const base = new Date((calSel || ymd(now())) + "T00:00:00");
+    const mon = new Date(base); mon.setDate(base.getDate() - ((base.getDay()+6)%7));
+    const days = Array.from({length:7}, (_,i) => { const d=new Date(mon); d.setDate(mon.getDate()+i); return ymd(d); });
+    head.innerHTML = "";
+    body.innerHTML = `<div class="cal-week">${days.map(key => {
+      const dt = new Date(key+"T00:00:00"), blocks = allBlocks(key), errands = errandsOn(key);
+      const items = blocks.filter(b => b.cat !== "sleep").slice(0,3).map(b => `<span class="witem" style="border-left-color:${b.color || catOf(b.cat).color}">${esc(b.text)}</span>`).join("");
+      const plain = errands.filter(e => !e.from).slice(0,2).map(e => `<span class="witem" style="border-left-color:${prioOf(e.prio).color}">${esc(e.text)}</span>`).join("");
+      return `<button class="cal-week-day${key===ymd(now())?" today":""}" data-calday="${key}"><span class="wd">${"月火水木金土日"[iDay(key)]}</span><b>${dt.getMonth()+1}/${dt.getDate()}</b>${items||plain||`<span class="tiny" style="margin-top:12px">予定なし</span>`}</button>`;
+    }).join("")}</div>`;
+    legend.innerHTML = `<span class="hd" style="width:100%">週の予定。日付をタップすると、その日の編集欄を開きます。</span>`;
+    calDetail();
+    return;
+  }
+
+  head.innerHTML =
     ["月","火","水","木","金","土","日"].map(w => `<div class="calhd">${w}</div>`).join("");
 
   const days = new Date(y, m, 0).getDate();
@@ -1576,8 +1673,8 @@ function calView(){
       <span class="cbars">${bars}</span>
       ${first ? `<span class="cname">${esc(first.text)}</span>` : ""}</button>`);
   }
-  document.getElementById("calBody").innerHTML = cells.join("");
-  document.getElementById("calLegend").innerHTML =
+  body.innerHTML = cells.join("");
+  legend.innerHTML =
     `<span class="hd" style="width:100%;margin-bottom:-2px">時間の区分</span>`
     + TCATS.map(c => `<span><i style="background:${c.color}"></i>${c.label}</span>`).join("")
     + `<span class="hd" style="width:100%;margin:6px 0 -2px">やることの優先度</span>`
@@ -1592,6 +1689,8 @@ function calView(){
   calDetail();
 }
 
+function iDay(key){ return new Date(key+"T00:00:00").getDay() === 0 ? 6 : new Date(key+"T00:00:00").getDay()-1; }
+
 // その日の やること。ここで時刻を入れると、下の時間割に帯として並ぶ
 function errandRows(key){
   const list = errandsOn(key);
@@ -1603,14 +1702,15 @@ function errandRows(key){
       <div class="row" style="gap:10px">
       <span style="width:4px;align-self:stretch;border-radius:2px;flex:none;background:${p.color}"></span>
       <div class="grow">
-        <div class="nm">${esc(e.text)}</div>
+        <input value="${esc(e.text)}" data-etext="1" data-eid="${e.id}" aria-label="予定名">
         <div class="mt">${why}　${p.label}</div>
       </div>
       </div>
       <div class="edit-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));margin:6px 0 0">
         <input type="time" value="${esc(e.from || "")}" data-etime="from" data-eid="${e.id}">
         <input type="time" value="${esc(e.to || "")}" data-etime="to" data-eid="${e.id}">
-      </div>`;
+      </div>
+      <select data-eprio="1" data-eid="${e.id}" style="margin-top:6px">${PRIOS.map(q=>`<option value="${q.id}" ${q.id===(e.prio||"n")?"selected":""}>優先度：${q.label}</option>`).join("")}</select>`;
   }).join("") + `<div class="tiny" style="margin-top:6px">時刻を入れると、下の時間割に並びます。空のままでも構いません。</div></div>`;
 }
 
@@ -1628,7 +1728,10 @@ function timeline(key){
       ${b.id ? `data-delplan2="${b.id}"` : ""} title="${esc(b.text)}">${esc(b.text)}${
       hgt > 30 ? `<small>${toHHMM(a % 1440)} - ${toHHMM(z % 1440)}</small>` : ""}</div>`;
   }).join("");
-  return `<div class="tl" style="height:${H}px">${rows.join("")}
+  const minsNow = now().getHours()*60 + now().getMinutes();
+  const nowLine = key === ymd(now()) && minsNow >= TL_START && minsNow <= TL_END
+    ? `<div class="nowline" style="top:${((minsNow-TL_START)/(TL_END-TL_START)*H).toFixed(1)}px"><b>いま ${toHHMM(minsNow)}</b></div>` : "";
+  return `<div class="tl" style="height:${H}px">${rows.join("")}${nowLine}
     <div class="tlblocks">${blocks}</div></div>`;
 }
 
@@ -1815,13 +1918,20 @@ function learnedPads(){
   return top.concat([[null, "手入力"]]);
 }
 
+function spendPulse(){
+  const cut = new Date(); cut.setDate(cut.getDate()-29); const from = ymd(cut);
+  const byPay = {cash:0,paypay:0,card:0}, byCat = {};
+  for(const s of S.spends){ if(s.d < from) continue; const a=+s.amt||0; byPay[s.pay==="card"?"card":s.pay==="paypay"?"paypay":"cash"] += a; byCat[s.cat]=(byCat[s.cat]||0)+a; }
+  const total = Object.values(byPay).reduce((a,b)=>a+b,0), max = Math.max(1,...Object.values(byPay));
+  const names={cash:"現金・引落",paypay:"PayPay",card:"カード"};
+  const payRows=Object.entries(byPay).map(([k,v])=>`<div class="pulse-row"><span>${names[k]}</span><div class="bar"><i style="width:${(v/max*100).toFixed(1)}%;background:${k==="card"?"var(--bad)":k==="paypay"?"var(--warn)":"var(--ok)"}"></i></div><b>${yen(v)}</b></div>`).join("");
+  const cmax=Math.max(1,...Object.values(byCat));
+  const catRows=Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v])=>`<div class="pulse-row"><span>${esc(k)}</span><div class="bar"><i style="width:${(v/cmax*100).toFixed(1)}%;background:${CAT_COLORS[k]||"var(--accent)"}"></i></div><b>${yen(v)}</b></div>`).join("");
+  return `<div class="spend-pulse"><div class="pulse-title">直近30日の支払い方法　合計 ${yen(total)}</div>${payRows}<div class="pulse-title" style="margin-top:3px">分類別（上位3つ）</div>${catRows||`<div class="tiny">記録が増えるとここに傾向が出ます。</div>`}</div>`;
+}
+
 function spendView(){
-  const pads = document.getElementById("pads");
-  const padList = learnedPads();
-  pads.innerHTML = padList.map((p,i)=>
-    `<button class="pad" data-pad="${i}">${p[0]?yen(p[0]):"＋"}<small>${esc(p[1])}</small></button>`
-  ).join("");
-  pads.dataset.map = JSON.stringify(padList);
+  document.getElementById("spendPulse").innerHTML = spendPulse();
   const sel = document.getElementById("spCat");
   if(!sel.dataset.built){
     sel.innerHTML = CATS.map(c=>`<option>${c}</option>`).join("");
@@ -1834,7 +1944,7 @@ function spendView(){
   const list = S.spends.filter(s=>s.d===d).slice().reverse();
   document.getElementById("todayList").innerHTML = list.length
     ? list.map(s=>`<div class="item"><div class="grow"><div class="nm">${esc(s.cat)}${
-          s.pay==="card"?`<span class="chip due">カード</span>`:""}</div>
+          s.pay==="card"?`<span class="chip due">カード</span>`:s.pay==="paypay"?`<span class="chip" style="color:var(--warn)">PayPay</span>`:`<span class="chip">現金・引落</span>`}</div>
         <div class="mt">${s.t||""}</div></div>
         <div class="amt">${yen(s.amt)}</div>
         <button class="del" data-delspend="${s.id}">×</button></div>`).join("")
@@ -1856,6 +1966,14 @@ function cardView(){
   if(document.activeElement !== capEl) capEl.value = cap;
   const capLabel = document.getElementById("cardCapLabel");
   if(capLabel) capLabel.textContent = cap > 0 ? `上限 ${yen(cap)}` : "上限未設定";
+  const usage = document.getElementById("cardUsage"), daily = document.getElementById("cardDailyBudget"), remain = document.getElementById("cardRemaining");
+  if(cap > 0){
+    const pct = c.cardNow / cap * 100, dayBudget = cap / lastDay(now()), left = cap - c.cardNow;
+    usage.textContent = `${pct.toFixed(0)}%`; daily.textContent = yen(dayBudget); remain.textContent = yen(left);
+    usage.className = pct >= 100 ? "danger" : "green";
+    daily.className = c.cardProj > cap ? "danger" : "green";
+    remain.className = left < 0 ? "danger" : "green";
+  } else { usage.textContent = daily.textContent = remain.textContent = "—"; }
 
   const msg = document.getElementById("cardMsg");
   if(cap <= 0) msg.textContent = "上限を決めると、超えそうかどうかがここに出ます。";
@@ -2104,14 +2222,14 @@ function addSpend(amt, cat, pay){
   S.spends.push({ id:uid(), d:ymd(d), t:`${d.getHours()}:${String(d.getMinutes()).padStart(2,"0")}`,
                   amt, cat, pay });
   // カードは今の残高を動かさない。来月の請求として積み上がる
-  if(pay === "cash"){ const a = primaryAcct(); if(a) a.bal = (+a.bal||0) - amt; }
+  if(pay === "cash" || pay === "paypay"){ const a = primaryAcct(); if(a) a.bal = (+a.bal||0) - amt; }
   save(); render();
   toast(pay === "card" ? `${yen(amt)}　来月の請求に追加` : `${yen(amt)} を記録`);
 }
 
 /* ---------- events ---------- */
 document.addEventListener("click", e => {
-  const t = e.target.closest("[data-pad],[data-delspend],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate],[data-habit],[data-task],[data-deltask],[data-delplan],[data-gotab],[data-calnav],[data-calday],[data-err],[data-delerr],[data-applied],[data-delhabit],[data-plancat],[data-delplan2],[data-errsort],[data-errprio],[data-paysort],[data-subsort],[data-healthsort],[data-planit],[data-unplan],[data-mcnav],[data-slot],[data-slotdone],[data-urgent],#lightBtn,#flowEdit");
+  const t = e.target.closest("[data-delspend],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate],[data-habit],[data-task],[data-deltask],[data-delplan],[data-gotab],[data-calnav],[data-calday],[data-calview],[data-ring],[data-flowjump],[data-err],[data-delerr],[data-applied],[data-delhabit],[data-plancat],[data-delplan2],[data-errsort],[data-errprio],[data-paysort],[data-subsort],[data-healthsort],[data-healthmetric],[data-planit],[data-unplan],[data-mcnav],[data-slotdone],[data-urgent],#lightBtn,#hubSettings");
   if(!t) return;
 
   if(t.dataset.delhabit){
@@ -2121,26 +2239,33 @@ document.addEventListener("click", e => {
   }
 
   if(t.dataset.gotab){ setTab(t.dataset.gotab); return; }
+  if(t.id === "hubSettings"){ openSettings(true); return; }
   if(t.dataset.healthsort){ healthSort = t.dataset.healthsort; healthView(); return; }
+  if(t.dataset.healthmetric){ healthMetricState[t.dataset.healthmetric] = !healthMetricState[t.dataset.healthmetric]; healthView(); return; }
+  if(t.dataset.calview){ calViewMode = t.dataset.calview; calView(); return; }
+  if(t.dataset.ring){
+    if(t.dataset.ring === "habit"){
+      setTab("today"); document.getElementById("habitRow")?.scrollIntoView({behavior:"smooth",block:"center"});
+    } else if(t.dataset.ring === "motion"){
+      setTab("cal"); calViewMode = "week"; calView(); document.getElementById("calDetail")?.scrollIntoView({behavior:"smooth",block:"start"});
+    } else {
+      setTab("today"); document.getElementById("taskList")?.scrollIntoView({behavior:"smooth",block:"center"});
+    }
+    return;
+  }
   if(t.dataset.calnav || t.dataset.calday){ /* 見るだけの操作は読み取り専用でも通す */ }
   else if(!canWrite()) return;
 
-  if(t.id === "flowEdit"){ openSettings(true); return; }
   if(t.dataset.urgent){
     const a = areaOf(t.dataset.urgent);
     a.urgent = !a.urgent; save(); render(); settingsView();
     toast(a.urgent ? `${a.label} を急ぎにしました` : "急ぎを外しました");
     return;
   }
-  // 枠をタップすると領域が順に入れ替わる。長押しやドラッグは要らない
-  if(t.dataset.slot){
-    const rec = dayRec(ymd(now()));
-    const cur = (rec.flow || {})[t.dataset.slot]
-      || flowFor(ymd(now()), todayMode().mode).find(f => f.slot.id === t.dataset.slot).areaId;
-    const ids = S.areas.map(a => a.id);
-    rec.flow = rec.flow || {};
-    rec.flow[t.dataset.slot] = ids[(ids.indexOf(cur) + 1) % ids.length];
-    save(); render(); return;
+  if(t.dataset.flowjump){
+    setTab("cal"); calViewMode = "day"; calSel = ymd(now()); calCursor = ym(new Date()); calView();
+    document.getElementById("calDetail")?.scrollIntoView({behavior:"smooth",block:"start"});
+    return;
   }
   if(t.dataset.slotdone){
     const rec = dayRec(ymd(now()));
@@ -2165,7 +2290,8 @@ document.addEventListener("click", e => {
   }
 
   if(t.dataset.calnav){
-    calCursor = addMonths(calCursor, +t.dataset.calnav); calSel = null;
+    calCursor = addMonths(calCursor, +t.dataset.calnav);
+    calSel = calCursor === ym(new Date()) ? ymd(now()) : `${calCursor}-01`;
     calView(); return;
   }
   if(t.dataset.mcnav){ mcCursor = addMonths(mcCursor, +t.dataset.mcnav); moneyCalView(); return; }
@@ -2287,7 +2413,8 @@ function sleepMin(bed, wake){
 }
 const fmtSleep = m => m == null ? "—" : `${Math.floor(m/60)}時間${String(m%60).padStart(2,"0")}分`;
 let healthDraft = null;
-let healthSort = "date";
+let healthSort = "sleep";
+const healthMetricState = {steps:true, sleep:true, body:true, mind:true};
 
 function healthDraftFor(day){
   if(!healthDraft || healthDraft.day !== day)
@@ -2333,7 +2460,7 @@ function healthView(){
     b.classList.toggle("on", (shown[b.dataset.rate] || 0) === +b.dataset.val));
   document.getElementById("scatBox").innerHTML = healthCharts();
   document.getElementById("corrBox").innerHTML = corrText();
-  document.getElementById("healthSorts").innerHTML = [["date","日付"],["steps","歩数"],["sleep","睡眠"],["mind","心"],["body","体"]].map(([id,lab]) =>
+  document.getElementById("healthSorts").innerHTML = [["sleep","睡眠"],["date","日付"],["steps","歩数"],["body","体"],["mind","心"]].map(([id,lab]) =>
     `<button data-healthsort="${id}" class="${healthSort===id?"on":""}">${lab}</button>`).join("");
   document.getElementById("hList").innerHTML = healthHistory();
   healthDirtyPaint();
@@ -2357,46 +2484,38 @@ function healthHistory(){
   });
   return `<div class="health-week-wrap"><div class="health-week">${ordered.map(d=>{
     const x = S.health[d] || {}, sm = sleepMin(x.bed,x.wake), dt = new Date(d+"T00:00:00"), has = Object.keys(x).length > 0;
+    const wdClass = dt.getDay()===0 ? " sun" : dt.getDay()===6 ? " sat" : "";
     return `<div class="health-day${d===ymd(now())?" today":""}${has?"":" empty"}">
-      <div class="health-day-head"><b>${dt.getMonth()+1}/${dt.getDate()}</b><span>${"日月火水木金土"[dt.getDay()]}</span></div>
-      <div class="health-day-steps">${x.steps != null ? x.steps.toLocaleString("ja-JP")+"歩" : "—"}</div>
+      <div class="health-day-head${wdClass}"><b>${dt.getMonth()+1}/${dt.getDate()}</b><span>${"日月火水木金土"[dt.getDay()]}</span></div>
+      <div class="health-day-sleep"><i class="mi">◐</i>${fmtSleep(sm)}</div>
       <div class="health-day-bar"><i style="width:${((x.steps||0)/maxS*100).toFixed(0)}%"></i></div>
-      <div class="health-day-meta"><div class="health-metric"><span>睡眠</span><b>${fmtSleep(sm)}</b></div><div class="health-metric body"><span>体</span><b>${x.body ? x.body+" / 5" : "—"}</b></div><div class="health-metric mind"><span>心</span><b>${x.mind ? x.mind+" / 5" : "—"}</b></div></div>
+      <div class="health-day-meta"><div class="health-metric steps"><span><i class="mi">👣</i>歩数</span><b>${x.steps != null ? x.steps.toLocaleString("ja-JP")+"歩" : "—"}</b></div><div class="health-metric sleep"><span><i class="mi">◐</i>睡眠</span><b>${fmtSleep(sm)}</b></div><div class="health-metric body"><span><i class="mi">♧</i>からだ</span><b>${x.body ? x.body+" / 5" : "—"}</b></div><div class="health-metric mind"><span><i class="mi">♡</i>こころ</span><b>${x.mind ? x.mind+" / 5" : "—"}</b></div></div>
     </div>`;
   }).join("")}</div></div>`;
 }
 
 function healthCharts(){
-  const days = healthDays(), W = 180, H = 74, pad = 8;
+  const days = healthDays(), W = 360, H = 178, L = 28, R = 8, T = 12, B = 31;
+  const x = i => L + (W-L-R) * i / Math.max(1, days.length-1);
   const labels = days.map(d => { const x = new Date(d+"T00:00:00"); return `${x.getMonth()+1}/${x.getDate()}`; });
-  const chart = (title, unit, color, values, max, kind) => {
-    const usable = W - pad*2, base = H - 17;
-    const x = i => pad + (usable * i / Math.max(1, values.length-1));
-    const y = v => base - Math.max(0, Math.min(1, v/max)) * (base-8);
-    let marks = `<line x1="${pad}" y1="${base}" x2="${W-pad}" y2="${base}" stroke="var(--line)"/>`;
-    if(kind === "bar") marks += values.map((v,i)=>{
-      if(!v) return "";
-      const bw = Math.max(6, usable/values.length*.48);
-      return `<rect x="${x(i)-bw/2}" y="${y(v)}" width="${bw}" height="${Math.max(1,base-y(v))}" rx="3" fill="${color}" opacity=".85"/>`;
-    }).join("");
-    else {
-      const pts = values.map((v,i)=>v ? `${x(i)},${y(v)}` : "").filter(Boolean);
-      if(pts.length > 1) marks += `<polyline points="${pts.join(" ")}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`;
-      marks += values.map((v,i)=>v ? `<circle cx="${x(i)}" cy="${y(v)}" r="3" fill="${color}"/>` : "").join("");
-    }
-    marks += labels.map((lab,i)=>`<text x="${x(i)}" y="${H-2}" text-anchor="middle" fill="var(--faint)" font-size="8">${lab}</text>`).join("");
-    return `<div class="health-chart"><div class="health-chart-title"><b>${title}</b><span>${unit}</span></div><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${marks}</svg></div>`;
-  };
-  const steps = days.map(d => +(S.health[d]||{}).steps || 0);
-  const sleep = days.map(d => { const h=S.health[d]||{}; const m=sleepMin(h.bed,h.wake); return m ? m/60 : 0; });
-  const body = days.map(d => +(S.health[d]||{}).body || 0);
-  const mind = days.map(d => +(S.health[d]||{}).mind || 0);
-  return `<div class="health-chart-grid">
-    ${chart("歩数","歩", "var(--teal)", steps, Math.max(1000,...steps), "bar")}
-    ${chart("睡眠時間","時間", "var(--accent)", sleep, 10, "bar")}
-    ${chart("体の調子","1–5", "var(--teal)", body, 5, "line")}
-    ${chart("心の調子","1–5", "var(--bad)", mind, 5, "line")}
-  </div>`;
+  const defs = [
+    {id:"steps", label:"歩数", icon:"👣", color:"var(--teal)", unit:"歩", max:Math.max(10000,...days.map(d=>+(S.health[d]||{}).steps||0)), vals:days.map(d=>+(S.health[d]||{}).steps||0)},
+    {id:"sleep", label:"睡眠時間", icon:"◐", color:"var(--accent)", unit:"時間", max:10, vals:days.map(d=>{const h=S.health[d]||{},m=sleepMin(h.bed,h.wake);return m==null?null:m/60})},
+    {id:"body", label:"からだ", icon:"♧", color:"var(--ok)", unit:"1–5", max:5, vals:days.map(d=>+(S.health[d]||{}).body||null)},
+    {id:"mind", label:"こころ", icon:"♡", color:"var(--bad)", unit:"1–5", max:5, vals:days.map(d=>+(S.health[d]||{}).mind||null)}
+  ];
+  const base = H-B;
+  let marks = `<line x1="${L}" y1="${base}" x2="${W-R}" y2="${base}" stroke="var(--line)"/>`;
+  [0,25,50,75,100].forEach(v=>{ const yy=base-(base-T)*v/100; marks += `<line x1="${L}" y1="${yy}" x2="${W-R}" y2="${yy}" stroke="var(--line)" opacity=".55"/><text x="2" y="${yy+4}" fill="var(--faint)" font-size="10">${v}</text>`; });
+  for(const d of defs){
+    if(!healthMetricState[d.id]) continue;
+    const pts = d.vals.map((v,i)=>v==null?null:`${x(i)},${(base-(base-T)*Math.max(0,Math.min(1,v/d.max))*1).toFixed(1)}`).filter(Boolean);
+    if(pts.length>1) marks += `<polyline points="${pts.join(" ")}" fill="none" stroke="${d.color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
+    marks += d.vals.map((v,i)=>v==null?"":`<circle cx="${x(i)}" cy="${(base-(base-T)*Math.max(0,Math.min(1,v/d.max))).toFixed(1)}" r="3.7" fill="${d.color}"/>`).join("");
+  }
+  marks += labels.map((lab,i)=>`<text x="${x(i)}" y="${H-8}" text-anchor="middle" fill="var(--faint)" font-size="10">${lab}</text>`).join("");
+  const buttons = defs.map(d=>`<button data-healthmetric="${d.id}" class="${healthMetricState[d.id]?"on":""}" style="color:${d.color}"><span class="mi">${d.icon}</span>${d.label}<small>${d.unit}</small></button>`).join("");
+  return `<div class="health-metrics">${buttons}</div><div class="health-chart"><div class="health-chart-title"><b>同じ日付で比較</b><span>0–100にそろえて表示</span></div><svg viewBox="0 0 ${W} ${H}">${marks}</svg><div class="health-chart-note">表示をオン／オフして、睡眠・歩数・からだ・こころの変化を重ねて見られます。</div></div>`;
 }
 
 // 歩数×調子の相関（ピアソンのr）。相関は「関係の強さ」で、原因の証明ではない
@@ -2464,13 +2583,13 @@ function corrText(){
   }
   const line = (label, pairs) => {
     if(pairs.length < 7)
-      return `${label} × 歩数: あと${7-pairs.length}日分たまると出ます（歩数と評価が両方ある日が7日必要）`;
+      return `${label}：あと${7-pairs.length}日`;
     const r = pearson(pairs);
-    if(r == null) return `${label} × 歩数: 計算できません（値が全部同じ）`;
+    if(r == null) return `${label}：計算できません`;
     const s = Math.abs(r) < .2 ? "ほぼ関係なし" : Math.abs(r) < .45 ? "弱い関係"
             : Math.abs(r) < .7 ? "はっきりした関係" : "強い関係";
     const dir = Math.abs(r) < .2 ? "" : (r > 0 ? "。歩いた日ほど調子が良い傾向" : "。歩いた日ほど調子が低い傾向");
-    return `${label} × 歩数: ${s}（r=${r.toFixed(2)}、${pairs.length}日分）${dir}`;
+    return `${label}：${s}（r=${r.toFixed(2)}）${dir}`;
   };
   return line("歩数 × 心", pm) + "<br>" + line("歩数 × 体", pb) + "<br>" +
     line("睡眠 × 心", sm) + "<br>" + line("睡眠 × 体", sb);
@@ -2657,6 +2776,16 @@ document.addEventListener("change", e => {
     if(!canWrite()) return render();
     const e = S.errands.find(x => x.id === el.dataset.eid);
     if(e){ e[el.dataset.etime] = el.value; save(); calView(); }
+    return;
+  }
+  if(el.dataset.eprio || el.dataset.etext){
+    if(!canWrite()) return render();
+    const item = S.errands.find(x => x.id === el.dataset.eid);
+    if(item){
+      if(el.dataset.eprio) item.prio = el.value;
+      else item.text = el.value.trim() || item.text;
+      save(); calView();
+    }
     return;
   }
   const map = {fx:"fixed", ic:"incomes", ac:"accounts", sb:"subs"};

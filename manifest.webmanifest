@@ -1,7 +1,7 @@
 {
-  "name": "今日使えるお金",
-  "short_name": "今日のお金",
-  "description": "残高・固定支払い・入金予定から、今日いくらまで使えるかを1行で出す",
+  "name": "生活ノート",
+  "short_name": "生活ノート",
+  "description": "からだ・こころ・予定・おかねを一つにまとめる生活ノート",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
