@@ -205,6 +205,26 @@ details[open] > summary::before{content:"▾ "}
 .health-metric.sleep b{color:var(--accent)}
 .health-metric .mi{display:inline-block;width:16px;margin-right:2px;text-align:center}
 .health-metric.steps b{color:var(--teal)}
+.health-range{margin-top:10px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+.health-range button{padding:8px 10px;font-size:12px}
+.health-day-focus{padding:14px;border:1px solid color-mix(in srgb,var(--violet) 42%,var(--line));border-radius:13px;background:color-mix(in srgb,var(--violet) 8%,var(--card2))}
+.health-day-focus.empty{opacity:.8}
+.health-focus-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;border-bottom:1px solid color-mix(in srgb,var(--line) 72%,transparent);padding-bottom:10px}
+.health-focus-head b{font-size:22px;font-variant-numeric:tabular-nums}
+.health-focus-head span{color:var(--dim);font-size:12px}
+.health-focus-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+.health-focus-metric{display:grid;grid-template-columns:22px auto;align-items:center;column-gap:5px;min-width:0;padding:10px 9px;border-radius:11px;background:var(--card);border:1px solid var(--line)}
+.health-focus-metric .mi{grid-row:span 2;display:grid;place-items:center;font-size:18px}
+.health-focus-metric span{font-size:11px;color:var(--dim);line-height:1.1}
+.health-focus-metric b{display:block;white-space:nowrap;font-size:18px;line-height:1.15;font-variant-numeric:tabular-nums}
+.health-focus-metric b small{font-size:11px;font-weight:700;margin-left:2px;color:inherit}
+.health-focus-metric.sleep .mi,.health-focus-metric.sleep b{color:var(--accent)}
+.health-focus-metric.steps .mi,.health-focus-metric.steps b{color:var(--teal)}
+.health-focus-metric.body .mi,.health-focus-metric.body b{color:var(--ok)}
+.health-focus-metric.mind .mi,.health-focus-metric.mind b{color:var(--bad)}
+.health-dots{display:inline-flex;gap:3px;align-items:center;height:18px}
+.health-dots i{width:10px;height:10px;border-radius:50%;background:var(--line);border:1px solid var(--faint)}
+.health-dots i.on{background:currentColor;border-color:currentColor}
 .hub-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
 .hub-icon{display:grid;place-items:center;width:40px;height:40px;border-radius:13px;background:color-mix(in srgb,var(--accent) 16%,var(--card2));border:1px solid color-mix(in srgb,var(--accent) 45%,var(--line));color:var(--accent);font-size:21px}
 .hub-head b{font-size:20px;line-height:1.2}
@@ -279,8 +299,26 @@ body[data-tab="money"] [data-pg="money"]{display:block}
 body[data-tab="cal"]   [data-pg="cal"]{display:block}
 body[data-tab="body"]  [data-pg="body"]{display:block}
 body[data-tab="pay"]   [data-pg="pay"]{display:block}
+.money-switch,.money-glance{display:block}
+.money-switch{margin-top:0}
+.money-switch-title{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:8px}
+.section-kicker{font-size:14px;font-weight:800;color:var(--fg)}
+.money-seg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin-top:0}
+.money-seg button{min-width:0;padding:9px 5px;font-size:12px;white-space:nowrap}
+.money-glance{padding:16px 18px;background:linear-gradient(145deg,color-mix(in srgb,var(--ok) 10%,var(--card)),var(--card));border-color:color-mix(in srgb,var(--ok) 28%,var(--line))}
+.money-glance-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.money-glance-head .section-title{margin:0}
+.money-glance-amount{font-size:clamp(30px,9vw,44px);font-weight:850;line-height:1.05;margin-top:12px;color:var(--ok);font-variant-numeric:tabular-nums}
+.money-glance-amount.neg{color:var(--bad)}
+.money-glance-amount + .tiny{margin-top:7px}
+[data-money-group]{display:none}
+body[data-tab="money"] [data-money-group="overview"]{display:block}
+body[data-tab="money"][data-money-section="expense"] [data-money-group="expense"],
+body[data-tab="money"][data-money-section="income"] [data-money-group="income"],
+body[data-tab="money"][data-money-section="scheduled"] [data-money-group="scheduled"],
+body[data-tab="money"][data-money-section="analysis"] [data-money-group="analysis"]{display:block}
 .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:8;
-  display:grid;grid-template-columns:repeat(6,1fr);gap:2px;
+  display:none;grid-template-columns:1fr;gap:2px;
   padding:8px 10px calc(env(safe-area-inset-bottom) + 8px);
   background:color-mix(in srgb,var(--bg) 90%,transparent);
   backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
@@ -290,6 +328,8 @@ body[data-tab="pay"]   [data-pg="pay"]{display:block}
 .tabbar button.on{background:var(--card2);color:var(--fg);box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
 .tabbar button.on .navico{color:var(--accent)}
 .tabbar button.on::after{content:"";display:block;width:18px;height:3px;border-radius:2px;background:var(--accent);margin-top:1px}
+body:not([data-tab="home"]) .tabbar{display:grid}
+.tabbar button{max-width:220px;margin:0 auto;width:100%}
 .toast{bottom:calc(env(safe-area-inset-bottom) + 94px)}
 
 /* ---- header ---- */
@@ -300,6 +340,9 @@ body[data-tab="pay"]   [data-pg="pay"]{display:block}
 .mini-logo i:nth-child(2){height:13px;background:#7AA7F0}
 .mini-logo i:nth-child(3){height:19px;background:#5ECFA0}
 .top .t{font-size:17px;font-weight:800;flex:1;letter-spacing:.04em}
+.home-back{display:none;align-items:center;gap:4px;min-height:38px;padding:6px 9px;border-radius:11px;border:1px solid var(--line);background:var(--card2);color:var(--dim);font-size:11px;font-weight:750;flex:none}
+body:not([data-tab="home"]) .home-back{display:flex}
+.home-back span:first-child{font-size:18px;line-height:1;color:var(--accent)}
 .streak{font-size:12.5px;color:var(--dim);background:var(--card);
   border:1px solid var(--line);border-radius:99px;padding:4px 11px}
 .streak b{color:var(--ok);font-size:14px}
@@ -493,7 +536,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 }
 </style>
 </head>
-<body data-tab="today">
+<body data-tab="home">
 <div class="rotate">
   <div><div class="mini-logo" style="justify-content:center;margin-bottom:14px"><i></i><i></i><i></i></div>
   画面を縦にしてください。<br>このアプリは縦向きで使います。</div>
@@ -514,6 +557,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   <header class="top">
     <div class="mini-logo"><i></i><i></i><i></i></div>
     <div class="t">生活ノート</div>
+    <button class="home-back" data-gotab="home" aria-label="ホームへ戻る"><span aria-hidden="true">⌂</span><span>ホーム</span></button>
     <div class="streak" id="streakBox">—</div>
     <button class="gear" id="settingsOpen" aria-label="設定を開く" title="設定を開く"><span class="gearico" aria-hidden="true">⚙</span><span class="geartxt">設定</span></button>
   </header>
@@ -524,9 +568,9 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
     <div class="hub-grid">
       <button class="hub-link" data-gotab="today"><span class="hi">☀</span><span><b>きょう</b><small>習慣・流れ・やること</small></span></button>
       <button class="hub-link" data-gotab="body"><span class="hi">♡</span><span><b>からだとこころ</b><small>歩数・睡眠・調子</small></span></button>
-      <button class="hub-link" data-gotab="money"><span class="hi">¥</span><span><b>おかね</b><small>残高・支出・カード</small></span></button>
+      <button class="hub-link" data-gotab="money"><span class="hi">¥</span><span><b>おかね</b><small>今日使える・残高・支出・収入</small></span></button>
       <button class="hub-link" data-gotab="cal"><span class="hi">▦</span><span><b>こよみ</b><small>予定を月・週・日で見る</small></span></button>
-      <button class="hub-link" data-gotab="pay"><span class="hi">↻</span><span><b>しはらい</b><small>固定費・サブスク・入金</small></span></button>
+      <button class="hub-link" data-gotab="money" data-moneysection="scheduled"><span class="hi">◉</span><span><b>支払い予定</b><small>固定費・サブスク・カード請求</small></span></button>
       <button class="hub-link" id="hubSettings"><span class="hi">⚙</span><span><b>設定</b><small>同期・習慣・カード上限</small></span></button>
     </div>
   </div>
@@ -545,12 +589,28 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   <div class="card mode" id="modeCard" data-pg="today"></div>
 
   <!-- ===== HERO ===== -->
-  <div class="card hero" data-pg="money">
+  <div class="card hero" data-pg="money" data-money-group="overview">
     <div class="lab">今日 使えるお金</div>
     <div class="big num" id="heroAmt">¥0</div>
     <div class="sub" id="heroSub">—</div>
     <div class="bar"><i id="heroBar" style="width:0%"></i></div>
     <div class="tiny" id="heroFoot">—</div>
+  </div>
+
+  <div class="card money-glance" data-pg="money" data-money-group="overview">
+    <div class="money-glance-head"><h2 class="section-title" data-icon="▣">今残っているお金</h2><span class="tiny">支払い予定を差し引いた見込み</span></div>
+    <div id="moneyRemainingTop" class="money-glance-amount">¥0</div>
+    <div id="moneyRemainingTopSub" class="tiny">口座・手元の残高から、固定費とカード請求予定を差し引いています。</div>
+  </div>
+
+  <div class="card money-switch" data-pg="money" data-money-group="overview">
+    <div class="money-switch-title"><span class="section-kicker">おかねの見方</span><span class="tiny">支出・収入・予定・分析を切り替え</span></div>
+    <div class="seg money-seg" id="moneySectionSeg">
+      <button data-moneysection="expense" class="on">支出</button>
+      <button data-moneysection="income">収入</button>
+      <button data-moneysection="scheduled">支払い予定</button>
+      <button data-moneysection="analysis">分析</button>
+    </div>
   </div>
 
   <!-- ===== 毎日つけるもの ===== -->
@@ -596,7 +656,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   </div>
 
   <!-- ===== SHORTFALL ===== -->
-  <div class="card alert" id="shortCard" data-pg="money" hidden>
+  <div class="card alert" id="shortCard" data-pg="money" data-money-group="expense" hidden>
     <h2 class="section-title" data-icon="!">今月の不足額</h2>
     <div class="amt num" id="shortAmt">¥0</div>
     <div class="dim" style="margin-top:6px">これは頑張りで埋まる数字ではなく、支払額を収入に合わせて引き直す手続きの対象です。この金額をそのまま持って行ってください。</div>
@@ -650,10 +710,9 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   </div>
 
   <!-- ===== SPEND ===== -->
-  <div class="card" data-pg="money">
+  <div class="card" data-pg="money" data-money-group="expense">
     <h2 class="section-title" data-icon="¥">使ったら押す</h2>
     <div class="tiny spend-help">入力した支出は下の分析に自動でまとまります。記録は金額と分類を選ぶだけです。</div>
-    <div id="spendPulse"></div>
     <div class="seg" id="paySeg">
       <button data-pay="cash" class="on">現金・引落</button>
       <button data-pay="paypay">PayPay</button>
@@ -668,7 +727,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   </div>
 
   <!-- ===== SPEND CALENDAR ===== -->
-  <div class="card" data-pg="money">
+  <div class="card" data-pg="money" data-money-group="analysis">
     <div class="row between" style="margin-bottom:10px">
       <button class="btn ghost sm" data-mcnav="-1">‹</button>
       <div style="font-weight:700;font-size:15px" id="mcTitle">—</div>
@@ -679,8 +738,14 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
     <div id="mcBreak" style="margin-top:14px"></div>
   </div>
 
+  <div class="card" data-pg="money" data-money-group="analysis" id="spendAnalysisCard">
+    <h2 class="section-title" data-icon="▥">直近30日の支払い分析</h2>
+    <div class="tiny" style="margin:-4px 0 9px">記録とは分けて、支払い方法と分類の傾向だけを見ます。</div>
+    <div id="spendPulse"></div>
+  </div>
+
   <!-- ===== CARD PROJECTION ===== -->
-  <div class="card" id="cardCard" data-pg="money">
+  <div class="card" id="cardCard" data-pg="money" data-money-group="expense">
     <div class="credit-card-face">
       <div class="credit-card-top"><span class="credit-chip">CARD</span><span class="credit-label">来月のカード請求</span></div>
       <div class="credit-card-grid">
@@ -706,7 +771,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   </div>
 
   <!-- ===== UPCOMING ===== -->
-  <div class="card lead" data-pg="pay">
+  <div class="card lead" data-pg="money" data-money-group="scheduled">
     <h2 class="section-title" data-icon="▰">今月の固定費 <span class="tiny" id="fixedTotal"></span></h2>
     <div class="sorts" id="paySorts"></div>
     <div id="fixedList"></div>
@@ -722,7 +787,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   </div>
 
   <!-- ===== SUBSCRIPTIONS ===== -->
-  <div class="card" data-pg="pay">
+  <div class="card" data-pg="money" data-money-group="scheduled">
     <h2 class="section-title" data-icon="↻">サブスクの支払い <span class="tiny" id="subTotal"></span></h2>
     <div class="sorts" id="subSorts"></div>
     <div id="subList"></div>
@@ -738,7 +803,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   </div>
 
   <!-- ===== INCOME / BENEFIT ===== -->
-  <div class="card" data-pg="money">
+  <div class="card" data-pg="money" data-money-group="income">
     <h2 class="section-title" data-icon="＋">入ってくるお金</h2>
     <div class="tiny" style="margin:-4px 0 9px">実際に口座へ入ったら、右の「入金を記録」を押します。予定日を過ぎた未入金は計算から外します。</div>
     <div id="incomeList"></div>
@@ -753,7 +818,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   </div>
 
   <!-- ===== BENEFIT COUNTER ===== -->
-  <div class="card" data-pg="money">
+  <div class="card" data-pg="money" data-money-group="income">
     <h2 class="section-title" data-icon="◒">手当 のこり</h2>
     <div class="benefit-summary">
       <div><div class="benefit-kicker">支給対象の残り</div><div><span class="num benefit-number" id="benLeft">0</span><span class="dim">か月</span></div><div class="tiny" id="benGot">—</div></div>
@@ -764,7 +829,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   </div>
 
   <!-- ===== BALANCE ===== -->
-  <div class="card" data-pg="money">
+  <div class="card" data-pg="money" data-money-group="overview">
     <h2 class="section-title" data-icon="▣">いま持っているお金</h2>
     <div id="acctList"></div>
     <details>
@@ -820,6 +885,10 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
     <div class="health-save-row"><span id="healthDraftState">変更は保存されていません</span><button class="btn" id="healthSave" data-icon="↓" disabled>この日の記録を保存</button></div>
     <div class="health-section health-analysis">
       <div class="health-section-head"><span class="health-icon">▥</span><div><b>一週間の見える化</b><span class="health-help">歩数・睡眠・体・心を同じ日付で確認</span></div></div>
+      <div class="seg health-range" id="healthRange">
+        <button data-healthrange="day" class="on">今日</button>
+        <button data-healthrange="week">1週間</button>
+      </div>
       <div id="scatBox"></div>
       <div id="corrBox" class="tiny" style="margin-top:8px"></div>
       <div class="health-tools"><span class="health-help">並べ替え</span><div class="sorts" id="healthSorts"></div></div>
@@ -977,13 +1046,8 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   </div>
 </div>
 
-<nav class="tabbar">
-  <button data-gotab="home"><span class="navico" aria-hidden="true">⌂</span><span>ホーム</span></button>
-  <button data-gotab="today"><span class="navico" aria-hidden="true">⌂</span><span>きょう</span></button>
-  <button data-gotab="money"><span class="navico" aria-hidden="true">¥</span><span>おかね</span></button>
-  <button data-gotab="cal"><span class="navico" aria-hidden="true">▦</span><span>こよみ</span></button>
-  <button data-gotab="body"><span class="navico" aria-hidden="true">♡</span><span>からだ</span></button>
-  <button data-gotab="pay"><span class="navico" aria-hidden="true">↻</span><span>しはらい</span></button>
+  <nav class="tabbar">
+  <button data-gotab="home"><span class="navico" aria-hidden="true">⌂</span><span>ホームへ戻る</span></button>
 </nav>
 <div class="toast" id="toast"></div>
 
@@ -997,7 +1061,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.12.3";         // version.txt と一致させること
+const BUILD = "0.13.0";         // version.txt と一致させること
 const KEY = "mainichi.v1";
 let staleBuild = false;         // 古い版のまま開きっぱなしになっていないか
 const CATS = ["食費","日用品","交通","医療","交際","その他"];
@@ -1186,7 +1250,8 @@ function render(){
     ["今週の本数",streakView],["使えるお金",heroView],["今日やること",todayView],
     ["通院",apptView],["支出",spendView],["カード",cardView],["支払い",fixedView],
     ["サブスク",subsView],["入金",incomeView],["手当",benefitView],["残高",acctView],
-    ["からだ",healthView],["書き出し",icsView],["こよみ",calView],["保存",paintSaved]];
+    ["からだ",healthView],["書き出し",icsView],["こよみ",calView],["保存",paintSaved],
+    ["お金の見込み",moneyAtGlanceView]];
   const bad = [];
   for(const [name, fn] of parts){
     try{ fn(); }catch(e){ bad.push(name + "（" + e.message + "）"); console.error(name, e); }
@@ -1194,12 +1259,27 @@ function render(){
   const box = document.getElementById("crashBox");
   box.hidden = !bad.length;
   if(bad.length) box.textContent = "うまく出せなかった部分: " + bad.join(" / ");
+  setMoneySection(moneySection, false);
 }
 
 /* ---------- タブ ---------- */
-const TABS = ["home","today","money","cal","body","pay"];
-const TAB_LABELS = {home:"ホーム",today:"きょう", money:"おかね", cal:"こよみ", body:"からだ", pay:"しはらい"};
+const TABS = ["home","today","money","cal","body"];
+const TAB_LABELS = {home:"ホーム",today:"きょう", money:"おかね", cal:"こよみ", body:"からだ"};
+let moneySection = "expense";
+function setMoneySection(section, scroll = true){
+  if(!["expense","income","scheduled","analysis"].includes(section)) section = "expense";
+  moneySection = section;
+  document.body.dataset.moneySection = section;
+  document.querySelectorAll("[data-moneysection]").forEach(b =>
+    b.classList.toggle("on", b.dataset.moneysection === section));
+  if(scroll && document.body.dataset.tab === "money"){
+    const first = document.querySelector(`[data-money-group="${section}"]`);
+    if(first) first.scrollIntoView({behavior:"smooth", block:"start"});
+  }
+}
 function setTab(t){
+  if(t === "pay") t = "money";
+  if(!TABS.includes(t)) t = "home";
   if(!TABS.includes(t)) t = "home";
   const changed = document.body.dataset.tab !== t;
   S.ui.tab = t; save();
@@ -1905,6 +1985,17 @@ function heroView(){
   } else sc.hidden = true;
 }
 
+function moneyAtGlanceView(){
+  const c = calc();
+  const el = document.getElementById("moneyRemainingTop");
+  const sub = document.getElementById("moneyRemainingTopSub");
+  if(!el || !sub) return;
+  const remaining = c.balance - c.unpaid - c.cardNow;
+  el.textContent = yen(remaining);
+  el.classList.toggle("neg", remaining < 0);
+  sub.textContent = `残高 ${yen(c.balance)} − 固定費 ${yen(c.unpaid)} − カード請求予定 ${yen(c.cardNow)}`;
+}
+
 // よく使う「金額×分類」を直近から学習してパッドにする。手入力の回数を減らすため
 function learnedPads(){
   const cut = new Date(); cut.setDate(cut.getDate() - 60);
@@ -2240,8 +2331,10 @@ document.addEventListener("click", e => {
     save(); render(); settingsView(); return;
   }
 
-  if(t.dataset.gotab){ setTab(t.dataset.gotab); return; }
+  if(t.dataset.gotab){ setTab(t.dataset.gotab); if(t.dataset.moneysection) setMoneySection(t.dataset.moneysection, false); return; }
   if(t.id === "hubSettings"){ openSettings(true); return; }
+  if(t.dataset.moneysection){ setMoneySection(t.dataset.moneysection); return; }
+  if(t.dataset.healthrange){ healthRange = t.dataset.healthrange; healthView(); return; }
   if(t.dataset.healthsort){ healthSort = t.dataset.healthsort; healthView(); return; }
   if(t.dataset.healthmetric){ healthMetricState[t.dataset.healthmetric] = !healthMetricState[t.dataset.healthmetric]; healthView(); return; }
   if(t.dataset.calview){ calViewMode = t.dataset.calview; calView(); return; }
@@ -2416,6 +2509,7 @@ function sleepMin(bed, wake){
 const fmtSleep = m => m == null ? "—" : `${Math.floor(m/60)}時間${String(m%60).padStart(2,"0")}分`;
 let healthDraft = null;
 let healthSort = "sleep";
+let healthRange = "day";
 const healthMetricState = {steps:true, sleep:true, body:true, mind:true};
 
 function healthDraftFor(day){
@@ -2462,6 +2556,8 @@ function healthView(){
     b.classList.toggle("on", (shown[b.dataset.rate] || 0) === +b.dataset.val));
   document.getElementById("scatBox").innerHTML = healthCharts();
   document.getElementById("corrBox").innerHTML = corrText();
+  document.querySelectorAll("[data-healthrange]").forEach(b =>
+    b.classList.toggle("on", b.dataset.healthrange === healthRange));
   document.getElementById("healthSorts").innerHTML = [["sleep","睡眠"],["date","日付"],["steps","歩数"],["body","体"],["mind","心"]].map(([id,lab]) =>
     `<button data-healthsort="${id}" class="${healthSort===id?"on":""}">${lab}</button>`).join("");
   document.getElementById("hList").innerHTML = healthHistory();
@@ -2476,6 +2572,7 @@ function healthDays(){
 
 function healthHistory(){
   const days = healthDays();
+  if(healthRange === "day") return healthDayCard(ymd(now()));
   const maxS = Math.max(1, ...days.map(d => +(S.health[d] || {}).steps || 0));
   const ordered = days.slice().sort((a,b) => {
     if(healthSort === "date") return a.localeCompare(b);
@@ -2489,11 +2586,31 @@ function healthHistory(){
     const wdClass = dt.getDay()===0 ? " sun" : dt.getDay()===6 ? " sat" : "";
     return `<div class="health-day${d===ymd(now())?" today":""}${has?"":" empty"}">
       <div class="health-day-head${wdClass}"><b>${dt.getMonth()+1}/${dt.getDate()}</b><span>${"日月火水木金土"[dt.getDay()]}</span></div>
-      <div class="health-day-sleep"><i class="mi">◐</i>${fmtSleep(sm)}</div>
       <div class="health-day-bar"><i style="width:${((x.steps||0)/maxS*100).toFixed(0)}%"></i></div>
-      <div class="health-day-meta"><div class="health-metric steps"><span><i class="mi">👣</i>歩数</span><b>${x.steps != null ? x.steps.toLocaleString("ja-JP")+"歩" : "—"}</b></div><div class="health-metric sleep"><span><i class="mi">◐</i>睡眠</span><b>${fmtSleep(sm)}</b></div><div class="health-metric body"><span><i class="mi">♧</i>からだ</span><b>${x.body ? x.body+" / 5" : "—"}</b></div><div class="health-metric mind"><span><i class="mi">♡</i>こころ</span><b>${x.mind ? x.mind+" / 5" : "—"}</b></div></div>
+      <div class="health-day-meta"><div class="health-metric steps"><span><i class="mi">👣</i>歩数</span><b>${x.steps != null ? x.steps.toLocaleString("ja-JP")+"歩" : "—"}</b></div><div class="health-metric sleep"><span><i class="mi">◐</i>睡眠</span><b>${fmtSleep(sm)}</b></div><div class="health-metric body"><span><i class="mi">♧</i>からだ</span><b>${healthDots(x.body)}</b></div><div class="health-metric mind"><span><i class="mi">♡</i>こころ</span><b>${healthDots(x.mind)}</b></div></div>
     </div>`;
   }).join("")}</div></div>`;
+}
+
+function healthDots(value){
+  const n = Math.max(0, Math.min(5, +value || 0));
+  return `<span class="health-dots" aria-label="${n} / 5">${[1,2,3,4,5].map(i => `<i class="${i<=n?"on":""}"></i>`).join("")}</span>`;
+}
+
+function healthDayCard(day){
+  const x = S.health[day] || {}, dt = new Date(day+"T00:00:00");
+  const sm = sleepMin(x.bed,x.wake);
+  const has = Object.keys(x).length > 0;
+  return `<div class="health-day-focus${has?"":" empty"}">
+    <div class="health-focus-head"><div><b>${dt.getMonth()+1}月${dt.getDate()}日</b><span>${"日月火水木金土"[dt.getDay()]}</span></div><span class="tiny">今日の記録</span></div>
+    <div class="health-focus-grid">
+      <div class="health-focus-metric sleep"><i class="mi">◐</i><span>睡眠</span><b>${fmtSleep(sm)}</b></div>
+      <div class="health-focus-metric steps"><i class="mi">👣</i><span>歩数</span><b>${x.steps != null ? `${(+x.steps).toLocaleString("ja-JP")}<small>歩</small>` : "—"}</b></div>
+      <div class="health-focus-metric body"><i class="mi">♧</i><span>からだ</span><b>${healthDots(x.body)}</b></div>
+      <div class="health-focus-metric mind"><i class="mi">♡</i><span>こころ</span><b>${healthDots(x.mind)}</b></div>
+    </div>
+    ${has?"":"<div class=\"tiny\" style=\"margin-top:10px\">入力して保存すると、ここに今日の状態がまとまります。</div>"}
+  </div>`;
 }
 
 function healthCharts(){
@@ -3297,7 +3414,7 @@ document.addEventListener("visibilitychange", ()=>{
 });
 setInterval(checkBuild, 10 * 60 * 1000);
 
-setTab(S.ui.tab || "today");
+setTab(S.ui.tab || "home");
 importFromHash();
 render();
 syncPaint(syncCfg().token ? "ok" : "", syncCfg().token
