@@ -227,7 +227,9 @@ details[open] > summary::before{content:"▾ "}
 .health-dots i{width:10px;height:10px;border-radius:50%;background:var(--line);border:1px solid var(--faint)}
 .health-dots i.on{background:currentColor;border-color:currentColor}
 .hub-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
-.hub-icon{display:grid;place-items:center;width:40px;height:40px;border-radius:13px;background:color-mix(in srgb,var(--accent) 16%,var(--card2));border:1px solid color-mix(in srgb,var(--accent) 45%,var(--line));color:var(--accent);font-size:21px}
+.ui-icon{display:block;width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.hub-icon{display:grid;place-items:center;align-content:center;width:40px;height:40px;border-radius:13px;background:color-mix(in srgb,var(--accent) 16%,var(--card2));border:1px solid color-mix(in srgb,var(--accent) 45%,var(--line));color:var(--accent);font-size:21px;line-height:0}
+.hub-icon .ui-icon{width:22px;height:22px;stroke-width:2.1}
 .hub-head b{font-size:20px;line-height:1.2}
 .hub-head span{display:block;color:var(--dim);font-size:11px;margin-top:2px}
 .hub-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
@@ -344,6 +346,8 @@ body[data-tab="money"][data-money-section="analysis"] [data-money-group="analysi
 .tabbar button{display:flex;flex-direction:row;align-items:center;justify-content:center;gap:7px;padding:10px 12px;border-radius:12px;font-size:12px;font-weight:650;color:var(--faint);text-align:center;line-height:1}
 .tabbar .navico{display:grid;place-items:center;width:24px;height:22px;font-size:17px;line-height:1;color:currentColor}
 .tabbar button.on{background:var(--card2);color:var(--fg);box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
+.tabbar .navico{display:grid;place-items:center;align-content:center;line-height:0}
+.tabbar .navico .ui-icon{width:20px;height:20px;stroke-width:2.1}
 .tabbar button.on .navico{color:var(--accent)}
 .tabbar button.on::after{content:"";display:block;width:18px;height:3px;border-radius:2px;background:var(--accent);margin-top:1px}
 body:not([data-tab="home"]) .tabbar{display:grid}
@@ -361,7 +365,8 @@ body:not([data-tab="home"]) .tabbar{display:grid}
 .top .t{font-size:17px;font-weight:800;flex:1;letter-spacing:.04em}
 .home-back{display:none;align-items:center;gap:4px;min-height:38px;padding:6px 9px;border-radius:11px;border:1px solid var(--line);background:var(--card2);color:var(--dim);font-size:11px;font-weight:750;flex:none}
 body:not([data-tab="home"]) .home-back{display:flex}
-.home-back span:first-child{font-size:18px;line-height:1;color:var(--accent)}
+.home-back span:first-child{display:grid;place-items:center;align-content:center;line-height:0;color:var(--accent)}
+.home-back .ui-icon{width:19px;height:19px;stroke-width:2.1}
 .streak{font-size:12.5px;color:var(--dim);background:var(--card);
   border:1px solid var(--line);border-radius:99px;padding:4px 11px}
 .streak b{color:var(--ok);font-size:14px}
@@ -576,14 +581,14 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   <header class="top">
     <div class="mini-logo"><i></i><i></i><i></i></div>
     <div class="t">生活ノート</div>
-    <button class="home-back" data-gotab="home" aria-label="ホームへ戻る"><span aria-hidden="true">⌂</span><span>ホーム</span></button>
+    <button class="home-back" data-gotab="home" aria-label="ホームへ戻る"><span aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M3 10.8 12 3l9 7.8"/><path d="M5.5 9.5v10h13v-10"/><path d="M9.5 19.5v-6h5v6"/></svg></span><span>ホーム</span></button>
     <div class="streak" id="streakBox">—</div>
     <button class="gear" id="settingsOpen" aria-label="設定を開く" title="設定を開く"><span class="gearico" aria-hidden="true">⚙</span><span class="geartxt">設定</span></button>
   </header>
 
   <!-- ===== HOME HUB ===== -->
   <div class="card lead" data-pg="home">
-    <div class="hub-head"><span class="hub-icon">⌂</span><div><b>生活ノート</b><span>今日の記録と生活の入口</span></div></div>
+    <div class="hub-head"><span class="hub-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M3 10.8 12 3l9 7.8"/><path d="M5.5 9.5v10h13v-10"/><path d="M9.5 19.5v-6h5v6"/></svg></span><div><b>生活ノート</b><span>今日の記録と生活の入口</span></div></div>
     <div class="hub-grid">
       <button class="hub-link" data-gotab="today"><span class="hi">☀</span><span><b>きょう</b><small>習慣・流れ・やること</small></span></button>
       <button class="hub-link" data-gotab="body"><span class="hi">♡</span><span><b>からだとこころ</b><small>歩数・睡眠・調子</small></span></button>
@@ -1066,7 +1071,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 </div>
 
   <nav class="tabbar">
-  <button data-gotab="home"><span class="navico" aria-hidden="true">⌂</span><span>ホームへ戻る</span></button>
+  <button data-gotab="home"><span class="navico" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M3 10.8 12 3l9 7.8"/><path d="M5.5 9.5v10h13v-10"/><path d="M9.5 19.5v-6h5v6"/></svg></span><span>ホームへ戻る</span></button>
 </nav>
 <div class="toast" id="toast"></div>
 
@@ -1080,7 +1085,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.13.1";         // version.txt と一致させること
+const BUILD = "0.13.2";         // version.txt と一致させること
 const KEY = "mainichi.v1";
 let staleBuild = false;         // 古い版のまま開きっぱなしになっていないか
 const CATS = ["食費","日用品","交通","医療","交際","その他"];
