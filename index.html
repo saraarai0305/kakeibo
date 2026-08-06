@@ -878,7 +878,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
       <details>
         <summary>自動取り込みの設定を見る</summary>
         <div class="tiny" style="margin-top:8px">
-          iPhoneのショートカットがヘルスケアから歩数・睡眠を非公開Gistの受信箱へ送ります。アプリを開いている間は45秒ごと、アプリを開き直した時にも自動で読み込みます。初回だけ「おかね → 同期」を設定してください。iPhoneの仕様上、アプリを完全に終了した状態でWebアプリが裏側から読み込むことはできません。
+          iPhoneのショートカットがヘルスケアから歩数・睡眠を非公開Gistの受信箱へ送ります。アプリを開いている間は45秒ごと、アプリを開き直した時にも自動で読み込みます。初回だけ「おかね → 端末の同期」を設定してください。iPhoneの仕様上、アプリを完全に終了した状態でWebアプリが裏側から読み込むことはできません。
         </div>
       </details>
     </div>
@@ -951,7 +951,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 
   <!-- ===== SYNC ===== -->
   <div class="card" data-pg="money" id="syncCard">
-    <h2 class="section-title" data-icon="⇄">同期 <span class="tiny" id="syncState">オフ</span></h2>
+    <h2 class="section-title" data-icon="⇄">端末の同期 <span class="tiny" id="syncState">オフ</span></h2>
     <div class="row" style="gap:8px;margin-bottom:10px">
       <span class="syncdot" id="syncDot"></span>
       <span class="dim grow" id="syncMsg">PCとiPhoneを自動でそろえます。</span>
@@ -977,13 +977,19 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 <button class="btn" id="syncStart" data-icon="⇄" style="width:100%;margin-top:9px">同期を開始</button>
       <div class="tiny" id="syncGistOut" style="margin-top:8px"></div>
     </details>
-    <div style="margin-top:12px">
-      <div class="tiny" style="margin-bottom:6px">この端末の役割</div>
-      <div class="seg" id="roleSeg">
-        <button data-role="rw">記録する</button>
-        <button data-role="ro">読み取り専用</button>
+    <div style="margin-top:12px;padding:12px;border:1px solid color-mix(in srgb,var(--teal) 45%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--teal) 8%,var(--card))">
+      <div style="display:flex;gap:9px;align-items:flex-start">
+        <span style="font-size:22px;line-height:1">👣</span>
+        <div class="grow">
+          <b>歩数を受け取る端末の設定</b>
+          <div class="tiny" id="syncRoleHint" style="margin-top:4px">このiPhoneで歩数を取り込むなら「記録する」を選びます。</div>
+        </div>
       </div>
-      <div class="tiny" style="margin-top:6px">読み取り専用にすると、この端末からは記録できず、相手のデータを上書きしません。見るだけの端末に。</div>
+      <div class="seg" id="roleSeg">
+        <button data-role="rw">記録する（歩数を受け取る）</button>
+        <button data-role="ro">見るだけ</button>
+      </div>
+      <div class="tiny" style="margin-top:6px">「見るだけ」はこの端末から記録せず、歩数の受信も行いません。</div>
     </div>
     <button class="btn ghost sm" id="syncOff" style="width:100%;margin-top:9px" hidden>同期を止める（この端末だけ）</button>
     <div id="restoreBox" hidden style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
@@ -1085,7 +1091,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.14.0";         // version.txt と一致させること
+const BUILD = "0.14.1";         // version.txt と一致させること
 const KEY = "mainichi.v1";
 let staleBuild = false;         // 古い版のまま開きっぱなしになっていないか
 const CATS = ["食費","日用品","交通","医療","交際","その他"];
@@ -2600,7 +2606,8 @@ function healthView(){
   const auto = document.getElementById("healthAutoState");
   if(auto){
     const c = syncCfg();
-    if(!(c.token && c.gistId)) auto.textContent = "おかね → 同期を設定すると自動になります";
+    if(!(c.token && c.gistId)) auto.textContent = "おかね → 端末の同期を設定すると自動になります";
+    else if(c.role === "ro") auto.textContent = "見るだけでは歩数を取り込みません。「記録する」に変更してください";
     else if(c.healthLastImport) auto.textContent = `同期オン・最終取り込み ${new Date(c.healthLastImport).toLocaleTimeString("ja-JP", {hour:"2-digit", minute:"2-digit"})}`;
     else auto.textContent = "同期オン・45秒ごとに確認中";
   }
@@ -2780,7 +2787,7 @@ for(const [id, key] of [["hSteps","steps"],["hBed","bed"],["hWake","wake"],["hFa
 
 document.getElementById("hPaste").addEventListener("click", async ()=>{
   const c = syncCfg();
-  if(!c.token || !c.gistId) return toast("先に おかね → 同期 を設定してください");
+  if(!c.token || !c.gistId) return toast("先に おかね → 端末の同期 を設定してください");
   await checkBuild(false);
   if(!staleBuild){
     const result = await pullRemote(false);
@@ -3071,6 +3078,10 @@ function rolePaint(){
   document.getElementById("roBar").hidden = !ro;
   document.querySelectorAll("#roleSeg button").forEach(b =>
     b.classList.toggle("on", (b.dataset.role === "ro") === ro));
+  const hint = document.getElementById("syncRoleHint");
+  if(hint) hint.textContent = ro
+    ? "現在は「見るだけ」です。歩数を取り込むには「記録する（歩数を受け取る）」へ変更してください。"
+    : "このiPhoneで歩数を取り込むなら、現在の「記録する」のままで使います。";
 }
 
 function syncPaint(state, msg){
