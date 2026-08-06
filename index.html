@@ -5,18 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>今日使えるお金</title>
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#12151c">
+<meta name="theme-color" content="#0B1017">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="今日使えるお金">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <style>
 :root{
-  --bg:#0D1015; --card:#161B23; --card2:#1E242F; --line:#2A3240;
-  --fg:#E8ECF4; --dim:#8E9AB2; --faint:#5F6B81;
-  --ok:#5ecfa0; --warn:#e6b566; --bad:#e08f7a; --accent:#7aa7f0;
-  --lead:linear-gradient(152deg,#242C3A,#161B23);
-  --r:16px;
+  --bg:#0B1017; --card:#141B24; --card2:#1B2531; --line:#2A3746;
+  --fg:#F1F4F8; --dim:#9AA9BB; --faint:#657589;
+  --ok:#55D3A5; --warn:#E9B85F; --bad:#E78978; --accent:#74B5E8;
+  --teal:#32C6B0; --violet:#A995E8;
+  --lead:linear-gradient(145deg,#203448 0%,#17232F 58%,#141B24 100%);
+  --r:18px;
 }
 /* 端末が明るいモードでも黒のまま。1つの見た目に決め打ちする */
 :root{ color-scheme: dark; }
@@ -25,17 +26,17 @@ html,body{margin:0;padding:0}
 body{
   background:var(--bg); color:var(--fg);
   font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic UI","Segoe UI",sans-serif;
-  font-size:16px; line-height:1.5;
+  font-size:16px; line-height:1.55;
   padding:env(safe-area-inset-top) 0 calc(env(safe-area-inset-bottom) + 24px);
   -webkit-text-size-adjust:100%;
 }
-.wrap{max-width:560px;margin:0 auto;padding:12px 14px 0}
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:12px}
+.wrap{max-width:620px;margin:0 auto;padding:16px 16px 0}
+.card{background:var(--card);border:1px solid color-mix(in srgb,var(--line) 88%,transparent);border-radius:var(--r);padding:18px;margin-bottom:14px;box-shadow:0 8px 22px rgba(0,0,0,.12)}
 /* 重さ3段階。lead は各タブの先頭1枚だけ */
-.card.lead{background:var(--lead);border-color:#38445A;box-shadow:0 10px 26px rgba(0,0,0,.28)}
+.card.lead{background:var(--lead);border-color:#3A5267;box-shadow:0 14px 34px rgba(0,0,0,.24)}
 .card.quiet{background:none;border:none;border-top:1px solid var(--line);border-radius:0;
   padding:14px 2px 0;box-shadow:none}
-h2{font-size:16px;font-weight:700;color:var(--fg);margin:0 0 10px;letter-spacing:.02em}
+h2{font-size:16px;font-weight:750;color:var(--fg);margin:0 0 12px;letter-spacing:.025em;line-height:1.35}
 .row{display:flex;align-items:center;gap:10px}
 .between{justify-content:space-between}
 .grow{flex:1;min-width:0}
@@ -44,7 +45,7 @@ h2{font-size:16px;font-weight:700;color:var(--fg);margin:0 0 10px;letter-spacing
 .dim{color:var(--dim);font-size:13px}
 button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
 input,select{font:inherit;color:var(--fg);background:var(--card2);border:1px solid var(--line);
-  border-radius:10px;padding:9px 11px;width:100%;min-width:0;max-width:100%}
+  border-radius:11px;padding:10px 12px;width:100%;min-width:0;max-width:100%;box-shadow:inset 0 1px 0 rgba(255,255,255,.025)}
 /* iOSの date/time は中身の幅を主張して枠からはみ出す。ネイティブの見た目を解除して抑える */
 input[type="time"],input[type="date"]{
   -webkit-appearance:none;appearance:none;
@@ -54,13 +55,14 @@ input[type="date"]::-webkit-date-and-time-value{text-align:left;margin:0}
 input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px}
 
 /* hero */
-.hero{background:var(--lead);text-align:center;padding:24px 16px 18px}
+.hero{background:linear-gradient(145deg,#183B4A,#16303D 52%,#14242F);text-align:center;padding:26px 18px 20px;border-color:#2D6870}
 .hero .lab{font-size:13px;color:var(--dim);letter-spacing:.06em}
-.hero .big{font-size:clamp(44px,15vw,64px);font-weight:700;line-height:1.05;margin:6px 0 2px;
+.hero .lab::before{content:"¥";display:inline-grid;place-items:center;width:23px;height:23px;margin-right:7px;border:1px solid color-mix(in srgb,var(--teal) 55%,var(--line));border-radius:8px;color:var(--teal);font-size:14px;font-weight:800;vertical-align:-6px}
+.hero .big{font-size:clamp(44px,15vw,64px);font-weight:800;line-height:1.05;margin:7px 0 3px;
   font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 .hero .big.neg{color:var(--bad)}
 .hero .sub{font-size:13px;color:var(--dim)}
-.bar{height:6px;background:var(--card2);border-radius:99px;overflow:hidden;margin:14px 0 8px;
+.bar{height:7px;background:#10222B;border-radius:99px;overflow:hidden;margin:15px 0 9px;
   border:1px solid var(--line)}
 .bar > i{display:block;height:100%;background:var(--ok);transition:width .25s ease}
 .bar > i.over{background:var(--bad)}
@@ -72,28 +74,31 @@ input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px}
 .alert li{margin:5px 0}
 
 /* quick spend */
-.pads{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px}
-.pad{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:11px 4px;
-  text-align:center;font-size:13px;font-weight:600}
+.pads{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-bottom:10px}
+.pad{background:linear-gradient(180deg,#223143,#1A2633);border:1px solid #344557;border-radius:13px;padding:12px 4px;
+  text-align:center;font-size:13px;font-weight:650;box-shadow:0 5px 12px rgba(0,0,0,.12)}
+.spend-help{margin:-4px 0 10px}
 .pad:active{background:var(--line)}
 .pad small{display:block;font-size:10px;color:var(--faint);font-weight:400;margin-top:2px}
 .spendform{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center}
-.seg{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:8px;
-  border:1px solid var(--line);border-radius:11px;overflow:hidden}
-.seg button{padding:9px 4px;font-size:13px;color:var(--dim);background:var(--card2)}
-.seg button.on{background:var(--accent);color:#fff;font-weight:600}
-.btn{background:var(--accent);color:#fff;border-radius:11px;padding:10px 16px;font-weight:600;white-space:nowrap}
-.btn.ghost{background:var(--card2);color:var(--fg);border:1px solid var(--line)}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-bottom:9px;
+  padding:3px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#111821}
+.seg button{padding:9px 4px;font-size:13px;color:var(--dim);background:transparent;border-radius:9px}
+.seg button.on{background:var(--accent);color:#0B1017;font-weight:750;box-shadow:0 3px 10px rgba(116,181,232,.18)}
+.btn{background:var(--accent);color:#0B1017;border-radius:11px;padding:10px 16px;font-weight:750;white-space:nowrap;box-shadow:0 5px 14px rgba(116,181,232,.14)}
+.btn.ghost{background:var(--card2);color:var(--fg);border:1px solid #39495A;box-shadow:none}
+.btn[data-icon]{display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn[data-icon]::before{content:attr(data-icon);font-size:1.05em;font-weight:800;line-height:1}
 .btn.sm{padding:6px 12px;font-size:13px;border-radius:9px}
 .btn:disabled{opacity:.4}
 
 /* lists */
-.item{display:flex;align-items:center;gap:10px;padding:11px 0;border-top:1px solid var(--line)}
+.item{display:flex;align-items:center;gap:10px;padding:12px 0;border-top:1px solid color-mix(in srgb,var(--line) 78%,transparent)}
 .item:first-of-type{border-top:none}
 .item .nm{font-size:15px}
 .item .mt{font-size:11px;color:var(--faint);margin-top:1px}
 .item .amt{font-variant-numeric:tabular-nums;font-size:15px;white-space:nowrap}
-.chip{font-size:10px;padding:2px 7px;border-radius:99px;border:1px solid var(--line);color:var(--dim);
+.chip{font-size:10px;padding:3px 8px;border-radius:99px;border:1px solid var(--line);color:var(--dim);
   white-space:nowrap;vertical-align:1px;margin-left:6px}
 .chip.due{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,var(--line))}
 .chip.late{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 45%,var(--line))}
@@ -106,6 +111,12 @@ input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px}
   border:1px solid var(--line);flex:1 1 22px;display:grid;place-items:center;font-size:9px;color:var(--faint)}
 .dot.on{background:color-mix(in srgb,var(--ok) 30%,var(--card2));border-color:var(--ok);color:var(--fg)}
 .dot.next{border-color:var(--accent);border-style:dashed;color:var(--accent)}
+.benefit-summary{display:flex;justify-content:space-between;gap:12px;padding:14px;border-radius:14px;background:color-mix(in srgb,var(--warn) 8%,var(--card2));border:1px solid color-mix(in srgb,var(--warn) 34%,var(--line))}
+.benefit-kicker{font-size:11px;color:var(--dim);letter-spacing:.04em}
+.benefit-number{font-size:38px;font-weight:850;line-height:1.1;color:var(--warn);font-variant-numeric:tabular-nums}
+.benefit-next{text-align:right;align-self:center;color:var(--dim);font-size:12px;line-height:1.65}
+.benefit-hint{margin-top:10px;padding:10px 12px;border-radius:10px;background:color-mix(in srgb,var(--warn) 10%,var(--card));color:var(--dim);font-size:12px;line-height:1.55}
+.benefit-hint b{color:var(--fg)}
 
 details{border-top:1px solid var(--line);padding-top:10px;margin-top:4px}
 details > summary{list-style:none;cursor:pointer;font-size:13px;color:var(--dim);padding:4px 0}
@@ -115,9 +126,9 @@ details[open] > summary::before{content:"▾ "}
 .edit-grid{display:grid;grid-template-columns:minmax(0,1fr) 92px 66px auto;gap:7px;align-items:center;margin-top:9px}
 .edit-grid > *{min-width:0}
 .edit-grid.fx{grid-template-columns:1fr 84px 54px 40px auto}
-.edit-grid.sb{grid-template-columns:1fr 84px 64px 54px auto}
-.habits{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
-.habits .pad.on{background:color-mix(in srgb,var(--ok) 26%,var(--card2));border-color:var(--ok);color:var(--fg)}
+.edit-grid.sb{grid-template-columns:minmax(128px,1.25fr) minmax(112px,1fr) 84px 64px 74px auto}
+.habits{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-bottom:12px}
+.habits .pad.on{background:color-mix(in srgb,var(--ok) 23%,var(--card2));border-color:var(--ok);color:var(--fg);box-shadow:0 5px 14px rgba(85,211,165,.12)}
 .tick{width:27px;height:27px;flex:none;border-radius:9px;border:1.5px solid var(--line);
   color:transparent;font-size:15px;font-weight:700;line-height:1}
 .tick.on{background:var(--ok);border-color:var(--ok);color:#fff}
@@ -132,17 +143,77 @@ details[open] > summary::before{content:"▾ "}
 .rate button[data-val="4"].on{background:#9BCF77}
 .rate button[data-val="5"].on{background:#5ECFA0}
 
+/* からだの画面は、領域ごとに同じ色・形で束ねて読む量を減らす */
+.health-topline{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:2px 0 14px}
+.health-kicker{font-size:11px;color:var(--dim);letter-spacing:.12em}
+.health-title{font-size:clamp(24px,7vw,34px);font-weight:850;letter-spacing:.02em;line-height:1.15;margin-top:3px}
+.health-date{font-size:13px;color:var(--dim);white-space:nowrap}
+.health-section{--section-color:var(--accent);margin-top:12px;padding:14px 14px 15px 16px;border:1px solid color-mix(in srgb,var(--section-color) 28%,var(--line));border-left:4px solid var(--section-color);border-radius:14px;background:color-mix(in srgb,var(--section-color) 7%,var(--card));}
+.health-section:first-of-type{margin-top:0}
+.health-auto{--section-color:var(--accent)}
+.health-body{--section-color:var(--teal)}
+.health-mind{--section-color:var(--bad)}
+.health-analysis{--section-color:var(--violet)}
+.health-section-head{display:flex;align-items:center;gap:10px;min-width:0}
+.health-section-head b{display:block;font-size:15px;line-height:1.3}
+.health-icon{display:grid;place-items:center;width:31px;height:31px;flex:none;border-radius:10px;background:color-mix(in srgb,var(--section-color) 19%,var(--card2));border:1px solid color-mix(in srgb,var(--section-color) 52%,var(--line));color:var(--section-color);font-size:17px;font-weight:800}
+.health-help{display:block;margin-top:2px;color:var(--dim);font-size:11.5px;line-height:1.35}
+.health-field-label{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:14px 0 6px;font-size:13px;font-weight:750;color:var(--fg)}
+.unit,.scale-note{font-size:11px;color:var(--dim);font-weight:500}
+.health-two-labels{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 5px;color:var(--dim);font-size:11px}
+.health-two input{border-color:color-mix(in srgb,var(--teal) 30%,var(--line))}
+.rate-body button.on{background:var(--teal);border-color:var(--teal);color:#0B1017}
+.rate-mind button.on{background:var(--bad);border-color:var(--bad);color:#0B1017}
+.health-impact-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-top:12px}
+.health-impact{position:relative;display:block;padding:9px 10px;border:1px solid color-mix(in srgb,var(--teal) 28%,var(--line));border-radius:11px;background:color-mix(in srgb,var(--teal) 5%,var(--card2));color:var(--dim);font-size:10.5px;line-height:1.35}
+.health-impact b{display:block;margin-top:4px;color:var(--fg);font-size:15px}
+.health-impact input{margin-top:5px;padding:6px 28px 6px 8px;font-size:14px}
+.health-impact em{position:absolute;right:16px;bottom:15px;color:var(--dim);font-size:11px;font-style:normal}
+.health-save-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:13px 0 2px;padding:12px 2px 0;border-top:1px solid var(--line)}
+.health-save-row span{font-size:11.5px;color:var(--dim)}
+.health-save-row .btn{padding:9px 12px}
+.health-save-row .btn:disabled{opacity:.45;box-shadow:none}
+.health-tools{display:flex;align-items:center;gap:10px;margin-top:14px;padding-top:10px;border-top:1px solid color-mix(in srgb,var(--line) 75%,transparent)}
+.health-tools .sorts{margin:0}
+.health-chart-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:13px}
+.health-chart{padding:10px 9px 8px;border:1px solid color-mix(in srgb,var(--section-color) 28%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--section-color) 6%,var(--card2));min-width:0}
+.health-chart-title{font-size:11px;color:var(--dim);display:flex;justify-content:space-between;gap:6px}
+.health-chart-title b{color:var(--fg);font-size:12px}
+.health-chart svg{width:100%;height:74px;display:block;margin-top:6px}
+.health-week-wrap{overflow-x:auto;margin:0 -4px;padding:0 4px 3px}
+.health-week{display:grid;grid-template-columns:repeat(7,minmax(78px,1fr));gap:7px;min-width:570px}
+.health-day{padding:9px 8px;border:1px solid var(--line);border-radius:12px;background:var(--card2);min-height:136px}
+.health-day.today{border-color:var(--accent);box-shadow:inset 0 2px 0 var(--accent)}
+.health-day.empty{opacity:.55}
+.health-day-head{display:flex;justify-content:space-between;gap:4px;font-size:10.5px;color:var(--dim)}
+.health-day-head b{color:var(--fg);font-size:12px}
+.health-day-steps{font-size:15px;font-weight:800;margin-top:10px;white-space:nowrap}
+.health-day-bar{height:5px;background:#111821;border-radius:99px;overflow:hidden;margin:6px 0 10px}
+.health-day-bar i{display:block;height:100%;background:var(--teal);border-radius:inherit}
+.health-day-meta{display:grid;gap:5px;color:var(--dim);font-size:10.5px}
+.health-metric{display:flex;justify-content:space-between;gap:4px;padding-top:5px;border-top:1px solid color-mix(in srgb,var(--line) 72%,transparent)}
+.health-metric b{color:var(--fg);font-weight:750}
+.health-metric.body b{color:var(--teal)}
+.health-metric.mind b{color:var(--bad)}
+@media (max-width:430px){
+  .health-save-row{align-items:stretch;flex-direction:column}
+  .health-save-row .btn{width:100%}
+  .health-chart-grid{grid-template-columns:1fr}
+  .health-impact-grid{grid-template-columns:1fr}
+  .edit-grid.sb{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
 /* 並び替えチップ。いま何順かを常に見せる */
 .sorts{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px}
 .sorts button{font-size:11.5px;padding:5px 11px;border-radius:99px;
   border:1px solid var(--line);color:var(--dim);background:var(--card2)}
-.sorts button.on{background:var(--fg);color:var(--bg);border-color:transparent;font-weight:700}
+.sorts button.on{background:var(--fg);color:var(--bg);border-color:transparent;font-weight:750}
 
 /* 金額の大小を棒で見せる（対比） */
 .amtbar{height:3px;border-radius:2px;background:var(--accent);opacity:.55;margin-top:5px}
 
 /* サービスの目印。頭文字を色つきの札に */
-.badge{width:30px;height:30px;border-radius:9px;flex:none;display:grid;place-items:center;
+.badge{width:32px;height:32px;border-radius:10px;flex:none;display:grid;place-items:center;
   font-size:13px;font-weight:800;color:#0D1015}
 
 /* 相関の散布図 */
@@ -170,48 +241,49 @@ body[data-tab="pay"]   [data-pg="pay"]{display:block}
   padding:8px 10px calc(env(safe-area-inset-bottom) + 8px);
   background:color-mix(in srgb,var(--bg) 90%,transparent);
   backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-  border-top:1px solid var(--line)}
-.tabbar button{padding:8px 2px;border-radius:11px;font-size:12.5px;font-weight:600;color:var(--faint)}
-.tabbar button.on{background:var(--card2);color:var(--fg)}
-.tabbar button.on::before{content:"";display:block;width:16px;height:3px;border-radius:2px;
-  background:var(--accent);margin:0 auto 4px}
+  border-top:1px solid var(--line);box-shadow:0 -12px 28px rgba(0,0,0,.16)}
+.tabbar button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:7px 2px 8px;border-radius:12px;font-size:11.5px;font-weight:650;color:var(--faint)}
+.tabbar .navico{display:grid;place-items:center;width:24px;height:22px;font-size:17px;line-height:1;color:currentColor}
+.tabbar button.on{background:var(--card2);color:var(--fg);box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
+.tabbar button.on .navico{color:var(--accent)}
+.tabbar button.on::after{content:"";display:block;width:18px;height:3px;border-radius:2px;background:var(--accent);margin-top:1px}
 .toast{bottom:calc(env(safe-area-inset-bottom) + 94px)}
 
 /* ---- header ---- */
-.top{display:flex;align-items:center;gap:9px;padding:6px 2px 12px}
+.top{display:flex;align-items:center;gap:10px;padding:2px 2px 16px}
 .mini-logo{display:flex;align-items:flex-end;gap:2.5px;height:20px}
 .mini-logo i{width:5.5px;border-radius:2px}
 .mini-logo i:nth-child(1){height:8px;background:#5F6B81}
 .mini-logo i:nth-child(2){height:13px;background:#7AA7F0}
 .mini-logo i:nth-child(3){height:19px;background:#5ECFA0}
-.top .t{font-size:15px;font-weight:700;flex:1}
+.top .t{font-size:17px;font-weight:800;flex:1;letter-spacing:.04em}
 .streak{font-size:12.5px;color:var(--dim);background:var(--card);
   border:1px solid var(--line);border-radius:99px;padding:4px 11px}
 .streak b{color:var(--ok);font-size:14px}
 
 /* ---- mode (体力予算) ---- */
-.mode{padding:18px}
+.mode{padding:18px;background:linear-gradient(145deg,#242B32,#1A232C);border-color:#3D4B55;box-shadow:0 9px 22px rgba(0,0,0,.14)}
 .mode .lab{font-size:12px;color:var(--faint);letter-spacing:.08em;margin-bottom:5px}
+.mode .lab::before{content:"↗";display:inline-grid;place-items:center;width:23px;height:23px;margin-right:7px;border:1px solid color-mix(in srgb,var(--ok) 50%,var(--line));border-radius:8px;color:var(--ok);font-size:14px;font-weight:800;vertical-align:-6px}
 .mode .big{font-size:clamp(22px,6.5vw,34px);font-weight:800;line-height:1.2}
 .mode .sub{font-size:13px;color:var(--dim);margin-top:6px}
-.mode.light{background:color-mix(in srgb,var(--warn) 10%,var(--card));
+.mode.light{background:linear-gradient(145deg,color-mix(in srgb,var(--warn) 18%,var(--card)),var(--card));
   border-color:color-mix(in srgb,var(--warn) 38%,var(--line))}
 .mode.light .big{color:var(--warn)}
 .mode.rest .big{color:var(--dim)}
 .mode .why{font-size:12.5px;color:var(--warn);margin-top:7px}
-.mode{background:var(--lead);border-color:#38445A;box-shadow:0 10px 26px rgba(0,0,0,.28)}
 .rings{display:flex;gap:10px;justify-content:space-around;margin-top:14px;
-  border-top:1px solid var(--line);padding-top:13px}
+  border-top:1px solid color-mix(in srgb,var(--line) 72%,transparent);padding-top:13px}
 .ring{text-align:center;font-size:11px;color:var(--dim);flex:1}
 .ring svg{display:block;margin:0 auto 4px}
 .ring b{display:block;color:var(--fg);font-size:13px;font-weight:700;
   font-variant-numeric:tabular-nums;margin-bottom:1px}
 .habits .pad i{display:block;font-style:normal;font-size:16px;line-height:1;margin-bottom:3px}
 /* きょうの流れ。時間帯ごとに1行、色は領域そのもの */
-.flow{display:grid;gap:7px;margin-top:12px}
-.fl{display:grid;grid-template-columns:4px 1fr auto;gap:10px;align-items:center;
-  background:var(--card2);border:1px solid var(--line);border-radius:11px;
-  padding:10px 11px;text-align:left;width:100%}
+.flow{display:grid;gap:8px;margin-top:12px}
+.fl{display:grid;grid-template-columns:5px 1fr auto;gap:11px;align-items:center;
+  background:var(--card2);border:1px solid #344252;border-radius:12px;
+  padding:11px 12px;text-align:left;width:100%;box-shadow:0 4px 12px rgba(0,0,0,.1)}
 .flmain{display:grid;grid-template-columns:62px minmax(0,1fr);gap:10px;
   align-items:center;text-align:left;width:100%;padding:0}
 .fl.done{opacity:.5}
@@ -244,7 +316,9 @@ body[data-tab="pay"]   [data-pg="pay"]{display:block}
 @keyframes ptrspin{to{transform:rotate(360deg)}}
 
 /* ---- settings sheet ---- */
-.gear{font-size:17px;color:var(--dim);padding:4px 6px;border-radius:9px;flex:none;line-height:1}
+.gear{display:flex;align-items:center;gap:6px;min-height:40px;color:var(--fg);background:var(--card2);border:1px solid #39495A;padding:6px 10px;border-radius:12px;flex:none;line-height:1;box-shadow:0 4px 12px rgba(0,0,0,.12)}
+.gearico{font-size:21px;line-height:1;color:var(--accent)}
+.geartxt{font-size:11px;font-weight:750;letter-spacing:.04em}
 .gear:active{background:var(--card2)}
 .sheet{position:fixed;inset:0;z-index:20;background:var(--bg);overflow-y:auto;
   padding:env(safe-area-inset-top) 0 calc(env(safe-area-inset-bottom) + 30px)}
@@ -281,6 +355,31 @@ body[data-ro="1"] .rocover{display:block}
 .bigin::placeholder{color:var(--faint);font-weight:700}
 .bigin:focus{outline:none;border-bottom-color:var(--accent)}
 .goal .sub{font-size:13px;color:var(--dim);margin-top:8px}
+.goal .lab::before{content:"✦";display:inline-grid;place-items:center;width:23px;height:23px;margin-right:7px;border:1px solid color-mix(in srgb,var(--violet) 52%,var(--line));border-radius:8px;color:var(--violet);font-size:13px;vertical-align:-6px}
+.money-summary{padding:10px 12px;margin-bottom:8px;border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line));border-radius:13px;background:color-mix(in srgb,var(--accent) 7%,var(--card2))}
+.money-summary-row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid color-mix(in srgb,var(--line) 72%,transparent);font-size:13px;color:var(--dim)}
+.money-summary-row b{color:var(--fg);font-size:15px;font-variant-numeric:tabular-nums}
+.money-summary-row.minus b{color:var(--warn)}
+.money-summary-row.total{border-bottom:0;padding-bottom:3px;color:var(--fg);font-weight:750}
+.money-summary-row.total b{font-size:20px;color:var(--ok)}
+.credit-card-face{padding:17px;border-radius:16px;background:linear-gradient(140deg,#1C3142,#17222D 58%,#111820);border:1px solid #3C6275;box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 10px 22px rgba(0,0,0,.18)}
+.credit-card-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.credit-chip{padding:4px 8px;border-radius:6px;background:linear-gradient(135deg,#D6B36A,#8D6A35);color:#1A1D21;font-size:9px;font-weight:850;letter-spacing:.12em}
+.credit-label{font-size:12px;color:#B8C9D6;letter-spacing:.04em}
+.credit-card-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:12px;margin-top:22px}
+.credit-caption{display:block;font-size:11px;color:#A7B8C6;line-height:1.35}
+.credit-number{display:block;margin-top:5px;font-size:clamp(27px,8vw,38px);line-height:1.1;font-weight:850;letter-spacing:.02em;font-variant-numeric:tabular-nums;white-space:nowrap}
+.credit-number.small{font-size:clamp(22px,6.5vw,31px)}
+.credit-meter{margin-top:22px}
+.credit-meter-head{display:flex;justify-content:space-between;gap:8px;color:#A7B8C6;font-size:11px}
+.credit-meter-head b{color:var(--warn);font-weight:750}
+.credit-meter .bar{margin:7px 0 0;background:#0F1921;border-color:#385364}
+.credit-message{margin-top:12px;padding-top:11px;border-top:1px solid rgba(190,220,232,.16);color:#D7E3EA;font-size:12.5px;line-height:1.5}
+
+/* 見出しはアイコンと文字を必ずセットにして、意味をアイコンだけに預けない */
+.section-title{display:flex;align-items:center;gap:8px;min-height:29px}
+.section-title::before{content:attr(data-icon);display:grid;place-items:center;width:28px;height:28px;flex:none;border-radius:9px;background:color-mix(in srgb,var(--accent) 13%,var(--card2));border:1px solid color-mix(in srgb,var(--accent) 38%,var(--line));color:var(--accent);font-size:14px;font-weight:800}
+.section-title .tiny{margin-left:1px}
 
 /* ---- calendar ---- */
 /* 1fr の既定は min-width:auto なので、長い予定名が入った列だけ広がる。0で止める */
@@ -310,11 +409,11 @@ body[data-ro="1"] .rocover{display:block}
 
 /* 1日の時間割 */
 .tl{position:relative;margin-top:10px;border-top:1px solid var(--line)}
-.tlrow{display:grid;grid-template-columns:38px 1fr;height:26px;
+.tlrow{display:grid;grid-template-columns:42px 1fr;height:28px;
   border-bottom:1px solid color-mix(in srgb,var(--line) 55%,transparent)}
 .tlrow > b{font-size:10px;color:var(--faint);font-weight:400;
   font-variant-numeric:tabular-nums;padding-top:1px}
-.tlblocks{position:absolute;left:38px;right:0;top:0;bottom:0;pointer-events:none}
+.tlblocks{position:absolute;left:42px;right:0;top:0;bottom:0;pointer-events:none}
 .blk{position:absolute;left:0;right:0;border-radius:6px;padding:2px 7px;
   font-size:11px;line-height:1.25;color:#0D1015;font-weight:600;overflow:hidden;
   pointer-events:auto}
@@ -337,6 +436,18 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   background:var(--fg);color:var(--bg);padding:10px 18px;border-radius:99px;font-size:14px;font-weight:600;
   opacity:0;pointer-events:none;transition:opacity .18s;z-index:9}
 .toast.show{opacity:.95}
+@media (max-width:430px){
+  .wrap{padding-left:12px;padding-right:12px}
+  .card{padding:16px;border-radius:16px}
+  .top{padding-bottom:13px}
+  .streak{padding-left:9px;padding-right:9px;font-size:11.5px}
+  .spendform{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .spendform .btn{grid-column:1 / -1;width:100%}
+  .flmain{grid-template-columns:54px minmax(0,1fr);gap:8px}
+  .fl{gap:9px;padding-left:10px;padding-right:10px}
+  .tlrow{grid-template-columns:37px 1fr}
+  .tlblocks{left:37px}
+}
 </style>
 </head>
 <body data-tab="today">
@@ -361,7 +472,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
     <div class="mini-logo"><i></i><i></i><i></i></div>
     <div class="t">まいにち</div>
     <div class="streak" id="streakBox">—</div>
-    <button class="gear" id="settingsOpen" aria-label="設定">⚙</button>
+    <button class="gear" id="settingsOpen" aria-label="設定を開く" title="設定を開く"><span class="gearico" aria-hidden="true">⚙</span><span class="geartxt">設定</span></button>
   </header>
 
   <!-- ===== 今日のテーマ（自分で決める一言） ===== -->
@@ -388,24 +499,24 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 
   <!-- ===== 毎日つけるもの ===== -->
   <div class="card" data-pg="today">
-    <h2>毎日つけるもの <span class="tiny" id="habitCount"></span></h2>
+    <h2 class="section-title" data-icon="✓">毎日つけるもの <span class="tiny" id="habitCount"></span></h2>
     <div class="habits" id="habitRow"></div>
   </div>
 
   <!-- ===== 今日やること ===== -->
   <div class="card" data-pg="today">
-    <h2>今日やること <span class="tiny" id="todayCount"></span></h2>
+    <h2 class="section-title" data-icon="→">今日やること <span class="tiny" id="todayCount"></span></h2>
     <div id="taskList"></div>
     <div class="row" style="gap:8px;margin-top:10px">
       <input id="taskNew" placeholder="今日やることを足す">
-      <button class="btn" id="taskAdd">追加</button>
+<button class="btn" id="taskAdd" data-icon="＋">追加</button>
     </div>
     <details style="margin-top:12px">
       <summary>明日やることを決める（夜のうちに）</summary>
       <div id="planList" style="margin-top:4px"></div>
       <div class="row" style="gap:8px;margin-top:8px">
         <input id="planNew" placeholder="明日やること">
-        <button class="btn ghost sm" id="planAdd">追加</button>
+<button class="btn ghost sm" id="planAdd" data-icon="＋">追加</button>
       </div>
       <div class="tiny" style="margin-top:7px">ここに入れたものが、明日の朝そのまま上に出ます。</div>
     </details>
@@ -413,14 +524,14 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 
   <!-- ===== ためてあること ===== -->
   <div class="card" data-pg="today">
-    <h2>ためてあること <span class="tiny" id="errCount"></span></h2>
+    <h2 class="section-title" data-icon="▤">ためてあること <span class="tiny" id="errCount"></span></h2>
     <div class="sorts" id="errSorts"></div>
     <div id="errList"></div>
     <div class="addrow" style="margin-top:12px">
       <input class="wide" id="errNew" placeholder="いつかやること（例: ボタンの材料を買う）">
       <input id="errNote" placeholder="行き先・持ち物">
       <input type="date" id="errDue">
-      <button class="btn" id="errAdd">追加</button>
+<button class="btn" id="errAdd" data-icon="＋">追加</button>
       <input type="time" id="errFrom"><input type="time" id="errTo">
       <span class="tiny">時刻（任意）</span>
     </div>
@@ -430,7 +541,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 
   <!-- ===== SHORTFALL ===== -->
   <div class="card alert" id="shortCard" data-pg="money" hidden>
-    <h2>今月の不足額</h2>
+    <h2 class="section-title" data-icon="!">今月の不足額</h2>
     <div class="amt num" id="shortAmt">¥0</div>
     <div class="dim" style="margin-top:6px">これは頑張りで埋まる数字ではなく、支払額を収入に合わせて引き直す手続きの対象です。この金額をそのまま持って行ってください。</div>
     <ul>
@@ -442,7 +553,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 
   <!-- ===== APPOINTMENT ===== -->
   <div class="card" id="apptCard" data-pg="today">
-    <h2>次の通院</h2>
+    <h2 class="section-title" data-icon="＋">次の通院</h2>
     <div class="row between">
       <div class="grow">
         <div style="font-size:19px;font-weight:700" id="apptWhen">—</div>
@@ -468,7 +579,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 
   <!-- ===== CALENDAR EXPORT ===== -->
   <div class="card" data-pg="pay" id="icsCard">
-    <h2>カレンダーに書き出す</h2>
+    <h2 class="section-title" data-icon="↗">カレンダーに書き出す</h2>
     <div class="dim" style="margin-bottom:10px">
       .icsファイルを作ります。iPhoneで開くとカレンダーに追加でき、TimeTreeにも表示されます。
       <b>出す名前は上で決めたものだけ</b>が入ります。メモや病院の本当の名前は入りません。
@@ -478,13 +589,14 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
       <input type="checkbox" id="icsAmount" style="width:auto;flex:none">
       <span class="dim">支払いの金額もカレンダーに入れる</span>
     </label>
-    <button class="btn grow" id="icsBtn" style="width:100%">.ics を書き出す（3ヶ月分）</button>
+<button class="btn grow" id="icsBtn" data-icon="↗" style="width:100%">.ics を書き出す（3ヶ月分）</button>
     <div class="tiny" style="margin-top:8px">支払いの項目は「今月の支払い」の編集欄で、1件ずつ出す／出さないを選べます。</div>
   </div>
 
   <!-- ===== SPEND ===== -->
   <div class="card" data-pg="money">
-    <h2>使ったら押す</h2>
+    <h2 class="section-title" data-icon="¥">使ったら押す</h2>
+    <div class="tiny spend-help">上のボタンは直近によく使った「金額＋分類」です。押すだけで記録できます。</div>
     <div class="pads" id="pads"></div>
     <div class="seg" id="paySeg">
       <button data-pay="cash" class="on">現金・引落</button>
@@ -493,7 +605,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
     <div class="spendform">
       <input id="spAmt" type="number" inputmode="numeric" placeholder="金額" min="0" step="1">
       <select id="spCat"></select>
-      <button class="btn" id="spAdd">記録</button>
+<button class="btn" id="spAdd" data-icon="＋">記録</button>
     </div>
     <div id="todayList"></div>
   </div>
@@ -512,30 +624,28 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 
   <!-- ===== CARD PROJECTION ===== -->
   <div class="card" id="cardCard" data-pg="money">
-    <h2>来月きます（今月のカード利用）</h2>
-    <div class="row between" style="align-items:flex-end">
-      <div><span class="num" style="font-size:34px;font-weight:700" id="cardNow">¥0</span>
-        <div class="tiny">今月ここまでの利用</div></div>
-      <div style="text-align:right">
-        <span class="num" style="font-size:20px;font-weight:700" id="cardProj">¥0</span>
-        <div class="tiny">このペースだと月末に</div>
+    <div class="credit-card-face">
+      <div class="credit-card-top"><span class="credit-chip">CARD</span><span class="credit-label">来月のカード請求</span></div>
+      <div class="credit-card-grid">
+        <div><span class="credit-caption">今月ここまで使った額</span><span class="credit-number" id="cardNow">¥0</span></div>
+        <div><span class="credit-caption">月末の概算</span><span class="credit-number small" id="cardProj">¥0</span></div>
       </div>
+      <div class="credit-meter"><div class="credit-meter-head"><span>上限までの使用率</span><b id="cardCapLabel">上限未設定</b></div><div class="bar"><i id="cardBar" style="width:0%"></i></div></div>
+      <div class="credit-message" id="cardMsg">上限を決めると、超えそうかどうかが分かります。</div>
     </div>
-    <div class="bar"><i id="cardBar" style="width:0%"></i></div>
-    <div class="tiny" id="cardMsg">—</div>
     <details>
-      <summary>使える上限を決める</summary>
+      <summary>カードの上限を設定する</summary>
       <div class="row" style="gap:8px;margin-top:9px;align-items:center">
-        <div class="grow dim">今月のカード上限</div>
+        <div class="grow dim">今月使ってよい上限（円）</div>
         <input id="cardCap" type="number" inputmode="numeric" style="max-width:130px">
       </div>
-      <div class="tiny" style="margin-top:8px">目安は 収入 − 家賃 − 現金で使う分。ここを超えると来月の請求が収入を超えます。</div>
+      <div class="tiny" style="margin-top:8px">ここで決めた上限は、カード請求予定と「支払い後に残る見込み」の両方に反映されます。</div>
     </details>
   </div>
 
   <!-- ===== UPCOMING ===== -->
   <div class="card lead" data-pg="pay">
-    <h2>今月の固定費 <span class="tiny" id="fixedTotal"></span></h2>
+    <h2 class="section-title" data-icon="▰">今月の固定費 <span class="tiny" id="fixedTotal"></span></h2>
     <div class="sorts" id="paySorts"></div>
     <div id="fixedList"></div>
     <details>
@@ -544,30 +654,31 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
         <div class="hd">名前</div><div class="hd">金額</div><div class="hd">日</div><div class="hd">暦</div><div></div>
       </div>
       <div id="fixedEdit"></div>
-      <button class="btn ghost sm" id="fixedAdd" style="margin-top:9px">＋ 支払いを追加</button>
+<button class="btn ghost sm" id="fixedAdd" data-icon="＋" style="margin-top:9px">支払いを追加</button>
       <div class="tiny" style="margin-top:7px">「振」= 自分で振り込むもの（自動引落ではない）。名前の後ろに 振 と入れると付きます。</div>
     </details>
   </div>
 
   <!-- ===== SUBSCRIPTIONS ===== -->
   <div class="card" data-pg="pay">
-    <h2>サブスク <span class="tiny" id="subTotal"></span></h2>
+    <h2 class="section-title" data-icon="↻">サブスクの支払い <span class="tiny" id="subTotal"></span></h2>
     <div class="sorts" id="subSorts"></div>
     <div id="subList"></div>
     <details>
       <summary>サブスクを編集</summary>
       <div class="edit-grid sb">
-        <div class="hd">名前</div><div class="hd">金額</div><div class="hd">周期</div><div class="hd">日</div><div></div>
+        <div class="hd">サービス</div><div class="hd">プラン</div><div class="hd">金額</div><div class="hd">周期</div><div class="hd">請求日</div><div></div>
       </div>
       <div id="subEdit"></div>
-      <button class="btn ghost sm" id="subAdd" style="margin-top:9px">＋ サブスクを追加</button>
-      <div class="tiny" style="margin-top:7px">年払いは「年」を選ぶと月あたりに換算して合計します。ここは把握用で、「今日使えるお金」の計算には入れていません（カード払いのサブスクは請求が来た月に記録されるため、二重に引かないように）。</div>
+<button class="btn ghost sm" id="subAdd" data-icon="＋" style="margin-top:9px">サブスクを追加</button>
+      <div class="tiny" style="margin-top:7px">サービスとプランを選ぶと、登録済みの料金が入ります。請求日は「毎月何日に請求されるか」です。年額は月額換算して表示し、実際の支払い予定は年額で扱います。</div>
     </details>
   </div>
 
   <!-- ===== INCOME / BENEFIT ===== -->
   <div class="card" data-pg="money">
-    <h2>入ってくるお金</h2>
+    <h2 class="section-title" data-icon="＋">入ってくるお金</h2>
+    <div class="tiny" style="margin:-4px 0 9px">実際に口座へ入ったら、右の「入金を記録」を押します。予定日を過ぎた未入金は計算から外します。</div>
     <div id="incomeList"></div>
     <details>
       <summary>入金を編集</summary>
@@ -575,25 +686,24 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
         <div class="hd">名前</div><div class="hd">金額</div><div class="hd">日</div><div></div>
       </div>
       <div id="incomeEdit"></div>
-      <button class="btn ghost sm" id="incomeAdd" style="margin-top:9px">＋ 入金を追加</button>
+<button class="btn ghost sm" id="incomeAdd" data-icon="＋" style="margin-top:9px">入金を追加</button>
     </details>
   </div>
 
   <!-- ===== BENEFIT COUNTER ===== -->
   <div class="card" data-pg="money">
-    <h2>手当 のこり</h2>
-    <div class="row between">
-      <div><span class="num" style="font-size:30px;font-weight:700" id="benLeft">0</span>
-           <span class="dim">ヶ月分 / 全<span id="benTotal">18</span></span></div>
-      <div class="tiny" style="text-align:right" id="benEnd">—</div>
+    <h2 class="section-title" data-icon="◒">手当 のこり</h2>
+    <div class="benefit-summary">
+      <div><div class="benefit-kicker">支給対象の残り</div><div><span class="num benefit-number" id="benLeft">0</span><span class="dim">か月</span></div><div class="tiny" id="benGot">—</div></div>
+      <div class="benefit-next" id="benEnd">—</div>
     </div>
     <div class="dots" id="benDots"></div>
-    <div class="tiny">枠は「支給対象の月」。押すと切り替わります。入金そのものは上の「入ってくるお金」で記録してください（対象月と入金月はずれます）。日数ベースで数える制度もあるため、ここは目安です。</div>
+    <div class="benefit-hint"><b>入金された月をタップ</b>すると、支給済みに切り替わります。実際に入ったお金は上の「入ってくるお金」で「入金を記録」してください。</div>
   </div>
 
   <!-- ===== BALANCE ===== -->
   <div class="card" data-pg="money">
-    <h2>いま持っているお金</h2>
+    <h2 class="section-title" data-icon="▣">いま持っているお金</h2>
     <div id="acctList"></div>
     <details>
       <summary>残高を編集</summary>
@@ -601,44 +711,58 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
         <div class="hd">名前</div><div class="hd">残高</div><div></div><div></div>
       </div>
       <div id="acctEdit"></div>
-      <button class="btn ghost sm" id="acctAdd" style="margin-top:9px">＋ 口座を追加</button>
+<button class="btn ghost sm" id="acctAdd" data-icon="＋" style="margin-top:9px">口座を追加</button>
     </details>
   </div>
 
   <!-- ===== HEALTH ===== -->
   <div class="card lead" data-pg="body">
-    <h2>からだの記録（歩数と睡眠）</h2>
-    <button class="btn ghost sm" id="hPaste" style="width:100%;margin-bottom:10px">クリップボードから取り込む</button>
-    <div class="hd" style="text-align:left;margin:2px 0 4px">今日の歩数</div>
-    <input type="number" inputmode="numeric" id="hSteps" placeholder="歩数">
-    <div class="edit-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));margin:9px 0 4px">
-      <div class="hd" style="text-align:left">就寝</div><div class="hd" style="text-align:left">起床</div>
+    <div class="health-topline">
+      <div><div class="health-kicker">今日の記録</div><div class="health-title">からだとこころ</div></div>
+      <div class="health-date" id="healthTodayLabel">—</div>
     </div>
-    <div class="edit-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));margin:0">
-      <input type="time" id="hBed">
-      <input type="time" id="hWake">
+    <div class="health-section health-auto">
+      <div class="health-section-head"><span class="health-icon">↻</span><div><b>歩数・睡眠の自動取り込み</b><span class="health-help" id="healthAutoState">同期を設定すると45秒ごとに確認します</span></div></div>
+      <button class="btn ghost sm" id="hPaste" data-icon="↻" style="width:100%;margin-top:10px">自動取り込みを確認</button>
+      <details>
+        <summary>自動取り込みの設定を見る</summary>
+        <div class="tiny" style="margin-top:8px">
+          iPhoneのショートカットがヘルスケアから歩数・睡眠を非公開Gistの受信箱へ送ります。アプリは同期時に受信箱を読み、取り込んだら自動で空にします。初回だけ「おかね → 同期」を設定してください。
+        </div>
+      </details>
     </div>
-    <div style="font-size:15px;font-weight:600;margin:14px 0 7px">今日の体の調子</div>
-    <div class="rate" id="rateBody">
-      <button data-rate="body" data-val="1">1</button><button data-rate="body" data-val="2">2</button><button data-rate="body" data-val="3">3</button><button data-rate="body" data-val="4">4</button><button data-rate="body" data-val="5">5</button>
-    </div>
-    <div style="font-size:15px;font-weight:600;margin:12px 0 7px">今日の心の調子</div>
-    <div class="rate" id="rateMind">
-      <button data-rate="mind" data-val="1">1</button><button data-rate="mind" data-val="2">2</button><button data-rate="mind" data-val="3">3</button><button data-rate="mind" data-val="4">4</button><button data-rate="mind" data-val="5">5</button>
-    </div>
-    <div style="font-size:15px;font-weight:600;margin:16px 0 4px">歩数と心の調子</div>
-    <div id="scatBox"></div>
-    <div id="corrBox" class="tiny" style="margin-top:8px"></div>
-    <div id="hList" style="margin-top:10px"></div>
-    <details>
-      <summary>自動で取り込む（ショートカット連携）</summary>
-      <div class="tiny" style="margin-top:8px">
-        iPhoneの「ショートカット」がヘルスケアの歩数・睡眠を読めます。
-        <b>kenko|2026-08-02|8234|23:40|07:30</b>（歩数だけ・睡眠だけでも可）の形で
-        クリップボードにコピーする自動化を作り、このアプリを開いて上のボタンを押すと入ります。
-        作り方は SHORTCUTS.md にあります。
+    <div class="health-section health-body">
+      <div class="health-section-head"><span class="health-icon">♧</span><div><b>からだ</b><span class="health-help">歩数・睡眠・体の調子</span></div></div>
+      <div class="health-field-label">歩数 <span class="unit">歩</span></div>
+      <input type="number" inputmode="numeric" id="hSteps" placeholder="今日の歩数">
+      <div class="health-two-labels"><span>就寝</span><span>起床</span></div>
+      <div class="edit-grid health-two" style="grid-template-columns:repeat(2,minmax(0,1fr));margin:0">
+        <input type="time" id="hBed"><input type="time" id="hWake">
       </div>
-    </details>
+      <div class="health-field-label">今日の体の調子 <span class="scale-note">1 つらい　→　5 らく</span></div>
+      <div class="rate rate-body" id="rateBody">
+        <button data-rate="body" data-val="1">1</button><button data-rate="body" data-val="2">2</button><button data-rate="body" data-val="3">3</button><button data-rate="body" data-val="4">4</button><button data-rate="body" data-val="5">5</button>
+      </div>
+      <div class="health-impact-grid">
+        <div class="health-impact"><span>消費カロリー（目安）</span><b id="hCalories">—</b></div>
+        <label class="health-impact"><span>歩いた代わりの交通費</span><input type="number" inputmode="numeric" id="hFare" placeholder="0"><em>円</em></label>
+      </div>
+    </div>
+    <div class="health-section health-mind">
+      <div class="health-section-head"><span class="health-icon">♡</span><div><b>こころ</b><span class="health-help">心の調子</span></div></div>
+      <div class="health-field-label">今日の心の調子 <span class="scale-note">1 つらい　→　5 らく</span></div>
+      <div class="rate rate-mind" id="rateMind">
+        <button data-rate="mind" data-val="1">1</button><button data-rate="mind" data-val="2">2</button><button data-rate="mind" data-val="3">3</button><button data-rate="mind" data-val="4">4</button><button data-rate="mind" data-val="5">5</button>
+      </div>
+    </div>
+    <div class="health-save-row"><span id="healthDraftState">変更は保存されていません</span><button class="btn" id="healthSave" data-icon="↓" disabled>この日の記録を保存</button></div>
+    <div class="health-section health-analysis">
+      <div class="health-section-head"><span class="health-icon">▥</span><div><b>一週間の見える化</b><span class="health-help">歩数・睡眠・体・心を同じ日付で確認</span></div></div>
+      <div id="scatBox"></div>
+      <div id="corrBox" class="tiny" style="margin-top:8px"></div>
+      <div class="health-tools"><span class="health-help">並べ替え</span><div class="sorts" id="healthSorts"></div></div>
+      <div id="hList" style="margin-top:10px"></div>
+    </div>
   </div>
 
   <!-- ===== CALENDAR PAGE ===== -->
@@ -669,7 +793,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 
   <!-- ===== SYNC ===== -->
   <div class="card" data-pg="money" id="syncCard">
-    <h2>同期 <span class="tiny" id="syncState">オフ</span></h2>
+    <h2 class="section-title" data-icon="⇄">同期 <span class="tiny" id="syncState">オフ</span></h2>
     <div class="row" style="gap:8px;margin-bottom:10px">
       <span class="syncdot" id="syncDot"></span>
       <span class="dim grow" id="syncMsg">PCとiPhoneを自動でそろえます。</span>
@@ -692,7 +816,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
       </div>
       <input id="syncToken" type="password" placeholder="GitHubトークンを貼る" autocomplete="off">
       <input id="syncGist" placeholder="Gist ID（2台目以降だけ。1台目は空のまま）" style="margin-top:7px">
-      <button class="btn" id="syncStart" style="width:100%;margin-top:9px">同期を開始</button>
+<button class="btn" id="syncStart" data-icon="⇄" style="width:100%;margin-top:9px">同期を開始</button>
       <div class="tiny" id="syncGistOut" style="margin-top:8px"></div>
     </details>
     <div style="margin-top:12px">
@@ -713,11 +837,11 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 
   <!-- ===== BACKUP ===== -->
   <div class="card" data-pg="money" id="backupCard">
-    <h2>バックアップ</h2>
+    <h2 class="section-title" data-icon="↓">バックアップ</h2>
     <div class="dim" style="margin-bottom:10px">iPhoneのSafariは、しばらく開かないと保存データを消すことがあります。ときどき書き出してください。</div>
     <div class="row" style="gap:8px">
-      <button class="btn ghost sm grow" id="expBtn">書き出す</button>
-      <button class="btn ghost sm grow" id="impBtn">読み込む</button>
+<button class="btn ghost sm grow" id="expBtn" data-icon="↓">書き出す</button>
+<button class="btn ghost sm grow" id="impBtn" data-icon="↑">読み込む</button>
       <input type="file" id="impFile" accept="application/json,.json" hidden>
     </div>
     <div class="tiny" style="margin-top:9px" id="lastSave">—</div>
@@ -789,11 +913,11 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 </div>
 
 <nav class="tabbar">
-  <button data-gotab="today">きょう</button>
-  <button data-gotab="money">おかね</button>
-  <button data-gotab="cal">こよみ</button>
-  <button data-gotab="body">からだ</button>
-  <button data-gotab="pay">しはらい</button>
+  <button data-gotab="today"><span class="navico" aria-hidden="true">⌂</span><span>きょう</span></button>
+  <button data-gotab="money"><span class="navico" aria-hidden="true">¥</span><span>おかね</span></button>
+  <button data-gotab="cal"><span class="navico" aria-hidden="true">▦</span><span>こよみ</span></button>
+  <button data-gotab="body"><span class="navico" aria-hidden="true">♡</span><span>からだ</span></button>
+  <button data-gotab="pay"><span class="navico" aria-hidden="true">↻</span><span>しはらい</span></button>
 </nav>
 <div class="toast" id="toast"></div>
 
@@ -807,7 +931,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.9.0";          // version.txt と一致させること
+const BUILD = "0.11.0";         // version.txt と一致させること
 const KEY = "mainichi.v1";
 let staleBuild = false;         // 古い版のまま開きっぱなしになっていないか
 const CATS = ["食費","日用品","交通","医療","交際","その他"];
@@ -967,18 +1091,20 @@ function calc(){
     if(i.day >= today) incoming += (+i.amt||0);
   }
 
-  const pool = balance + incoming - unpaid;      // 月末までに自由に使える総額
-  const perDay = pool > 0 ? pool / daysLeft : 0;
+  // 今月のカード利用 = まだ口座から落ちていないが、すでに使ったお金
+  const cardNow = S.spends
+    .filter(s => s.pay === "card" && s.d.startsWith(mk))
+    .reduce((a,s)=>a + (+s.amt||0), 0);
 
-  // カード払いは残高を今は減らさないが、使ったことに変わりはないので予算からは引く
+  // カード利用も支払い予定として引く。残高だけを見て「使える」と誤認しないため
+  const pool = balance + incoming - unpaid - cardNow;
+  const perDay = pool / daysLeft;
+
+  // 今日の支出。現金・カードを同じ「使ったお金」として表示する
   const spentToday = S.spends
     .filter(s => s.d === ymd(d))
     .reduce((a,s)=>a + (+s.amt||0), 0);
 
-  // 今月のカード利用 = 来月の請求額
-  const cardNow = S.spends
-    .filter(s => s.pay === "card" && s.d.startsWith(mk))
-    .reduce((a,s)=>a + (+s.amt||0), 0);
   const cardProj = cardNow / today * lastDay(d);
 
   return { mk, today, daysLeft, balance, unpaid, overdue, incoming,
@@ -1006,11 +1132,14 @@ function render(){
 
 /* ---------- タブ ---------- */
 const TABS = ["today","money","cal","body","pay"];
+const TAB_LABELS = {today:"きょう", money:"おかね", cal:"こよみ", body:"からだ", pay:"しはらい"};
 function setTab(t){
   if(!TABS.includes(t)) t = "today";
   const changed = document.body.dataset.tab !== t;
   S.ui.tab = t; save();
   document.body.dataset.tab = t;
+  const title = document.querySelector(".top .t");
+  if(title) title.textContent = `まいにち / ${TAB_LABELS[t]}`;
   document.querySelectorAll(".tabbar button").forEach(b =>
     b.classList.toggle("on", b.dataset.gotab === t));
   if(changed) window.scrollTo(0, 0);   // 同じタブを押しただけならスクロールしない
@@ -1300,7 +1429,7 @@ function moneyCalView(){
     const bg = v ? `background:color-mix(in srgb,var(--accent) ${Math.round(10 + v/maxD*46)}%,var(--card2))` : "";
     cells.push(`<button class="calcell${key === tk ? " today" : ""}" style="${bg}" data-calday="${key}">
       <span class="dn">${d}</span>
-      ${v ? `<span class="sp" style="font-size:9.5px">${v >= 10000 ? (v/10000).toFixed(1)+"万" : v.toLocaleString("ja-JP")}</span>` : ""}</button>`);
+      ${v ? `<span class="sp" style="font-size:9.5px">${yen(v)}</span>` : ""}</button>`);
   }
   document.getElementById("mcBody").innerHTML = cells.join("");
 
@@ -1662,7 +1791,7 @@ function heroView(){
   bar.classList.toggle("over", c.left < 0);
 
   el("heroFoot").textContent =
-    `残高 ${yen(c.balance)}　＋入金予定 ${yen(c.incoming)}　−未払い ${yen(c.unpaid)}　＝ ${yen(c.pool)} を のこり${c.daysLeft}日で`;
+    `残高 ${yen(c.balance)}　＋入金予定 ${yen(c.incoming)}　−固定費 ${yen(c.unpaid)}　−カード請求予定 ${yen(c.cardNow)}　＝ ${yen(c.pool)}`;
 
   const sc = el("shortCard");
   if(c.pool < 0){
@@ -1725,6 +1854,8 @@ function cardView(){
 
   const capEl = document.getElementById("cardCap");
   if(document.activeElement !== capEl) capEl.value = cap;
+  const capLabel = document.getElementById("cardCapLabel");
+  if(capLabel) capLabel.textContent = cap > 0 ? `上限 ${yen(cap)}` : "上限未設定";
 
   const msg = document.getElementById("cardMsg");
   if(cap <= 0) msg.textContent = "上限を決めると、超えそうかどうかがここに出ます。";
@@ -1737,9 +1868,12 @@ function cardView(){
 // 頭文字の札。外部の画像は取りに行かない（オフラインでも壊れないように）
 const MARK_COLORS = ["#7AA7F0","#5ECFA0","#E39A5C","#E28FC8","#DFC661","#5AC8E8","#E06B5A"];
 function mark(name){
+  const service = (typeof SUB_CATALOG !== "undefined") ? SUB_CATALOG.find(x => x.name === name) : null;
+  const known = service ? [service.mark, service.color] : null;
   let h = 0; for(const ch of name) h = (h * 31 + ch.charCodeAt(0)) % 997;
-  const col = MARK_COLORS[h % MARK_COLORS.length];
-  return `<span class="badge" style="background:${col}">${esc(name.trim().slice(0,1) || "・")}</span>`;
+  const col = known ? known[1] : MARK_COLORS[h % MARK_COLORS.length];
+  const glyph = known ? known[0] : (name.trim().slice(0,1) || "・");
+  return `<span class="badge" style="background:${col}">${esc(glyph)}</span>`;
 }
 
 const PAY_SORTS = [["due","期日順"],["amt","金額順"],["name","名前順"]];
@@ -1796,12 +1930,41 @@ function fixedView(){
 const SUB_SORTS = [["amt","高い順"],["day","請求日順"],["name","名前順"]];
 let subSort = "amt";
 
+// オフラインでも選べる、よく使うサービスのプリセット。ロゴ画像は外部取得せず、色と頭文字で識別する。
+const SUB_CATALOG = [
+  {name:"Amazon Prime", cat:"動画・配送", mark:"A", color:"#F59E0B", plans:[["月額",600,"m"],["年額",5900,"y"]]},
+  {name:"Netflix", cat:"動画", mark:"N", color:"#E50914", plans:[["広告つき",890,"m"],["スタンダード",1590,"m"],["プレミアム",2290,"m"]]},
+  {name:"U-NEXT", cat:"動画", mark:"U", color:"#8B5CF6", plans:[["月額",2189,"m"]]},
+  {name:"Disney+", cat:"動画", mark:"D", color:"#2563EB", plans:[["スタンダード",1250,"m"],["プレミアム",1670,"m"],["プレミアム年額",16800,"y"]]},
+  {name:"Hulu", cat:"動画", mark:"H", color:"#22C55E", plans:[["月額",1026,"m"]]},
+  {name:"YouTube Premium", cat:"動画・音楽", mark:"▶", color:"#EF4444", plans:[["個人",1280,"m"]]},
+  {name:"Apple Music", cat:"音楽", mark:"A", color:"#A855F7", plans:[["学生",680,"m"],["個人",1180,"m"],["ファミリー",1980,"m"]]},
+  {name:"Spotify", cat:"音楽", mark:"S", color:"#22C55E", plans:[["個人",1080,"m"],["ファミリー",1880,"m"]]},
+  {name:"iCloud+", cat:"ストレージ", mark:"☁", color:"#60A5FA", plans:[["50GB",150,"m"],["200GB",450,"m"],["2TB",1500,"m"],["6TB",4500,"m"],["12TB",9000,"m"]]},
+  {name:"Google One", cat:"ストレージ", mark:"G", color:"#4285F4", plans:[["ベーシック",250,"m"],["プレミアム",1300,"m"]]},
+  {name:"Microsoft 365", cat:"仕事", mark:"M", color:"#2563EB", plans:[["Personal 月額",2130,"m"],["Personal 年額",14900,"y"]]},
+  {name:"Dropbox", cat:"ストレージ", mark:"D", color:"#2563EB", plans:[["Plus 月額",1500,"m"],["Plus 年額",14400,"y"]]},
+  {name:"Nintendo Switch Online", cat:"ゲーム", mark:"N", color:"#E11D48", plans:[["個人 1か月",306,"m"],["個人 12か月",2400,"y"]]},
+  {name:"ChatGPT Plus", cat:"AI", mark:"◎", color:"#10A37F", plans:[["月額",3000,"m"]]},
+  {name:"Claude Pro", cat:"AI", mark:"✦", color:"#D97706", plans:[["月額",3000,"m"]]},
+  {name:"その他", cat:"その他", mark:"・", color:"#94A3B8", plans:[["金額を入力",0,"m"]]}
+];
+function subCatalog(name){ return SUB_CATALOG.find(x => x.name === name) || SUB_CATALOG[SUB_CATALOG.length-1]; }
+function subServiceOptions(s){
+  const current = s.service || (SUB_CATALOG.some(x=>x.name===s.name) ? s.name : "その他");
+  return SUB_CATALOG.map(x => `<option value="${esc(x.name)}"${x.name===current?" selected":""}>${esc(x.name)}</option>`).join("");
+}
+function subPlanOptions(s){
+  const c = subCatalog(s.service || s.name), current = s.plan || "";
+  return c.plans.map((p,i)=>`<option value="${i}"${current===p[0] || (!current && i===0)?" selected":""}>${esc(p[0])}${p[1] ? `（${yen(p[1])}${p[2]==="y"?"／年":"／月"}）` : ""}</option>`).join("");
+}
+
 function subsView(){
   const perMonth = s => s.cycle === "y" ? (+s.amt||0) / 12 : (+s.amt||0);
   const total = S.subs.reduce((a,s) => a + perMonth(s), 0);
   const max = Math.max(1, ...S.subs.map(perMonth));
   document.getElementById("subTotal").textContent =
-    S.subs.length ? `月 ${yen(total)}／年 ${yen(total*12)}` : "";
+    S.subs.length ? `月額換算 ${yen(total)} ／ 年間 ${yen(total*12)}` : "";
   document.getElementById("subSorts").innerHTML = SUB_SORTS.map(([id,lab]) =>
     `<button data-subsort="${id}" class="${subSort===id?"on":""}">${lab}</button>`).join("");
 
@@ -1812,26 +1975,27 @@ function subsView(){
 
   document.getElementById("subList").innerHTML = list.length
     ? list.map(s => `<div class="item">
-        ${mark(s.name)}
+        ${mark(s.service || s.name)}
         <div class="grow">
           <div class="row between" style="gap:8px">
-            <div class="nm">${esc(s.name)}${s.cycle==="y"?`<span class="chip">年払い</span>`:""}</div>
+            <div class="nm">${esc(s.name)}${s.plan?`<span class="chip">${esc(s.plan)}</span>`:""}</div>
             <div class="amt" style="font-weight:700">${yen(perMonth(s))}</div>
           </div>
           <div class="amtbar" style="width:${(perMonth(s)/max*100).toFixed(0)}%"></div>
-          <div class="mt">${s.cycle==="y"?"年 "+yen(s.amt)+" を12で割った額":"毎月"+(s.day?s.day+"日":"")}</div>
+          <div class="mt">${s.cycle==="y"?"年額 "+yen(s.amt)+" を12か月で換算":"月額 "+yen(s.amt)}${s.day?`　請求日: 毎月${s.day}日`:"　請求日未設定"}</div>
         </div></div>`).join("")
     : `<div class="tiny" style="padding-bottom:6px">登録されていません</div>`;
 
   document.getElementById("subEdit").innerHTML = S.subs.map(s => `
     <div class="edit-grid sb">
-      <input value="${esc(s.name)}" data-sb="name" data-id="${s.id}">
-      <input type="number" inputmode="numeric" value="${s.amt}" data-sb="amt" data-id="${s.id}">
+      <select data-sb="service" data-id="${s.id}">${subServiceOptions(s)}</select>
+      <select data-sb="plan" data-id="${s.id}">${subPlanOptions(s)}</select>
+      <input type="number" inputmode="numeric" value="${s.amt}" data-sb="amt" data-id="${s.id}" aria-label="金額">
       <select data-sb="cycle" data-id="${s.id}">
         <option value="m"${s.cycle!=="y"?" selected":""}>月</option>
         <option value="y"${s.cycle==="y"?" selected":""}>年</option>
       </select>
-      <input type="number" inputmode="numeric" min="1" max="31" value="${s.day||""}" data-sb="day" data-id="${s.id}">
+      <input type="number" inputmode="numeric" min="1" max="31" value="${s.day||""}" data-sb="day" data-id="${s.id}" placeholder="請求日" aria-label="請求日">
       <button class="del" data-delsub="${s.id}">×</button>
     </div>`).join("");
 }
@@ -1848,7 +2012,7 @@ function incomeView(){
       <div class="grow"><div class="nm">${esc(i.name)}${chip}</div>
         <div class="mt">毎月${i.day}日ごろ${late?"　※計算に入れていません":""}</div></div>
       <div class="amt">${yen(i.amt)}</div>
-      <button class="btn ghost sm" data-gotincome="${i.id}">${got?"戻す":"入った"}</button>
+      <button class="btn ghost sm" data-gotincome="${i.id}">${got?"入金を取り消す":"入金を記録"}</button>
     </div>`;
   }).join("") || `<div class="tiny">入金が登録されていません</div>`;
 
@@ -1868,7 +2032,7 @@ function benefitView(){
 
   const got = keys.filter(k => !!S.benefitMonths[k]).length;
   document.getElementById("benLeft").textContent = total - got;
-  document.getElementById("benTotal").textContent = total;
+  document.getElementById("benGot").textContent = `支給済み ${got}か月 ／ 全${total}か月`;
 
   const nextIdx = keys.findIndex(k => !S.benefitMonths[k]);
   document.getElementById("benEnd").innerHTML = nextIdx < 0
@@ -1878,17 +2042,23 @@ function benefitView(){
   document.getElementById("benDots").innerHTML = keys.map((k,n)=>{
     const on = !!S.benefitMonths[k];
     const cls = on ? "on" : (n === nextIdx ? "next" : "");
-    return `<button class="dot ${cls}" data-benmonth="${k}" title="${jpMonth(k)}分">${k.slice(5)}</button>`;
+    return `<button class="dot ${cls}" data-benmonth="${k}" title="${jpMonth(k)}分を${on?"支給済み":"未支給"}" aria-label="${jpMonth(k)}分 ${on?"支給済み":"未支給"}">${k.slice(5)}月</button>`;
   }).join("");
 }
 
 function acctView(){
   const total = S.accounts.reduce((a,x)=>a+(+x.bal||0),0);
+  const c = calc();
+  const after = total - c.unpaid - c.cardNow;
   document.getElementById("acctList").innerHTML =
-    S.accounts.map(a=>`<div class="item"><div class="grow nm">${esc(a.name)}</div>
+    `<div class="money-summary">
+      <div class="money-summary-row"><span>口座・手元の残高</span><b>${yen(total)}</b></div>
+      <div class="money-summary-row minus"><span>未払いの固定費</span><b>−${yen(c.unpaid)}</b></div>
+      <div class="money-summary-row minus"><span>カード請求予定</span><b>−${yen(c.cardNow)}</b></div>
+      <div class="money-summary-row total"><span>支払い後に残る見込み</span><b>${yen(after)}</b></div>
+    </div>` + S.accounts.map(a=>`<div class="item"><div class="grow nm">${esc(a.name)}</div>
       <div class="amt">${yen(a.bal)}</div></div>`).join("")
-    + `<div class="item"><div class="grow nm" style="color:var(--dim)">合計</div>
-       <div class="amt" style="font-weight:700">${yen(total)}</div></div>`;
+    + `<div class="tiny" style="margin-top:9px">口座名は「銀行」「手元」など、実際に置いてある場所で分けてください。クレカ利用は残高とは別に請求予定として上で差し引いています。</div>`;
 
   document.getElementById("acctEdit").innerHTML = S.accounts.map(a=>`
     <div class="edit-grid">
@@ -1941,7 +2111,7 @@ function addSpend(amt, cat, pay){
 
 /* ---------- events ---------- */
 document.addEventListener("click", e => {
-  const t = e.target.closest("[data-pad],[data-delspend],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate],[data-habit],[data-task],[data-deltask],[data-delplan],[data-gotab],[data-calnav],[data-calday],[data-err],[data-delerr],[data-applied],[data-delhabit],[data-plancat],[data-delplan2],[data-errsort],[data-errprio],[data-paysort],[data-subsort],[data-planit],[data-unplan],[data-mcnav],[data-slot],[data-slotdone],[data-urgent],#lightBtn,#flowEdit");
+  const t = e.target.closest("[data-pad],[data-delspend],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate],[data-habit],[data-task],[data-deltask],[data-delplan],[data-gotab],[data-calnav],[data-calday],[data-err],[data-delerr],[data-applied],[data-delhabit],[data-plancat],[data-delplan2],[data-errsort],[data-errprio],[data-paysort],[data-subsort],[data-healthsort],[data-planit],[data-unplan],[data-mcnav],[data-slot],[data-slotdone],[data-urgent],#lightBtn,#flowEdit");
   if(!t) return;
 
   if(t.dataset.delhabit){
@@ -1951,6 +2121,7 @@ document.addEventListener("click", e => {
   }
 
   if(t.dataset.gotab){ setTab(t.dataset.gotab); return; }
+  if(t.dataset.healthsort){ healthSort = t.dataset.healthsort; healthView(); return; }
   if(t.dataset.calnav || t.dataset.calday){ /* 見るだけの操作は読み取り専用でも通す */ }
   else if(!canWrite()) return;
 
@@ -2070,10 +2241,10 @@ document.addEventListener("click", e => {
   }
 
   if(t.dataset.rate){
-    const d = ymd(now()), h = S.health[d] || (S.health[d] = {});
+    const d = ymd(now()), h = healthDraftFor(d);
     const v = +t.dataset.val;
     h[t.dataset.rate] = (h[t.dataset.rate] === v) ? null : v;   // 同じ数字をもう一度押すと取り消し
-    save(); healthView(); return;
+    healthView(); return;
   }
 
   if(t.dataset.delsub){ S.subs = S.subs.filter(x=>x.id!==t.dataset.delsub); save(); render(); return; }
@@ -2115,6 +2286,24 @@ function sleepMin(bed, wake){
   return b <= w ? w - b : 1440 - b + w;   // 就寝が起床より遅い時刻なら前日夜とみなす
 }
 const fmtSleep = m => m == null ? "—" : `${Math.floor(m/60)}時間${String(m%60).padStart(2,"0")}分`;
+let healthDraft = null;
+let healthSort = "date";
+
+function healthDraftFor(day){
+  if(!healthDraft || healthDraft.day !== day)
+    healthDraft = {day, data:Object.assign({}, S.health[day] || {})};
+  return healthDraft.data;
+}
+function healthShown(day){
+  const saved = S.health[day] || {};
+  return healthDraft && healthDraft.day === day ? Object.assign({}, saved, healthDraft.data) : saved;
+}
+function healthDirtyPaint(){
+  const dirty = !!healthDraft;
+  const b = document.getElementById("healthSave"), s = document.getElementById("healthDraftState");
+  if(b){ b.disabled = !dirty; b.classList.toggle("dirty", dirty); }
+  if(s) s.textContent = dirty ? "未保存の変更があります" : "変更は保存されていません";
+}
 
 // "kenko|2026-08-02|8234|23:40|07:30" 形式。空欄はスキップ
 function applyHealthLine(line){
@@ -2129,29 +2318,85 @@ function applyHealthLine(line){
 
 function healthView(){
   const t = ymd(now()), h = S.health[t] || {};
+  const shown = healthShown(t);
   const set = (id,v) => { const e = document.getElementById(id);
     if(document.activeElement !== e) e.value = v == null ? "" : v; };
-  set("hSteps", h.steps); set("hBed", h.bed); set("hWake", h.wake);
+  set("hSteps", shown.steps); set("hBed", shown.bed); set("hWake", shown.wake); set("hFare", shown.fare);
+  const cal = document.getElementById("hCalories");
+  if(cal) cal.textContent = shown.steps ? `${Math.round((+shown.steps||0)*0.04).toLocaleString("ja-JP")} kcal` : "—";
+  const todayLabel = document.getElementById("healthTodayLabel");
+  if(todayLabel){ const d = new Date(t + "T00:00:00"); todayLabel.textContent = `${d.getMonth()+1}/${d.getDate()}（${"日月火水木金土"[d.getDay()]}）`; }
+  const auto = document.getElementById("healthAutoState");
+  if(auto){ const c = syncCfg(); auto.textContent = c.token && c.gistId ? "同期オン・45秒ごとに確認" : "おかね → 同期を設定すると自動になります"; }
 
   document.querySelectorAll("[data-rate]").forEach(b =>
-    b.classList.toggle("on", (h[b.dataset.rate] || 0) === +b.dataset.val));
-  document.getElementById("scatBox").innerHTML = scatter();
+    b.classList.toggle("on", (shown[b.dataset.rate] || 0) === +b.dataset.val));
+  document.getElementById("scatBox").innerHTML = healthCharts();
   document.getElementById("corrBox").innerHTML = corrText();
+  document.getElementById("healthSorts").innerHTML = [["date","日付"],["steps","歩数"],["sleep","睡眠"],["mind","心"],["body","体"]].map(([id,lab]) =>
+    `<button data-healthsort="${id}" class="${healthSort===id?"on":""}">${lab}</button>`).join("");
+  document.getElementById("hList").innerHTML = healthHistory();
+  healthDirtyPaint();
+}
 
-  const days = Object.keys(S.health).sort().slice(-14).reverse();
-  const maxS = Math.max(1, ...days.map(d => S.health[d].steps || 0));
-  document.getElementById("hList").innerHTML = days.length
-    ? days.map(d => {
-        const x = S.health[d], sm = sleepMin(x.bed, x.wake);
-        const dt = new Date(d + "T00:00:00");
-        return `<div class="item"><div class="grow">
-          <div class="nm">${dt.getMonth()+1}/${dt.getDate()}（${"日月火水木金土"[dt.getDay()]}）${
-            x.body?`<span class="chip">体${x.body}</span>`:""}${x.mind?`<span class="chip">心${x.mind}</span>`:""}</div>
-          <div class="bar" style="margin:5px 0 0"><i style="width:${((x.steps||0)/maxS*100).toFixed(0)}%"></i></div></div>
-          <div style="text-align:right"><div class="amt">${x.steps != null ? x.steps.toLocaleString("ja-JP")+"歩" : "—"}</div>
-          <div class="tiny">${fmtSleep(sm)}</div></div></div>`;
-      }).join("")
-    : `<div class="tiny" style="padding-top:8px">まだ記録がありません。今日の分を上に入れるところからで大丈夫です。</div>`;
+function healthDays(){
+  const out = [], d = now();
+  for(let i=6; i>=0; i--){ const x = new Date(d); x.setDate(d.getDate()-i); out.push(ymd(x)); }
+  return out;
+}
+
+function healthHistory(){
+  const days = healthDays();
+  const maxS = Math.max(1, ...days.map(d => +(S.health[d] || {}).steps || 0));
+  const ordered = days.slice().sort((a,b) => {
+    if(healthSort === "date") return a.localeCompare(b);
+    const x = S.health[a] || {}, y = S.health[b] || {};
+    const av = healthSort === "sleep" ? (sleepMin(x.bed,x.wake)||0) : (+x[healthSort]||0);
+    const bv = healthSort === "sleep" ? (sleepMin(y.bed,y.wake)||0) : (+y[healthSort]||0);
+    return bv - av || b.localeCompare(a);
+  });
+  return `<div class="health-week-wrap"><div class="health-week">${ordered.map(d=>{
+    const x = S.health[d] || {}, sm = sleepMin(x.bed,x.wake), dt = new Date(d+"T00:00:00"), has = Object.keys(x).length > 0;
+    return `<div class="health-day${d===ymd(now())?" today":""}${has?"":" empty"}">
+      <div class="health-day-head"><b>${dt.getMonth()+1}/${dt.getDate()}</b><span>${"日月火水木金土"[dt.getDay()]}</span></div>
+      <div class="health-day-steps">${x.steps != null ? x.steps.toLocaleString("ja-JP")+"歩" : "—"}</div>
+      <div class="health-day-bar"><i style="width:${((x.steps||0)/maxS*100).toFixed(0)}%"></i></div>
+      <div class="health-day-meta"><div class="health-metric"><span>睡眠</span><b>${fmtSleep(sm)}</b></div><div class="health-metric body"><span>体</span><b>${x.body ? x.body+" / 5" : "—"}</b></div><div class="health-metric mind"><span>心</span><b>${x.mind ? x.mind+" / 5" : "—"}</b></div></div>
+    </div>`;
+  }).join("")}</div></div>`;
+}
+
+function healthCharts(){
+  const days = healthDays(), W = 180, H = 74, pad = 8;
+  const labels = days.map(d => { const x = new Date(d+"T00:00:00"); return `${x.getMonth()+1}/${x.getDate()}`; });
+  const chart = (title, unit, color, values, max, kind) => {
+    const usable = W - pad*2, base = H - 17;
+    const x = i => pad + (usable * i / Math.max(1, values.length-1));
+    const y = v => base - Math.max(0, Math.min(1, v/max)) * (base-8);
+    let marks = `<line x1="${pad}" y1="${base}" x2="${W-pad}" y2="${base}" stroke="var(--line)"/>`;
+    if(kind === "bar") marks += values.map((v,i)=>{
+      if(!v) return "";
+      const bw = Math.max(6, usable/values.length*.48);
+      return `<rect x="${x(i)-bw/2}" y="${y(v)}" width="${bw}" height="${Math.max(1,base-y(v))}" rx="3" fill="${color}" opacity=".85"/>`;
+    }).join("");
+    else {
+      const pts = values.map((v,i)=>v ? `${x(i)},${y(v)}` : "").filter(Boolean);
+      if(pts.length > 1) marks += `<polyline points="${pts.join(" ")}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+      marks += values.map((v,i)=>v ? `<circle cx="${x(i)}" cy="${y(v)}" r="3" fill="${color}"/>` : "").join("");
+    }
+    marks += labels.map((lab,i)=>`<text x="${x(i)}" y="${H-2}" text-anchor="middle" fill="var(--faint)" font-size="8">${lab}</text>`).join("");
+    return `<div class="health-chart"><div class="health-chart-title"><b>${title}</b><span>${unit}</span></div><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${marks}</svg></div>`;
+  };
+  const steps = days.map(d => +(S.health[d]||{}).steps || 0);
+  const sleep = days.map(d => { const h=S.health[d]||{}; const m=sleepMin(h.bed,h.wake); return m ? m/60 : 0; });
+  const body = days.map(d => +(S.health[d]||{}).body || 0);
+  const mind = days.map(d => +(S.health[d]||{}).mind || 0);
+  return `<div class="health-chart-grid">
+    ${chart("歩数","歩", "var(--teal)", steps, Math.max(1000,...steps), "bar")}
+    ${chart("睡眠時間","時間", "var(--accent)", sleep, 10, "bar")}
+    ${chart("体の調子","1–5", "var(--teal)", body, 5, "line")}
+    ${chart("心の調子","1–5", "var(--bad)", mind, 5, "line")}
+  </div>`;
 }
 
 // 歩数×調子の相関（ピアソンのr）。相関は「関係の強さ」で、原因の証明ではない
@@ -2208,11 +2453,14 @@ function scatter(){
 }
 
 function corrText(){
-  const pm=[], pb=[];
+  const pm=[], pb=[], sm=[], sb=[];
   for(const d of Object.keys(S.health)){
     const x = S.health[d];
     if(x.steps != null && x.mind) pm.push([x.steps, x.mind]);
     if(x.steps != null && x.body) pb.push([x.steps, x.body]);
+    const sleep = sleepMin(x.bed, x.wake);
+    if(sleep != null && x.mind) sm.push([sleep, x.mind]);
+    if(sleep != null && x.body) sb.push([sleep, x.body]);
   }
   const line = (label, pairs) => {
     if(pairs.length < 7)
@@ -2224,28 +2472,40 @@ function corrText(){
     const dir = Math.abs(r) < .2 ? "" : (r > 0 ? "。歩いた日ほど調子が良い傾向" : "。歩いた日ほど調子が低い傾向");
     return `${label} × 歩数: ${s}（r=${r.toFixed(2)}、${pairs.length}日分）${dir}`;
   };
-  return line("心", pm) + "<br>" + line("体", pb);
+  return line("歩数 × 心", pm) + "<br>" + line("歩数 × 体", pb) + "<br>" +
+    line("睡眠 × 心", sm) + "<br>" + line("睡眠 × 体", sb);
 }
 
-for(const [id, key] of [["hSteps","steps"],["hBed","bed"],["hWake","wake"]]){
+for(const [id, key] of [["hSteps","steps"],["hBed","bed"],["hWake","wake"],["hFare","fare"]]){
   document.getElementById(id).addEventListener("input", e => {
     if(!canWrite()) return;
-    const t = ymd(now()), h = S.health[t] || (S.health[t] = {});
-    if(key === "steps") h.steps = Math.round(+e.target.value) || 0;
+    const t = ymd(now()), h = healthDraftFor(t);
+    if(key === "steps" || key === "fare") h[key] = Math.round(+e.target.value) || 0;
     else h[key] = e.target.value;
-    save(); healthView();   // 入れた瞬間にグラフへ反映する
+    healthView();
   });
   document.getElementById(id).addEventListener("change", healthView);
 }
 
 document.getElementById("hPaste").addEventListener("click", async ()=>{
-  try{
-    const txt = await navigator.clipboard.readText();
-    let n = 0;
-    for(const line of txt.split(/\r?\n/)) if(applyHealthLine(line)) n++;
-    if(n){ save(); render(); toast(`${n}件 取り込みました`); }
-    else toast("kenko| で始まる行がありません");
-  }catch(e){ toast("クリップボードを読めませんでした"); }
+  const c = syncCfg();
+  if(!c.token || !c.gistId) return toast("先に おかね → 同期 を設定してください");
+  await checkBuild(false);
+  if(!staleBuild) await pullRemote(false);
+});
+
+document.getElementById("healthSave").addEventListener("click", ()=>{
+  if(!canWrite() || !healthDraft) return;
+  const d = healthDraft.day, next = Object.assign({}, healthDraft.data);
+  if(next.steps === "" || next.steps == null) delete next.steps;
+  if(!next.bed) delete next.bed;
+  if(!next.wake) delete next.wake;
+  if(!S.health[d]) S.health[d] = {};
+  Object.assign(S.health[d], next);
+  for(const key of ["steps","bed","wake","body","mind","fare"])
+    if(next[key] === null) delete S.health[d][key];
+  healthDraft = null;
+  save(); render(); toast("この日の記録を保存しました");
 });
 
 // URL の #k=... からも取り込める（ショートカットの「URLを開く」用）
@@ -2410,6 +2670,13 @@ document.addEventListener("change", e => {
       let v = el.value.trim();
       if(coll === "fixed"){ obj.transfer = / 振$/.test(v) || /振$/.test(v); v = v.replace(/\s*振$/, ""); }
       obj.name = v || "(名前なし)";
+    } else if(field === "service"){
+      const c = subCatalog(el.value);
+      obj.service = c.name; obj.name = c.name;
+      const p = c.plans[0]; obj.plan = p[0]; obj.amt = p[1]; obj.cycle = p[2];
+    } else if(field === "plan"){
+      const c = subCatalog(obj.service || obj.name), p = c.plans[+el.value] || c.plans[0];
+      obj.plan = p[0]; obj.amt = p[1]; obj.cycle = p[2];
     } else if(field === "cycle"){
       obj.cycle = el.value === "y" ? "y" : "m";
     } else if(field === "day"){
@@ -2425,7 +2692,7 @@ document.addEventListener("change", e => {
 document.getElementById("fixedAdd").addEventListener("click", ()=>{
   S.fixed.push({id:uid(), name:"新しい支払い", amt:0, day:1, transfer:false}); save(); render(); });
 document.getElementById("subAdd").addEventListener("click", ()=>{
-  S.subs.push({id:uid(), name:"新しいサブスク", amt:0, cycle:"m", day:null}); save(); render(); });
+  S.subs.push({id:uid(), name:"その他", service:"その他", plan:"金額を入力", amt:0, cycle:"m", day:null}); save(); render(); });
 document.getElementById("incomeAdd").addEventListener("click", ()=>{
   S.incomes.push({id:uid(), name:"新しい入金", amt:0, day:1}); save(); render(); });
 document.getElementById("acctAdd").addEventListener("click", ()=>{
