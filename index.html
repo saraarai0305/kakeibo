@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>生活ノート</title>
+<title>まとめて管理</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0B1017">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="生活ノート">
+<meta name="apple-mobile-web-app-title" content="まとめて管理">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <style>
 :root{
@@ -81,7 +81,10 @@ input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px}
 .spend-help{margin:-4px 0 10px}
 .pad:active{background:var(--line)}
 .pad small{display:block;font-size:10px;color:var(--faint);font-weight:400;margin-top:2px}
-.spendform{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center}
+.spendform{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:end}
+.entry-field{display:grid;gap:4px;min-width:0;color:var(--dim);font-size:11px;font-weight:700}
+.entry-field input,.entry-field select{margin:0}
+.entry-form-submit{grid-column:1 / -1;width:100%;min-height:46px}
 .seg{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-bottom:9px;
   padding:3px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#111821}
 .seg button{padding:9px 4px;font-size:13px;color:var(--dim);background:transparent;border-radius:9px}
@@ -264,6 +267,17 @@ details[open] > summary::before{content:"▾ "}
 .pulse-row .bar{margin:0;height:7px}.pulse-row .bar i{background:var(--accent)}
 .pulse-row b{font-size:12px;color:var(--fg);white-space:nowrap}
 .pulse-title{font-size:11px;color:var(--faint);margin-bottom:5px}
+.analysis-block{padding:11px 0;border-top:1px solid color-mix(in srgb,var(--line) 75%,transparent)}
+.analysis-block:first-child{border-top:0;padding-top:0}
+.analysis-block-title{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px;color:var(--dim);font-size:12px;font-weight:750}
+.rank-row{display:grid;grid-template-columns:22px minmax(76px,.75fr) minmax(0,1fr) auto;gap:7px;align-items:center;padding:7px 0}
+.rank-no{display:grid;place-items:center;width:22px;height:22px;border-radius:7px;background:var(--card2);color:var(--faint);font-size:11px;font-weight:800}
+.rank-name{display:flex;align-items:center;gap:6px;min-width:0;font-size:12px;color:var(--dim)}
+.rank-name i{width:9px;height:9px;border-radius:3px;display:block;flex:none}
+.rank-row .bar{margin:0;height:7px}
+.rank-row b{font-size:12px;color:var(--fg);white-space:nowrap}
+.mc-tags{display:flex;gap:3px;width:100%;margin-top:auto;padding-top:2px;overflow:hidden}
+.mc-tags i{display:block;width:100%;height:4px;border-radius:3px;min-width:4px}
 .credit-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:12px}
 .credit-stat{padding:8px;border:1px solid rgba(190,220,232,.14);border-radius:9px;background:rgba(6,15,22,.24)}
 .credit-stat span{display:block;color:#A7B8C6;font-size:10px;line-height:1.3}.credit-stat b{display:block;margin-top:4px;color:#DFF7EA;font-size:13px;white-space:nowrap}
@@ -343,7 +357,7 @@ body[data-tab="money"][data-money-section="analysis"] [data-money-group="analysi
   background:color-mix(in srgb,var(--bg) 90%,transparent);
   backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
   border-top:1px solid var(--line);box-shadow:0 -12px 28px rgba(0,0,0,.16)}
-.tabbar button{display:flex;flex-direction:row;align-items:center;justify-content:center;gap:7px;padding:10px 12px;border-radius:12px;font-size:12px;font-weight:650;color:var(--faint);text-align:center;line-height:1}
+.tabbar button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px 12px;border-radius:12px;font-size:12px;font-weight:650;color:var(--faint);text-align:center;line-height:1}
 .tabbar .navico{display:grid;place-items:center;width:24px;height:22px;font-size:17px;line-height:1;color:currentColor}
 .tabbar button.on{background:var(--card2);color:var(--fg);box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
 .tabbar .navico{display:grid;place-items:center;align-content:center;line-height:0}
@@ -427,7 +441,8 @@ body:not([data-tab="home"]) .home-back{display:flex}
 
 /* ---- settings sheet ---- */
 .gear{display:flex;align-items:center;gap:6px;min-height:40px;color:var(--fg);background:var(--card2);border:1px solid #39495A;padding:6px 10px;border-radius:12px;flex:none;line-height:1;box-shadow:0 4px 12px rgba(0,0,0,.12)}
-.gearico{font-size:21px;line-height:1;color:var(--accent)}
+.gearico{display:grid;place-items:center;width:22px;height:22px;color:var(--accent)}
+.gearico .ui-icon{width:21px;height:21px;stroke-width:2.05}
 .geartxt{font-size:11px;font-weight:750;letter-spacing:.04em}
 .gear:active{background:var(--card2)}
 .sheet{position:fixed;inset:0;z-index:20;background:var(--bg);overflow-y:auto;
@@ -580,22 +595,21 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 
   <header class="top">
     <div class="mini-logo"><i></i><i></i><i></i></div>
-    <div class="t">生活ノート</div>
+    <div class="t">まとめて管理</div>
     <button class="home-back" data-gotab="home" aria-label="ホームへ戻る"><span aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M3 10.8 12 3l9 7.8"/><path d="M5.5 9.5v10h13v-10"/><path d="M9.5 19.5v-6h5v6"/></svg></span><span>ホーム</span></button>
-    <div class="streak" id="streakBox">—</div>
-    <button class="gear" id="settingsOpen" aria-label="設定を開く" title="設定を開く"><span class="gearico" aria-hidden="true">⚙</span><span class="geartxt">設定</span></button>
+    <button class="gear" id="settingsOpen" aria-label="設定を開く" title="設定を開く"><span class="gearico" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M12 3.4v2.1M12 18.5v2.1M3.4 12h2.1M18.5 12h2.1M5.9 5.9l1.5 1.5M16.6 16.6l1.5 1.5M18.1 5.9l-1.5 1.5M7.4 16.6l-1.5 1.5"/><circle cx="12" cy="12" r="3.2"/><path d="M15 4.9a8.3 8.3 0 0 1 3.9 3.9l1.4.7v5l-1.4.7a8.3 8.3 0 0 1-3.9 3.9l-.7 1.4h-5l-.7-1.4a8.3 8.3 0 0 1-3.9-3.9l-1.4-.7v-5l1.4-.7A8.3 8.3 0 0 1 8.6 4.9L9.3 3.5h5z"/></svg></span><span class="geartxt">設定</span></button>
   </header>
 
   <!-- ===== HOME HUB ===== -->
   <div class="card lead" data-pg="home">
-    <div class="hub-head"><span class="hub-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M3 10.8 12 3l9 7.8"/><path d="M5.5 9.5v10h13v-10"/><path d="M9.5 19.5v-6h5v6"/></svg></span><div><b>生活ノート</b><span>今日の記録と生活の入口</span></div></div>
+    <div class="hub-head"><span class="hub-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M3 10.8 12 3l9 7.8"/><path d="M5.5 9.5v10h13v-10"/><path d="M9.5 19.5v-6h5v6"/></svg></span><div><b>まとめて管理</b><span>今日の記録と生活の入口</span></div></div>
     <div class="hub-grid">
       <button class="hub-link" data-gotab="today"><span class="hi">☀</span><span><b>きょう</b><small>習慣・流れ・やること</small></span></button>
       <button class="hub-link" data-gotab="body"><span class="hi">♡</span><span><b>からだとこころ</b><small>歩数・睡眠・調子</small></span></button>
       <button class="hub-link" data-gotab="money"><span class="hi">¥</span><span><b>おかね</b><small>今日使える・残高・支出・収入</small></span></button>
       <button class="hub-link" data-gotab="cal"><span class="hi">▦</span><span><b>こよみ</b><small>予定を月・週・日で見る</small></span></button>
       <button class="hub-link" data-gotab="money" data-moneysection="scheduled"><span class="hi">◉</span><span><b>支払い予定</b><small>固定費・サブスク・カード請求</small></span></button>
-      <button class="hub-link" id="hubSettings"><span class="hi">⚙</span><span><b>設定</b><small>同期・習慣・カード上限</small></span></button>
+      <button class="hub-link" id="hubSettings"><span class="hi"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M12 3.4v2.1M12 18.5v2.1M3.4 12h2.1M18.5 12h2.1M5.9 5.9l1.5 1.5M16.6 16.6l1.5 1.5M18.1 5.9l-1.5 1.5M7.4 16.6l-1.5 1.5"/><circle cx="12" cy="12" r="3.2"/><path d="M15 4.9a8.3 8.3 0 0 1 3.9 3.9l1.4.7v5l-1.4.7a8.3 8.3 0 0 1-3.9 3.9l-.7 1.4h-5l-.7-1.4a8.3 8.3 0 0 1-3.9-3.9l-1.4-.7v-5l1.4-.7A8.3 8.3 0 0 1 8.6 4.9L9.3 3.5h5z"/></svg></span><span><b>設定</b><small>同期・習慣・カード上限</small></span></button>
     </div>
   </div>
 
@@ -735,17 +749,17 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 
   <!-- ===== SPEND ===== -->
   <div class="card" data-pg="money" data-money-group="expense">
-    <h2 class="section-title" data-icon="¥">使ったら押す</h2>
+    <h2 class="section-title" data-icon="¥">支出・収入を記録</h2>
     <div class="tiny spend-help">入力した支出は下の分析に自動でまとまります。記録は金額と分類を選ぶだけです。</div>
-    <div class="seg" id="paySeg">
-      <button data-pay="cash" class="on">現金・引落</button>
-      <button data-pay="paypay">PayPay</button>
-      <button data-pay="card">カード</button>
+    <div class="seg" id="entryTypeSeg">
+      <button data-entrytype="expense" class="on">支出</button>
+      <button data-entrytype="income">収入</button>
     </div>
     <div class="spendform">
-      <input id="spAmt" type="number" inputmode="numeric" placeholder="金額" min="0" step="1">
-      <select id="spCat"></select>
-<button class="btn" id="spAdd" data-icon="＋">記録</button>
+      <label class="entry-field"><span>金額</span><input id="spAmt" type="number" inputmode="numeric" placeholder="0" min="0" step="1"></label>
+      <label class="entry-field"><span id="entryMethodLabel">支払い方法</span><select id="spPay"></select></label>
+      <label class="entry-field"><span id="entryCategoryLabel">分類</span><select id="spCat"></select></label>
+      <button class="btn entry-form-submit" id="spAdd" data-icon="＋">支出を記録</button>
     </div>
     <div id="todayList"></div>
   </div>
@@ -763,7 +777,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   </div>
 
   <div class="card" data-pg="money" data-money-group="analysis" id="spendAnalysisCard">
-    <h2 class="section-title" data-icon="▥">直近30日の支払い分析</h2>
+    <h2 class="section-title" data-icon="↗">直近30日の支払い分析</h2>
     <div class="tiny" style="margin:-4px 0 9px">記録とは分けて、支払い方法と分類の傾向だけを見ます。</div>
     <div id="spendPulse"></div>
   </div>
@@ -876,7 +890,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
       <div class="health-section-head"><span class="health-icon">↻</span><div><b>歩数・睡眠の自動取り込み</b><span class="health-help" id="healthAutoState">同期を設定すると45秒ごとに確認します</span></div></div>
       <div class="row" style="gap:8px;margin-top:10px">
         <button class="btn ghost sm grow" id="hPaste" data-icon="↻">今すぐ取り込む</button>
-        <button class="btn ghost sm grow" id="healthSyncSettings" data-icon="⚙">同期設定を開く</button>
+        <button class="btn ghost sm grow" id="healthSyncSettings" data-icon="⌘">同期設定を開く</button>
       </div>
       <details>
         <summary>自動取り込みの設定を見る</summary>
@@ -1094,10 +1108,11 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.14.2";         // version.txt と一致させること
+const BUILD = "0.15.0";         // version.txt と一致させること
 const KEY = "mainichi.v1";
 let staleBuild = false;         // 古い版のまま開きっぱなしになっていないか
 const CATS = ["食費","日用品","交通","医療","交際","その他"];
+const INCOME_CATS = ["給与・報酬","手当","返金・給付","その他"];
 const PADS = [[300,"食費"],[500,"食費"],[1000,"食費"],[null,"手入力"]];
 
 /* ---------- date helpers (all local time) ---------- */
@@ -1132,6 +1147,7 @@ function seed(){
       {id:"benefit", name:"手当", amt:0, day:15, benefit:true}
     ],
     spends: [],
+    incomeLogs: [],      // 実際に受け取った収入の記録
     plan: {},           // "2026-08-05" -> [{id, from:"13:30", to:"16:30", cat, text}]
     subs: [],           // {id, name, amt, cycle:"m"|"y", day}
     appt: { date:"", time:"", place:"", alias:"", memo:"" },
@@ -1175,8 +1191,11 @@ function seed(){
 function normalize(o){
   const b = seed();
   const s = Object.assign(b, o || {});
-  for(const k of ["accounts","fixed","incomes","spends","subs","errands"])
+  for(const k of ["accounts","fixed","incomes","spends","incomeLogs","subs","errands"])
     if(!Array.isArray(s[k])) s[k] = b[k];
+  if(!s.ui || typeof s.ui !== "object") s.ui = b.ui;
+  if(!["expense","income"].includes(s.ui.entryType)) s.ui.entryType = "expense";
+  if(!["cash","paypay","card"].includes(s.ui.pay)) s.ui.pay = "cash";
   for(const k of ["health","daily","doneFixed","doneIncome","benefitMonths","plan"])
     if(!s[k] || typeof s[k] !== "object") s[k] = {};
   for(const k of Object.keys(s.plan)) if(!Array.isArray(s.plan[k])) delete s.plan[k];
@@ -1318,7 +1337,7 @@ function setTab(t){
   S.ui.tab = t; save();
   document.body.dataset.tab = t;
   const title = document.querySelector(".top .t");
-  if(title) title.textContent = `生活ノート / ${TAB_LABELS[t]}`;
+  if(title) title.textContent = `まとめて管理 / ${TAB_LABELS[t]}`;
   document.querySelectorAll(".tabbar button").forEach(b =>
     b.classList.toggle("on", b.dataset.gotab === t));
   if(changed) window.scrollTo(0, 0);   // 同じタブを押しただけならスクロールしない
@@ -1394,6 +1413,7 @@ function streakView(){
   const days = (S.motion && Array.isArray(S.motion.days)) ? S.motion.days : [];
   const n = days.filter(x => x.status === "posted" && x.date >= a && x.date <= b).length;
   const box = document.getElementById("streakBox");
+  if(!box) return;
   box.innerHTML = `今週 <b${n >= 3 ? ` style="color:var(--accent)"` : ""}>${n}</b>/3本`;
 }
 
@@ -1589,12 +1609,14 @@ function moneyCalView(){
   const off = (new Date(y, m-1, 1).getDay() + 6) % 7;
   const tk = ymd(now());
   const byDay = {};
+  const byDayCat = {};
   let total = 0;
   const byCat = {};
   for(const s of S.spends){
     if(!s.d.startsWith(mcCursor)) continue;
     const a = +s.amt || 0;
     byDay[s.d] = (byDay[s.d] || 0) + a;
+    (byDayCat[s.d] ||= {})[s.cat] = ((byDayCat[s.d] || {})[s.cat] || 0) + a;
     byCat[s.cat] = (byCat[s.cat] || 0) + a;
     total += a;
   }
@@ -1607,9 +1629,11 @@ function moneyCalView(){
     const v = byDay[key] || 0;
     // 使った額の大きさを、背景の濃さで見せる（数字を読まなくても分かる）
     const bg = v ? `background:color-mix(in srgb,var(--accent) ${Math.round(10 + v/maxD*46)}%,var(--card2))` : "";
+    const tags = Object.entries(byDayCat[key] || {}).sort((a,b)=>b[1]-a[1]).slice(0,3)
+      .map(([c]) => `<i style="background:${CAT_COLORS[c] || "#6F7C93"}" title="${esc(c)}"></i>`).join("");
     cells.push(`<button class="calcell${key === tk ? " today" : ""}" style="${bg}" data-mcday="${key}">
-      <span class="dn">${d}</span>
-      ${v ? `<span class="sp" style="font-size:9.5px">${yen(v)}</span>` : ""}</button>`);
+       <span class="dn">${d}</span>
+       ${v ? `<span class="sp" style="font-size:9.5px">${yen(v)}</span><span class="mc-tags">${tags}</span>` : ""}</button>`);
   }
   document.getElementById("mcBody").innerHTML = cells.join("");
 
@@ -2049,31 +2073,37 @@ function spendPulse(){
   const byPay = {cash:0,paypay:0,card:0}, byCat = {};
   for(const s of S.spends){ if(s.d < from) continue; const a=+s.amt||0; byPay[s.pay==="card"?"card":s.pay==="paypay"?"paypay":"cash"] += a; byCat[s.cat]=(byCat[s.cat]||0)+a; }
   const total = Object.values(byPay).reduce((a,b)=>a+b,0), max = Math.max(1,...Object.values(byPay));
-  const names={cash:"現金・引落",paypay:"PayPay",card:"カード"};
+  const names={cash:"現金・引落",paypay:"PayPay",card:"クレジットカード"};
   const payRows=Object.entries(byPay).map(([k,v])=>`<div class="pulse-row"><span>${names[k]}</span><div class="bar"><i style="width:${(v/max*100).toFixed(1)}%;background:${k==="card"?"var(--bad)":k==="paypay"?"var(--warn)":"var(--ok)"}"></i></div><b>${yen(v)}</b></div>`).join("");
   const cmax=Math.max(1,...Object.values(byCat));
-  const catRows=Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v])=>`<div class="pulse-row"><span>${esc(k)}</span><div class="bar"><i style="width:${(v/cmax*100).toFixed(1)}%;background:${CAT_COLORS[k]||"var(--accent)"}"></i></div><b>${yen(v)}</b></div>`).join("");
-  return `<div class="spend-pulse"><div class="pulse-title">直近30日の支払い方法　合計 ${yen(total)}</div>${payRows}<div class="pulse-title" style="margin-top:3px">分類別（上位3つ）</div>${catRows||`<div class="tiny">記録が増えるとここに傾向が出ます。</div>`}</div>`;
+  const catRows=Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([k,v],i)=>`<div class="rank-row"><span class="rank-no">${i+1}</span><span class="rank-name"><i style="background:${CAT_COLORS[k]||"var(--accent)"}"></i>${esc(k)}</span><div class="bar"><i style="width:${(v/cmax*100).toFixed(1)}%;background:${CAT_COLORS[k]||"var(--accent)"}"></i></div><b>${yen(v)}</b></div>`).join("");
+  return `<div class="spend-pulse"><div class="analysis-block"><div class="analysis-block-title"><span>支払い方法</span><b>${yen(total)}</b></div>${payRows}</div><div class="analysis-block"><div class="analysis-block-title"><span>よく使う費用の分類</span><span class="tiny">上位5つ</span></div>${catRows||`<div class="tiny">記録が増えると、ここにランキングが出ます。</div>`}</div></div>`;
 }
 
 function spendView(){
   document.getElementById("spendPulse").innerHTML = spendPulse();
+  const type = S.ui.entryType === "income" ? "income" : "expense";
+  document.querySelectorAll("#entryTypeSeg button").forEach(b => b.classList.toggle("on", b.dataset.entrytype === type));
   const sel = document.getElementById("spCat");
-  if(!sel.dataset.built){
-    sel.innerHTML = CATS.map(c=>`<option>${c}</option>`).join("");
-    sel.dataset.built = "1";
-  }
-  document.querySelectorAll("#paySeg button").forEach(b =>
-    b.classList.toggle("on", b.dataset.pay === (S.ui.pay || "cash")));
+  const cats = type === "income" ? INCOME_CATS : CATS;
+  const catValue = sel.value;
+  sel.innerHTML = cats.map(c=>`<option>${c}</option>`).join("");
+  if(cats.includes(catValue)) sel.value = catValue;
+  const pay = document.getElementById("spPay");
+  const methods = type === "income" ? [["bank","銀行振込"],["cash","現金"],["other","その他"]] : [["cash","現金・引落"],["paypay","PayPay"],["card","クレジットカード"]];
+  const current = type === "income" ? (S.ui.incomeMethod || "bank") : (S.ui.pay || "cash");
+  pay.innerHTML = methods.map(([v,l])=>`<option value="${v}">${l}</option>`).join("");
+  pay.value = methods.some(([v])=>v===current) ? current : methods[0][0];
+  document.getElementById("entryMethodLabel").textContent = type === "income" ? "受け取り方法" : "支払い方法";
+  document.getElementById("entryCategoryLabel").textContent = type === "income" ? "収入の分類" : "支出の分類";
+  document.getElementById("spAdd").textContent = type === "income" ? "収入を記録" : "支出を記録";
 
   const d = ymd(now());
   const list = S.spends.filter(s=>s.d===d).slice().reverse();
-  document.getElementById("todayList").innerHTML = list.length
-    ? list.map(s=>`<div class="item"><div class="grow"><div class="nm">${esc(s.cat)}${
-          s.pay==="card"?`<span class="chip due">カード</span>`:s.pay==="paypay"?`<span class="chip" style="color:var(--warn)">PayPay</span>`:`<span class="chip">現金・引落</span>`}</div>
-        <div class="mt">${s.t||""}</div></div>
-        <div class="amt">${yen(s.amt)}</div>
-        <button class="del" data-delspend="${s.id}">×</button></div>`).join("")
+  const incomeList = (S.incomeLogs || []).filter(s=>s.d===d).slice().reverse();
+  const rows = [...list.map(s=>({kind:"expense", ...s})), ...incomeList.map(s=>({kind:"income", ...s}))].sort((a,b)=>(b.t||"").localeCompare(a.t||""));
+  document.getElementById("todayList").innerHTML = rows.length
+    ? rows.map(s=>s.kind === "income" ? `<div class="item"><div class="grow"><div class="nm">${esc(s.cat)}<span class="chip done">収入・${esc(s.methodLabel || s.method || "入金")}</span></div><div class="mt">${s.t||""}</div></div><div class="amt" style="color:var(--ok)">＋${yen(s.amt)}</div><button class="del" data-delincomelog="${s.id}">×</button></div>` : `<div class="item"><div class="grow"><div class="nm">${esc(s.cat)}${s.pay==="card"?`<span class="chip due">クレジットカード</span>`:s.pay==="paypay"?`<span class="chip" style="color:var(--warn)">PayPay</span>`:`<span class="chip">現金・引落</span>`}</div><div class="mt">${s.t||""}</div></div><div class="amt">${yen(s.amt)}</div><button class="del" data-delspend="${s.id}">×</button></div>`).join("")
     : `<div class="tiny" style="padding-top:10px">今日はまだ記録がありません</div>`;
 }
 
@@ -2353,15 +2383,34 @@ function addSpend(amt, cat, pay){
   toast(pay === "card" ? `${yen(amt)}　来月の請求に追加` : `${yen(amt)} を記録`);
 }
 
+function addIncomeLog(amt, cat, method){
+  if(!canWrite()) return;
+  amt = Math.round(+amt);
+  if(!(amt > 0)) return toast("金額を入れてください");
+  const d = now();
+  const labels = {bank:"銀行振込",cash:"現金",other:"その他"};
+  S.incomeLogs.push({id:uid(), d:ymd(d), t:`${d.getHours()}:${String(d.getMinutes()).padStart(2,"0")}`, amt, cat, method, methodLabel:labels[method] || "入金"});
+  const a = bankAcct();
+  if(a) a.bal = (+a.bal||0) + amt;
+  save(); render();
+  toast(`${yen(amt)} の収入を記録`);
+}
+
 /* ---------- events ---------- */
 document.addEventListener("click", e => {
-  const t = e.target.closest("[data-delspend],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate],[data-habit],[data-task],[data-deltask],[data-delplan],[data-gotab],[data-calnav],[data-calday],[data-calview],[data-ring],[data-flowjump],[data-err],[data-delerr],[data-applied],[data-delhabit],[data-plancat],[data-delplan2],[data-errsort],[data-errprio],[data-paysort],[data-subsort],[data-healthsort],[data-healthmetric],[data-planit],[data-unplan],[data-mcnav],[data-slotdone],[data-urgent],#lightBtn,#hubSettings");
+  const t = e.target.closest("[data-delspend],[data-delincomelog],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate],[data-habit],[data-task],[data-deltask],[data-delplan],[data-gotab],[data-calnav],[data-calday],[data-calview],[data-ring],[data-flowjump],[data-err],[data-delerr],[data-applied],[data-delhabit],[data-plancat],[data-delplan2],[data-errsort],[data-errprio],[data-paysort],[data-subsort],[data-healthsort],[data-healthmetric],[data-healthrange],[data-moneysection],[data-planit],[data-unplan],[data-mcnav],[data-slotdone],[data-urgent],#lightBtn,#hubSettings");
   if(!t) return;
 
   if(t.dataset.delhabit){
     if(!canWrite()) return;
     S.habits = habitList().filter(h => h.id !== t.dataset.delhabit);
     save(); render(); settingsView(); return;
+  }
+  if(t.dataset.delincomelog){
+    if(!canWrite()) return;
+    const i = (S.incomeLogs || []).findIndex(x => x.id === t.dataset.delincomelog);
+    if(i >= 0){ const item = S.incomeLogs[i], a = bankAcct(); if(a) a.bal = (+a.bal||0) - (+item.amt||0); S.incomeLogs.splice(i,1); save(); render(); }
+    return;
   }
 
   if(t.dataset.gotab){ setTab(t.dataset.gotab); if(t.dataset.moneysection) setMoneySection(t.dataset.moneysection, false); return; }
@@ -2527,9 +2576,15 @@ function toggleIncome(i, monthKey, recordOnly){
   save(); render();
 }
 
-document.getElementById("paySeg").addEventListener("click", e => {
-  const b = e.target.closest("[data-pay]"); if(!b) return;
-  S.ui.pay = b.dataset.pay; save(); spendView();
+document.getElementById("entryTypeSeg").addEventListener("click", e => {
+  const b = e.target.closest("[data-entrytype]"); if(!b) return;
+  S.ui.entryType = b.dataset.entrytype === "income" ? "income" : "expense";
+  save(); spendView();
+});
+document.getElementById("spPay").addEventListener("change", e => {
+  if(S.ui.entryType === "income") S.ui.incomeMethod = e.target.value;
+  else S.ui.pay = e.target.value;
+  save();
 });
 /* ---------- からだの記録 ---------- */
 function sleepMin(bed, wake){
@@ -2609,7 +2664,7 @@ function healthView(){
   const auto = document.getElementById("healthAutoState");
   if(auto){
     const c = syncCfg();
-    if(!(c.token && c.gistId)) auto.textContent = "おかね → 端末の同期を設定すると自動になります";
+    if(!(c.token && c.gistId)) auto.textContent = "設定 → 同期・歩数連携を設定すると自動になります";
     else if(c.lastSyncError) auto.textContent = `同期エラー：${c.lastSyncError}`;
     else if(c.role === "ro") auto.textContent = "見るだけでは歩数を取り込みません。「記録する」に変更してください";
     else if(c.healthLastImport) auto.textContent = `同期オン・最終取り込み ${new Date(c.healthLastImport).toLocaleTimeString("ja-JP", {hour:"2-digit", minute:"2-digit"})}`;
@@ -2935,7 +2990,10 @@ document.getElementById("planNew").addEventListener("keydown", e => {
 
 document.getElementById("spAdd").addEventListener("click", ()=>{
   const el = document.getElementById("spAmt");
-  addSpend(el.value, document.getElementById("spCat").value);
+  const type = S.ui.entryType === "income" ? "income" : "expense";
+  const method = document.getElementById("spPay").value;
+  if(type === "income") addIncomeLog(el.value, document.getElementById("spCat").value, method);
+  else addSpend(el.value, document.getElementById("spCat").value, method);
   el.value = "";
 });
 document.getElementById("spAmt").addEventListener("keydown", e => {
@@ -3054,6 +3112,7 @@ let syncTimer = null, pullTimer = null, syncing = false;
 // 中身の量。時刻だけで勝敗を決めると、開きっぱなしの空の端末が勝ててしまう
 function richness(o){
   return (o.spends || []).length
+       + (o.incomeLogs || []).length
        + Object.keys(o.daily || {}).length
        + Object.keys(o.health || {}).length
        + (o.errands || []).length

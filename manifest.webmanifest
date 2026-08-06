@@ -1,7 +1,7 @@
 {
-  "name": "生活ノート",
-  "short_name": "生活ノート",
-  "description": "からだ・こころ・予定・おかねを一つにまとめる生活ノート",
+  "name": "まとめて管理",
+  "short_name": "まとめて管理",
+  "description": "からだ・こころ・予定・おかねを一つにまとめて管理するアプリ",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
