@@ -874,11 +874,11 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
     </div>
     <div class="health-section health-auto">
       <div class="health-section-head"><span class="health-icon">↻</span><div><b>歩数・睡眠の自動取り込み</b><span class="health-help" id="healthAutoState">同期を設定すると45秒ごとに確認します</span></div></div>
-      <button class="btn ghost sm" id="hPaste" data-icon="↻" style="width:100%;margin-top:10px">自動取り込みを確認</button>
+      <button class="btn ghost sm" id="hPaste" data-icon="↻" style="width:100%;margin-top:10px">今すぐ取り込む</button>
       <details>
         <summary>自動取り込みの設定を見る</summary>
         <div class="tiny" style="margin-top:8px">
-          iPhoneのショートカットがヘルスケアから歩数・睡眠を非公開Gistの受信箱へ送ります。アプリは同期時に受信箱を読み、取り込んだら自動で空にします。初回だけ「おかね → 同期」を設定してください。
+          iPhoneのショートカットがヘルスケアから歩数・睡眠を非公開Gistの受信箱へ送ります。アプリを開いている間は45秒ごと、アプリを開き直した時にも自動で読み込みます。初回だけ「おかね → 同期」を設定してください。iPhoneの仕様上、アプリを完全に終了した状態でWebアプリが裏側から読み込むことはできません。
         </div>
       </details>
     </div>
@@ -1085,7 +1085,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.13.2";         // version.txt と一致させること
+const BUILD = "0.14.0";         // version.txt と一致させること
 const KEY = "mainichi.v1";
 let staleBuild = false;         // 古い版のまま開きっぱなしになっていないか
 const CATS = ["食費","日用品","交通","医療","交際","その他"];
@@ -2552,15 +2552,39 @@ function healthDirtyPaint(){
   if(s) s.textContent = dirty ? "未保存の変更があります" : "変更は保存されていません";
 }
 
-// "kenko|2026-08-02|8234|23:40|07:30" 形式。空欄はスキップ
+// ショートカットから届く形式。従来の
+// "kenko|2026-08-02|8234|23:40|07:30" に加えて JSON と
+// "2026-08-02|8234|23:40|07:30" も受け付ける。
 function applyHealthLine(line){
-  const p = line.trim().split("|");
-  if(p[0] !== "kenko" || !/^\d{4}-\d{2}-\d{2}$/.test(p[1] || "")) return false;
-  const h = S.health[p[1]] || (S.health[p[1]] = {});
-  if(p[2]) h.steps = Math.round(+p[2]) || 0;
-  if(p[3]) h.bed = p[3];
-  if(p[4]) h.wake = p[4];
-  return true;
+  const raw = String(line || "").trim();
+  if(!raw || raw === "-") return false;
+
+  let day = "", steps, bed = "", wake = "";
+  if(raw[0] === "{"){
+    try{
+      const o = JSON.parse(raw);
+      day = String(o.date ?? o.day ?? o.日付 ?? "").slice(0, 10);
+      steps = o.steps ?? o.stepCount ?? o.walkingSteps ?? o.歩数;
+      bed = o.bed ?? o.sleepStart ?? o.就寝 ?? "";
+      wake = o.wake ?? o.sleepEnd ?? o.起床 ?? "";
+    }catch(e){ return false; }
+  }else{
+    const p = raw.split("|");
+    if(p[0] === "kenko") [day, steps, bed, wake] = [p[1], p[2], p[3], p[4]];
+    else if(/^\d{4}-\d{2}-\d{2}$/.test(p[0])) [day, steps, bed, wake] = [p[0], p[1], p[2], p[3]];
+    else if(p[0] === "steps" && /^\d{4}-\d{2}-\d{2}$/.test(p[1] || ""))
+      [day, steps, bed, wake] = [p[1], p[2], p[3], p[4]];
+  }
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(day)) return false;
+  const h = S.health[day] || (S.health[day] = {});
+  let changed = false;
+  if(steps !== undefined && steps !== ""){
+    const n = Number(String(steps).replace(/[ ,歩]/g, ""));
+    if(Number.isFinite(n) && n >= 0){ h.steps = Math.round(n); changed = true; }
+  }
+  if(bed){ h.bed = String(bed); changed = true; }
+  if(wake){ h.wake = String(wake); changed = true; }
+  return changed;
 }
 
 function healthView(){
@@ -2574,7 +2598,12 @@ function healthView(){
   const todayLabel = document.getElementById("healthTodayLabel");
   if(todayLabel){ const d = new Date(t + "T00:00:00"); todayLabel.textContent = `${d.getMonth()+1}/${d.getDate()}（${"日月火水木金土"[d.getDay()]}）`; }
   const auto = document.getElementById("healthAutoState");
-  if(auto){ const c = syncCfg(); auto.textContent = c.token && c.gistId ? "同期オン・45秒ごとに確認" : "おかね → 同期を設定すると自動になります"; }
+  if(auto){
+    const c = syncCfg();
+    if(!(c.token && c.gistId)) auto.textContent = "おかね → 同期を設定すると自動になります";
+    else if(c.healthLastImport) auto.textContent = `同期オン・最終取り込み ${new Date(c.healthLastImport).toLocaleTimeString("ja-JP", {hour:"2-digit", minute:"2-digit"})}`;
+    else auto.textContent = "同期オン・45秒ごとに確認中";
+  }
 
   document.querySelectorAll("[data-rate]").forEach(b =>
     b.classList.toggle("on", (shown[b.dataset.rate] || 0) === +b.dataset.val));
@@ -2753,7 +2782,10 @@ document.getElementById("hPaste").addEventListener("click", async ()=>{
   const c = syncCfg();
   if(!c.token || !c.gistId) return toast("先に おかね → 同期 を設定してください");
   await checkBuild(false);
-  if(!staleBuild) await pullRemote(false);
+  if(!staleBuild){
+    const result = await pullRemote(false);
+    if(result && !result.imported) toast("新しい歩数はありません。iPhoneのショートカット実行後にもう一度確認してください");
+  }
 });
 
 document.getElementById("healthSave").addEventListener("click", ()=>{
@@ -3110,6 +3142,7 @@ async function pullRemote(silent, force){
   const c = syncCfg();
   if(!c.token || !c.gistId || syncing) return;
   syncing = true;
+  let imported = 0;
   if(!silent) syncPaint("busy", "受信中…");
   try{
     const g = await gistFetch(`/gists/${c.gistId}`);
@@ -3133,6 +3166,16 @@ async function pullRemote(silent, force){
     }
     // 受信箱: ショートカットが置いていった行を取り込んで、空にする
     const box = g.files && g.files[INBOX_FILE];
+    // 古い同期先には受信箱がないことがある。先に空の受信箱を作り、
+    // iPhoneのショートカットが確実に同じ場所へ書けるようにする。
+    if(!box && c.role !== "ro"){
+      try{
+        await gistFetch(`/gists/${c.gistId}`, {
+          method: "PATCH",
+          body: JSON.stringify({ files: { [INBOX_FILE]: { content: "-" } } })
+        });
+      }catch(e){ /* 読み取り専用権限なら受信だけ続ける */ }
+    }
     if(box && box.content && c.role !== "ro"){
       let n = 0;
       for(const line of box.content.split(/\r?\n/)) if(applyHealthLine(line)) n++;
@@ -3142,14 +3185,18 @@ async function pullRemote(silent, force){
           body: JSON.stringify({ files: { [INBOX_FILE]: { content: "-" } } })
         });
         save(); render();
+        imported = n;
+        c.healthLastImport = new Date().toISOString();
         toast(`からだの記録 ${n}件 取り込みました`);
       }
     }
 
     c.lastSync = new Date().toISOString(); setSyncCfg(c);
     syncPaint("ok", "同期済み " + new Date().toLocaleTimeString("ja-JP"));
+    return {imported};
   }catch(e){
     syncPaint("err", "受信できませんでした（" + e.message + "）");
+    return {imported, error:e};
   }finally{ syncing = false; }
 }
 
@@ -3257,7 +3304,10 @@ document.getElementById("syncStart").addEventListener("click", async ()=>{
         method: "POST",
         body: JSON.stringify({
           description: "mainichi sync (private)", public: false,
-          files: { [GIST_FILE]: { content: payload() } }
+          files: {
+            [GIST_FILE]: { content: payload() },
+            [INBOX_FILE]: { content: "-" }
+          }
         })
       });
       setSyncCfg({ token, gistId: g.id });
