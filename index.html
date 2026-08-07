@@ -345,12 +345,27 @@ body[data-tab="money"] .card[data-money-group="expense"]{border-left:4px solid v
 body[data-tab="money"] .card[data-money-group="income"]{border-left:4px solid var(--green2)}
 body[data-tab="money"] .card[data-money-group="scheduled"]{border-left:4px solid var(--yellow)}
 body[data-tab="money"] .card[data-money-group="analysis"]{border-left:4px solid var(--violet)}
-[data-money-group]{display:none}
-body[data-tab="money"] [data-money-group="overview"]{display:block}
-body[data-tab="money"][data-money-section="expense"] [data-money-group="expense"],
-body[data-tab="money"][data-money-section="income"] [data-money-group="income"],
-body[data-tab="money"][data-money-section="scheduled"] [data-money-group="scheduled"],
-body[data-tab="money"][data-money-section="analysis"] [data-money-group="analysis"]{display:block}
+/* おかねは「見方」で1グループだけを表示する。
+   [data-pg] のほうが詳細度が高いため、単純な [data-money-group] では
+   全カードが表示されてしまう。ページ条件まで含めて明示する。 */
+body[data-tab="money"] [data-pg="money"][data-money-group]{display:none}
+body[data-tab="money"] [data-pg="money"][data-money-group="overview"]{display:block}
+body[data-tab="money"][data-money-section="expense"] [data-pg="money"][data-money-group="expense"],
+body[data-tab="money"][data-money-section="income"] [data-pg="money"][data-money-group="income"],
+body[data-tab="money"][data-money-section="scheduled"] [data-pg="money"][data-money-group="scheduled"],
+body[data-tab="money"][data-money-section="analysis"] [data-pg="money"][data-money-group="analysis"]{display:block}
+
+/* きょうは「今やること」を先に見せ、補助情報は必要なときだけ開く。 */
+body[data-tab="today"] [data-pg="today"][data-today-secondary]{display:none}
+body[data-tab="today"][data-today-more="1"] [data-pg="today"][data-today-secondary]{display:block}
+
+/* 分析は記録の邪魔をしないよう初期状態を折りたたむ。 */
+.health-analysis{padding-top:10px}
+.health-analysis > summary{list-style:none;cursor:pointer;display:block}
+.health-analysis > summary::-webkit-details-marker{display:none}
+.health-analysis > summary::after{content:"＋";float:right;color:var(--dim);font-size:18px;line-height:1}
+.health-analysis[open] > summary::after{content:"−"}
+.health-analysis[open] > summary{padding-bottom:4px}
 .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:8;
   display:none;grid-template-columns:1fr;gap:2px;
   padding:8px 10px calc(env(safe-area-inset-bottom) + 8px);
@@ -674,10 +689,11 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
       </div>
       <div class="tiny" style="margin-top:7px">ここに入れたものが、明日の朝そのまま上に出ます。</div>
     </details>
+    <button class="btn ghost sm" id="todayMoreToggle" type="button" style="width:100%;margin-top:10px">その他の情報を表示</button>
   </div>
 
   <!-- ===== ためてあること ===== -->
-  <div class="card" data-pg="today">
+  <div class="card" data-pg="today" data-today-secondary="1">
     <h2 class="section-title" data-icon="▤">ためてあること <span class="tiny" id="errCount"></span></h2>
     <div class="sorts" id="errSorts"></div>
     <div id="errList"></div>
@@ -706,7 +722,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   </div>
 
   <!-- ===== APPOINTMENT ===== -->
-  <div class="card" id="apptCard" data-pg="today">
+  <div class="card" id="apptCard" data-pg="today" data-today-secondary="1">
     <h2 class="section-title" data-icon="＋">次の通院</h2>
     <div class="row between">
       <div class="grow">
@@ -924,8 +940,8 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
       </div>
     </div>
     <div class="health-save-row"><span id="healthDraftState">変更は保存されていません</span><button class="btn" id="healthSave" data-icon="↓" disabled>この日の記録を保存</button></div>
-    <div class="health-section health-analysis">
-      <div class="health-section-head"><span class="health-icon">▥</span><div><b>一週間の見える化</b><span class="health-help">歩数・睡眠・体・心を同じ日付で確認</span></div></div>
+    <details class="health-section health-analysis" id="healthAnalysis">
+      <summary class="health-section-head"><span class="health-icon">▥</span><div><b>分析と履歴</b><span class="health-help">歩数・睡眠・体・心を同じ日付で確認</span></div></summary>
       <div class="seg health-range" id="healthRange">
         <button data-healthrange="day" class="on">今日</button>
         <button data-healthrange="week">1週間</button>
@@ -934,7 +950,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
       <div id="corrBox" class="tiny" style="margin-top:8px"></div>
       <div class="health-tools"><span class="health-help">並べ替え</span><div class="sorts" id="healthSorts"></div></div>
       <div id="hList" style="margin-top:10px"></div>
-    </div>
+    </details>
   </div>
 
   <!-- ===== CALENDAR PAGE ===== -->
@@ -1108,7 +1124,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.15.0";         // version.txt と一致させること
+const BUILD = "0.16.0";         // version.txt と一致させること
 const KEY = "mainichi.v1";
 let staleBuild = false;         // 古い版のまま開きっぱなしになっていないか
 const CATS = ["食費","日用品","交通","医療","交際","その他"];
@@ -1336,6 +1352,11 @@ function setTab(t){
   const changed = document.body.dataset.tab !== t;
   S.ui.tab = t; save();
   document.body.dataset.tab = t;
+  if(t === "today"){
+    document.body.dataset.todayMore = "0";
+    const more = document.getElementById("todayMoreToggle");
+    if(more) more.textContent = "その他の情報を表示";
+  }
   const title = document.querySelector(".top .t");
   if(title) title.textContent = `まとめて管理 / ${TAB_LABELS[t]}`;
   document.querySelectorAll(".tabbar button").forEach(b =>
@@ -2398,7 +2419,7 @@ function addIncomeLog(amt, cat, method){
 
 /* ---------- events ---------- */
 document.addEventListener("click", e => {
-  const t = e.target.closest("[data-delspend],[data-delincomelog],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate],[data-habit],[data-task],[data-deltask],[data-delplan],[data-gotab],[data-calnav],[data-calday],[data-calview],[data-ring],[data-flowjump],[data-err],[data-delerr],[data-applied],[data-delhabit],[data-plancat],[data-delplan2],[data-errsort],[data-errprio],[data-paysort],[data-subsort],[data-healthsort],[data-healthmetric],[data-healthrange],[data-moneysection],[data-planit],[data-unplan],[data-mcnav],[data-slotdone],[data-urgent],#lightBtn,#hubSettings");
+  const t = e.target.closest("[data-delspend],[data-delincomelog],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate],[data-habit],[data-task],[data-deltask],[data-delplan],[data-gotab],[data-calnav],[data-calday],[data-calview],[data-ring],[data-flowjump],[data-err],[data-delerr],[data-applied],[data-delhabit],[data-plancat],[data-delplan2],[data-errsort],[data-errprio],[data-paysort],[data-subsort],[data-healthsort],[data-healthmetric],[data-healthrange],[data-moneysection],[data-planit],[data-unplan],[data-mcnav],[data-slotdone],[data-urgent],#lightBtn,#hubSettings,#todayMoreToggle");
   if(!t) return;
 
   if(t.dataset.delhabit){
@@ -2415,6 +2436,12 @@ document.addEventListener("click", e => {
 
   if(t.dataset.gotab){ setTab(t.dataset.gotab); if(t.dataset.moneysection) setMoneySection(t.dataset.moneysection, false); return; }
   if(t.id === "hubSettings"){ openSettings(true); return; }
+  if(t.id === "todayMoreToggle"){
+    const open = document.body.dataset.todayMore === "1";
+    document.body.dataset.todayMore = open ? "0" : "1";
+    t.textContent = open ? "その他の情報を表示" : "その他の情報を隠す";
+    return;
+  }
   if(t.dataset.moneysection){ setMoneySection(t.dataset.moneysection); return; }
   if(t.dataset.healthrange){ healthRange = t.dataset.healthrange; healthView(); return; }
   if(t.dataset.healthsort){ healthSort = t.dataset.healthsort; healthView(); return; }
