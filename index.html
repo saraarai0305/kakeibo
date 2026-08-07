@@ -684,6 +684,83 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   .tlrow{grid-template-columns:37px 1fr}
   .tlblocks{left:37px}
 }
+/* ===== Design system v1: P1 foundation =====
+   A small set of stable tokens prevents individual pages from inventing their own UI. */
+:root{
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:24px;--space-6:32px;
+  --text-xs:12px;--text-sm:14px;--text-md:16px;--text-lg:20px;--text-xl:28px;--text-2xl:36px;
+  --tap-secondary:44px;--tap-primary:52px;--icon-size:24px;--icon-bed:48px;
+  --money:#74B5E8;--expense:#D95055;--income:#34B98B;--body-color:#34B98B;--mind-color:#F27D78;--calendar:#A995E8;--deadline:#F1BE48;
+  --motion-press:120ms;--motion-reveal:180ms;--motion-page:200ms;--motion-confirm:240ms;
+}
+
+/* One visual grammar: readable type, predictable hit areas, and a single left edge. */
+body{font-size:var(--text-md);line-height:1.5}
+.wrap{padding:var(--space-4) var(--space-4) 0}
+h2{font-size:var(--text-md);letter-spacing:0;line-height:1.4}
+.tiny{font-size:var(--text-xs)}.dim{font-size:var(--text-sm)}
+.num,.hero .big,.money-private-metric b{font-variant-numeric:tabular-nums}
+input,select{min-height:var(--tap-primary);padding:12px var(--space-3);border-radius:12px;font-size:var(--text-md)}
+.entry-field{gap:var(--space-2);font-size:var(--text-sm)}
+.btn{min-height:var(--tap-primary);border-radius:12px;font-size:var(--text-md);transition:filter var(--motion-press) ease,transform var(--motion-press) ease,background var(--motion-reveal) ease,color var(--motion-reveal) ease}
+.btn.sm{min-height:var(--tap-secondary);font-size:var(--text-sm)}
+.btn:active,.hub-primary-btn:active,.hub-choice-btn:active{transform:scale(.985);filter:brightness(.96)}
+.ui-icon{width:var(--icon-size);height:var(--icon-size);flex:none;stroke-width:2;vector-effect:non-scaling-stroke}
+
+/* Do not let each piece become a card. A card is reserved for the one primary focus. */
+.wrap>.card:not(.lead):not(.hero):not(.money-glance):not(.alert):not(.focus-page){padding:var(--space-5) 0;margin:0;border:0;border-top:1px solid color-mix(in srgb,var(--line) 78%,transparent);border-radius:0;background:transparent;box-shadow:none}
+.wrap>.card:not(.lead):not(.hero):not(.money-glance):not(.alert):not(.focus-page):first-of-type{border-top:0}
+.card.lead,.hero{border-radius:18px}
+
+/* Home is a compact hub: no dashboard metrics, no secondary explanations. */
+.hub-shell{padding:var(--space-2) 0 var(--space-6)}
+.hub-intro{padding:var(--space-4) 0 var(--space-5)}
+.hub-eyebrow{font-size:var(--text-xs);letter-spacing:.12em;margin:0 0 var(--space-2)}
+.hub-intro h1{font-size:var(--text-xl);line-height:1.25;letter-spacing:0}
+.hub-intro p:last-child{display:none}
+body[data-tab="home"] footer{display:none}
+.hub-primary{gap:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.hub-primary-btn{grid-template-columns:var(--icon-bed) minmax(0,1fr) var(--icon-size);gap:var(--space-3);min-height:72px;padding:var(--space-3) 0;border:0!important;border-bottom:1px solid color-mix(in srgb,var(--line) 76%,transparent)!important;background:transparent}
+.hub-primary-btn:last-child{border-bottom:0!important}
+.hub-primary-btn strong{font-size:var(--text-lg);line-height:1.2;letter-spacing:0}
+.hub-primary-btn small{display:none}
+.hub-primary-icon,.hub-choice-icon{width:var(--icon-bed);height:var(--icon-bed);display:grid;place-items:center;align-self:center;justify-self:start}
+.hub-primary-icon .ui-icon,.hub-choice-icon .ui-icon{width:var(--icon-size);height:var(--icon-size)}
+.hub-arrow{display:grid;place-items:center;width:var(--icon-size);height:var(--icon-size);line-height:1;font-size:24px}
+.hub-stage-wrap{padding:0}
+.hub-stage-title{font-size:var(--text-lg);margin:var(--space-4) 0}
+.hub-choice-btn{grid-template-columns:var(--icon-bed) minmax(0,1fr) var(--icon-size);gap:var(--space-3);min-height:72px;padding:var(--space-3) 0;border:0;border-bottom:1px solid color-mix(in srgb,var(--line) 76%,transparent);border-radius:0;background:transparent}
+.hub-choice-btn small{font-size:var(--text-xs);line-height:1.4;margin-top:2px}
+.hub-back,.home-back{min-height:var(--tap-secondary);font-size:var(--text-sm);display:inline-flex;align-items:center;gap:var(--space-2)}
+
+/* A selected health purpose is an independent screen, never a long combined form. */
+body[data-tab="body"][data-body-view="record"] #healthAnalysis{display:none!important}
+body[data-tab="body"][data-body-view="analysis"] #healthEntry>.health-topline,
+body[data-tab="body"][data-body-view="analysis"] #healthEntry>.health-page-copy,
+body[data-tab="body"][data-body-view="analysis"] #healthEntry>.health-body,
+body[data-tab="body"][data-body-view="analysis"] #healthEntry>.health-mind,
+body[data-tab="body"][data-body-view="analysis"] #healthEntry>.health-save-row{display:none!important}
+body[data-tab="body"][data-body-view="analysis"] #healthAnalysis{display:block!important;margin-top:0}
+
+/* The daily flow owns the timeline. Secondary pages stay closed until requested. */
+#calendarDayPage>details:not(#planAdder){display:none!important}
+#calendarDayPage .day-flow-actions{clear:both;position:relative;z-index:1}
+
+/* Semantic money states: blue is neutral money, red is expense, green is income. */
+#entryTypeSeg button[data-entrytype="expense"].on,body[data-entry-type="expense"] #spAdd{background:var(--expense);color:#fff}
+#entryTypeSeg button[data-entrytype="income"].on,body[data-entry-type="income"] #spAdd{background:var(--income);color:#102219}
+.money-private-metric b.neg,.neg{color:var(--expense)!important}
+.money-private-metric b:not(.hidden-money):not(.neg){color:var(--income)}
+body[data-tab="money"] .card[data-money-group="expense"]{border-left-color:var(--expense)}
+body[data-tab="money"] .card[data-money-group="income"]{border-left-color:var(--income)}
+.money-private-metric b{font-size:clamp(22px,7.5vw,34px)!important;line-height:1.05!important;letter-spacing:-.025em;white-space:nowrap!important;overflow:visible!important;text-overflow:clip!important}
+
+/* Motion should explain a change, not decorate idle screens. */
+.bar>i{transition:width var(--motion-confirm) cubic-bezier(.2,.8,.2,1)}
+.page-enter{animation:page-enter var(--motion-page) cubic-bezier(.2,.8,.2,1) both}
+@keyframes page-enter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+details>summary{min-height:var(--tap-secondary);display:flex;align-items:center}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:1ms!important;animation-iteration-count:1!important;transition-duration:1ms!important}}
 </style>
 </head>
 <body data-tab="home">
@@ -1317,7 +1394,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.23.0";         // version.txt と一致させること
+const BUILD = "0.24.0";         // version.txt と一致させること
 const KEY = "mainichi.v1";
 // 一日の流れを主役にし、週／月のカレンダーは必要なときだけその下に開く。
 (() => {
@@ -1453,7 +1530,10 @@ function normalize(o){
 function load(){
   try{
     const raw = localStorage.getItem(KEY);
-    if(!raw) return seed();
+    // A brand-new install must go through the same normalisation path as an
+    // existing install.  New optional arrays (methods/categories) are added
+    // there, so returning seed() directly left the record screen incomplete.
+    if(!raw) return normalize(seed());
     return normalize(JSON.parse(raw));
   }catch(e){ console.warn("load failed", e); return seed(); }
 }
@@ -1515,7 +1595,22 @@ function calc(){
 
 /* ---------- render ---------- */
 /* 1枚が落ちても残りは描く。どこで落ちたかは画面に出す（黙って白くしない） */
+function applyPortalIcons(){
+  const icons = {
+    '#moneyPortal [data-moneyview="record"]>i':'<svg class="ui-icon" viewBox="0 0 24 24"><path d="M4 7.5h16v10H4z"/><path d="M4 10h16M7 15h3"/></svg>',
+    '#moneyPortal [data-moneyview="outlook"]>i':'<svg class="ui-icon" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 16 0 8 8 0 0 0-16 0Z"/><path d="M12 7.5V12l3 2"/></svg>',
+    '#moneyPortal [data-moneyview="analysis"]>i':'<svg class="ui-icon" viewBox="0 0 24 24"><path d="M4 19.5V10.8M10 19.5V4.5M16 19.5v-6.2M22 19.5H2"/></svg>',
+    '#bodyPortal [data-bodyview="record"]>i':'<svg class="ui-icon" viewBox="0 0 24 24"><path d="M12 21s-7-4.6-7-10.1A4.1 4.1 0 0 1 12 8a4.1 4.1 0 0 1 7 2.9C19 16.4 12 21 12 21Z"/></svg>',
+    '#bodyPortal [data-bodyview="analysis"]>i':'<svg class="ui-icon" viewBox="0 0 24 24"><path d="M4 19V5M4 19h16"/><path d="m7 15 3-3 3 2 5-6"/></svg>'
+  };
+  Object.entries(icons).forEach(([selector, svg]) => {
+    const target = document.querySelector(selector);
+    if(target) target.innerHTML = svg;
+  });
+}
+
 function render(){
+  applyPortalIcons();
   const parts = [["今日のモード",modeView],["やること",errView],["今日のテーマ",bigGoalView],
     ["支出カレンダー",moneyCalView],
     ["今週の本数",streakView],["使えるお金",heroView],["今日やること",todayView],
@@ -1545,6 +1640,15 @@ function pageState(){
     moneyView:document.body.dataset.moneyView || "portal", calFocus:document.body.dataset.calFocus || "", calSel, calViewMode};
 }
 function paintBack(){ document.body.dataset.canBack = navHistory.length ? "1" : "0"; }
+function animateVisiblePages(){
+  if(window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  requestAnimationFrame(() => document.querySelectorAll(".wrap [data-pg]").forEach(el => {
+    if(getComputedStyle(el).display === "none") return;
+    el.classList.remove("page-enter");
+    void el.offsetWidth;
+    el.classList.add("page-enter");
+  }));
+}
 function rememberHere(){
   const state = pageState();
   const last = navHistory[navHistory.length-1];
@@ -1677,7 +1781,10 @@ function setTab(t){
   if(title) title.textContent = t === "home" ? "まとめて管理" : TAB_LABELS[t];
   document.querySelectorAll(".tabbar button").forEach(b =>
     b.classList.toggle("on", b.dataset.gotab === t));
-  if(changed) window.scrollTo(0, 0);   // 同じタブを押しただけならスクロールしない
+  if(changed){
+    window.scrollTo(0, 0);
+    animateVisiblePages();
+  }
 }
 
 /* ---------- 今日のテーマ ---------- */
@@ -2262,6 +2369,13 @@ function calDetail(){
       <div class="tiny" style="margin-top:8px">薄い帯は記録から自動で出ています。自分で足した予定はタップで消せます。</div>
     </details>
     `;
+  // P0: keep the flow screen to its single purpose: timeline + three actions.
+  // Checklist, motion and calendar browsing are revealed only by those actions.
+  box.innerHTML = html;
+  return;
+
+  // Legacy detail aggregation (kept temporarily as unreachable code while the
+  // storage model is being migrated in P5).
   // 詳細はこの1行にまとめる。時間割が主役なので、記録は要約だけ
   const habitsDone = habitList().filter(h => rec.habits[h.id]).length;
   const sum = [];
@@ -2295,7 +2409,11 @@ function calDetail(){
   html += dues.map(x => `<div class="item" style="padding:7px 0">
       <div class="grow nm" style="color:var(--warn)">${esc(x.name)}${x.paid ? `<span class="chip done">払った</span>` : ""}</div>
       ${x.amt ? `<div class="amt">${yen(x.amt)}</div>` : ""}</div>`).join("");
+  // P0: the daily flow ends after the timeline and its three deliberate actions.
+  // The older summary / motion / due blocks below remain data-only for now and
+  // must not be rendered into the same screen.
   box.innerHTML = html;
+  return;
 }
 
 /* ---------- 今日やること ---------- */
@@ -2798,6 +2916,17 @@ function addIncomeLog(amt, cat, method, methodLabel){
 
 /* ---------- events ---------- */
 document.addEventListener("click", e => {
+  // A page-back button always means "the place I just came from".  The
+  // historical fallback is kept only for a direct deep link with no history.
+  const subBack = e.target.closest(".subpage-back");
+  if(subBack){
+    e.preventDefault();
+    if(navHistory.length){ goBack(); return; }
+    if(document.body.dataset.tab === "money") setMoneyView("portal", false);
+    else if(document.body.dataset.tab === "body") setBodyView("portal", false);
+    else setTab("home");
+    return;
+  }
   const t = e.target.closest("[data-delspend],[data-delincomelog],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate],[data-habit],[data-task],[data-deltask],[data-delplan],[data-gotab],[data-calnav],[data-calday],[data-calview],[data-ring],[data-flowjump],[data-err],[data-delerr],[data-applied],[data-delhabit],[data-plancat],[data-delplan2],[data-errsort],[data-errprio],[data-paysort],[data-subsort],[data-healthsort],[data-healthmetric],[data-healthrange],[data-healthview],[data-bodyview],[data-moneyprivacy],[data-moneysection],[data-moneyview],[data-dayaction],[data-planit],[data-unplan],[data-mcnav],[data-slotdone],[data-urgent],[data-hub-action],[data-hub-back],[data-addmoneyopt],#lightBtn,#hubSettings,#todayMoreToggle");
   if(!t) return;
 
