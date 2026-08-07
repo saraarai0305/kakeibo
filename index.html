@@ -91,7 +91,7 @@ input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px}
   padding:3px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#111821}
 .seg button{padding:9px 4px;font-size:13px;color:var(--dim);background:transparent;border-radius:9px}
 .seg button.on{background:var(--accent);color:#0B1017;font-weight:750;box-shadow:0 3px 10px rgba(116,181,232,.18)}
-.btn{background:var(--accent);color:#0B1017;border-radius:11px;padding:10px 16px;font-weight:750;white-space:nowrap;box-shadow:0 5px 14px rgba(116,181,232,.14)}
+.btn{min-height:52px;background:var(--accent);color:#0B1017;border-radius:11px;padding:10px 16px;font-size:16px;font-weight:750;white-space:nowrap;box-shadow:0 5px 14px rgba(116,181,232,.14)}
 .btn.ghost{background:var(--card2);color:var(--fg);border:1px solid #39495A;box-shadow:none}
 .btn[data-icon]{display:inline-flex;align-items:center;justify-content:center;gap:6px}
 .btn[data-icon]::before{content:attr(data-icon);font-size:1.05em;font-weight:800;line-height:1}
@@ -231,7 +231,7 @@ details[open] > summary::before{content:"▾ "}
 .health-dots{display:inline-flex;gap:3px;align-items:center;height:18px}
 .health-dots i{width:10px;height:10px;border-radius:50%;background:var(--line);border:1px solid var(--faint)}
 .health-dots i.on{background:currentColor;border-color:currentColor}
-.ui-icon{display:block;width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.ui-icon{display:block;width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 /* ホームは情報を見せる場所ではなく、次の一手を選ぶ入口。 */
 .hub-shell{padding:10px 0 26px}
 .hub-intro{text-align:center;padding:14px 12px 24px}
@@ -264,6 +264,9 @@ details[open] > summary::before{content:"▾ "}
 .hub-choice-icon .ui-icon{width:21px;height:21px;stroke-width:2.05}
 .hub-choice-btn b{display:block;margin-top:10px;font-size:14px;line-height:1.25}.hub-choice-btn small{display:block;margin-top:4px;color:var(--dim);font-size:11px;line-height:1.35}
 .hub-choice-btn.wide b{margin:0;font-size:15px}.hub-choice-btn.wide small{margin-top:3px}.hub-choice-btn.wide .hub-arrow{justify-self:end;align-self:center}
+/* ホームは「次にすること」だけを選ぶハブにする。 */
+.hub-shell[data-hub-step="root"] .hub-intro{padding:18px 12px 30px}.hub-shell[data-hub-step="root"] .hub-intro h1{font-size:clamp(28px,8vw,38px)}
+.hub-shell[data-hub-step="root"] .hub-primary{gap:12px}.hub-shell[data-hub-step="root"] .hub-primary-btn{grid-template-columns:1fr;justify-items:center;min-height:132px;padding:18px 14px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(145deg,#1B2836,#121A23);text-align:center}.hub-shell[data-hub-step="root"] .hub-primary-btn:first-child{border-top:1px solid var(--line)}.hub-shell[data-hub-step="root"] .hub-primary-btn small,.hub-shell[data-hub-step="root"] .hub-primary-btn .hub-arrow{display:none}.hub-shell[data-hub-step="root"] .hub-primary-btn strong{font-size:21px}.hub-shell[data-hub-step="root"] .hub-primary-icon{width:54px;height:54px}
 .cal-modes{display:flex;gap:6px;flex-wrap:wrap;margin:-2px 0 11px}
 .cal-modes button{padding:6px 12px;border:1px solid var(--line);border-radius:99px;background:var(--card2);color:var(--dim);font-size:11px}
 .cal-modes button.on{background:var(--accent);border-color:var(--accent);color:#0D1015;font-weight:800}
@@ -276,6 +279,7 @@ details[open] > summary::before{content:"▾ "}
 .day-live{position:relative;margin-top:10px}
 .tl .nowline{position:absolute;left:42px;right:0;z-index:3;border-top:2px solid var(--bad);pointer-events:none;height:0}
 .tl .nowline b{position:absolute;right:0;top:-18px;color:var(--bad);font-size:10.5px;line-height:1.4;background:var(--card);padding:1px 4px;border-radius:4px;white-space:nowrap}
+.day-flow-actions{display:grid;grid-template-columns:1fr;gap:8px;margin:16px 0}.day-flow-actions .btn{min-height:52px;font-size:16px;text-align:left;display:flex;align-items:center;justify-content:space-between}.day-flow-actions .btn::after{content:"›";font-size:22px;color:var(--dim)}
 .money-insights{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:12px 0}
 .money-insight{padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--card2);min-width:0}
 .money-insight span{display:block;color:var(--dim);font-size:10px}.money-insight b{display:block;margin-top:4px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -367,6 +371,8 @@ body[data-tab="pay"]   [data-pg="pay"]{display:block}
 .money-private-metric:first-child{grid-column:1 / -1;border-color:color-mix(in srgb,var(--ok) 45%,var(--line));background:color-mix(in srgb,var(--ok) 10%,var(--card2))}
 .money-private-metric span{display:block;color:var(--dim);font-size:11px;font-weight:700}.money-private-metric b{display:block;margin-top:5px;font-size:clamp(24px,7.8vw,36px);line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}.money-private-metric b.hidden-money{letter-spacing:.12em;color:var(--dim)}
 [data-moneysection]{transition:background .15s,color .15s,border-color .15s}
+#moneyEntry .money-private-summary .bar,#moneyEntry #heroFoot{display:none}
+#entryTypeSeg button{min-height:56px;font-size:17px}
 #moneySectionSeg button[data-moneysection="expense"].on{background:var(--coral);color:#241719;box-shadow:0 4px 14px rgba(240,154,155,.16)}
 #moneySectionSeg button[data-moneysection="income"].on{background:var(--green2);color:#11241b;box-shadow:0 4px 14px rgba(111,218,169,.14)}
 #moneySectionSeg button[data-moneysection="scheduled"].on{background:var(--yellow);color:#2A2110;box-shadow:0 4px 14px rgba(243,199,93,.14)}
@@ -397,6 +403,7 @@ body[data-tab="money"][data-money-focus="analysis"] #spendAnalysisCard{display:b
 .portal-actions{display:grid;gap:10px}.portal-action{min-height:96px;display:grid;grid-template-columns:48px minmax(0,1fr) 20px;align-items:center;gap:14px;padding:15px 14px;text-align:left;border:1px solid var(--line);border-radius:18px;background:linear-gradient(135deg,#1C2938,#151E29)}.portal-action b{display:block;font-size:20px;line-height:1.2}.portal-action small{display:block;margin-top:5px;color:var(--dim);font-size:13px}.portal-action i{width:48px;height:48px;display:grid;place-items:center;border-radius:15px;font-style:normal;font-size:23px;background:color-mix(in srgb,var(--accent) 16%,var(--card2));color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 38%,var(--line))}.portal-action:nth-child(2) i{background:color-mix(in srgb,var(--yellow) 15%,var(--card2));color:var(--yellow);border-color:color-mix(in srgb,var(--yellow) 38%,var(--line))}.portal-action:nth-child(3) i{background:color-mix(in srgb,var(--violet) 16%,var(--card2));color:var(--violet);border-color:color-mix(in srgb,var(--violet) 38%,var(--line))}.portal-action em{font-style:normal;color:var(--dim);font-size:25px;text-align:center}
 .subpage-back{display:inline-flex;align-items:center;gap:4px;min-height:44px;margin:0 0 12px;padding:8px 4px;color:var(--dim);font-size:14px;font-weight:750}.subpage-back::before{content:"‹";font-size:27px;line-height:.7;color:var(--accent)}
 .outlook-hero{padding:20px 18px;border:1px solid color-mix(in srgb,var(--ok) 40%,var(--line));border-radius:18px;background:linear-gradient(145deg,color-mix(in srgb,var(--ok) 14%,var(--card)),var(--card))}.outlook-hero span{display:block;color:var(--dim);font-size:13px;font-weight:700}.outlook-hero b{display:block;margin-top:5px;font-size:clamp(38px,12vw,52px);line-height:1;color:var(--ok);font-variant-numeric:tabular-nums}.outlook-rows{margin-top:14px;border-top:1px solid var(--line)}.outlook-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 0;border-bottom:1px solid var(--line)}.outlook-row span{color:var(--dim);font-size:14px}.outlook-row b{font-size:18px;font-variant-numeric:tabular-nums}.outlook-links{display:grid;gap:8px;margin-top:18px}.outlook-links .btn{min-height:50px;text-align:left;display:flex;align-items:center;justify-content:space-between}.outlook-links .btn::after{content:"›";font-size:22px;color:var(--dim)}
+#bodyPortal .focus-page-kicker{color:var(--green2)}#bodyPortal .portal-action:first-child i{color:var(--green2);background:color-mix(in srgb,var(--green2) 16%,var(--card2));border-color:color-mix(in srgb,var(--green2) 38%,var(--line))}#bodyPortal .portal-action:nth-child(2) i{color:var(--coral);background:color-mix(in srgb,var(--coral) 16%,var(--card2));border-color:color-mix(in srgb,var(--coral) 38%,var(--line))}body[data-tab="cal"] .day-flow-actions .btn{border-color:color-mix(in srgb,var(--violet) 45%,var(--line))}
 body[data-tab="money"] #moneyPortal,body[data-tab="money"] #moneyOutlook{display:none!important}body[data-tab="money"] [data-pg="money"][data-money-group]{display:none!important}
 body[data-tab="money"][data-money-view="portal"] #moneyPortal,body[data-tab="money"][data-money-view="outlook"] #moneyOutlook,body[data-tab="money"][data-money-view="record"] #moneyEntry,body[data-tab="money"][data-money-view="analysis"] #spendAnalysisCard,body[data-tab="money"][data-money-view="card"] #cardCard,body[data-tab="money"][data-money-view="scheduled"] [data-money-group="scheduled"],body[data-tab="money"][data-money-view="income"] #incomeCard,body[data-tab="money"][data-money-view="income"] #benefitCard,body[data-tab="money"][data-money-view="income"] #acctCard{display:block!important}
 body[data-tab="money"][data-money-view="scheduled"] #spendCalendar{display:none!important}
@@ -408,7 +415,8 @@ body[data-tab="body"][data-body-focus="analysis"] .health-auto,
 body[data-tab="body"][data-body-focus="analysis"] .health-body,
 body[data-tab="body"][data-body-focus="analysis"] .health-mind,
 body[data-tab="body"][data-body-focus="analysis"] .health-save-row{display:none}
-body[data-tab="cal"][data-cal-focus="day"] #calendarBrowse{display:block}
+body[data-tab="cal"][data-cal-focus="day"] #calendarBrowse{display:none}
+body[data-tab="cal"][data-cal-focus="day"][data-cal-browse="1"] #calendarBrowse{display:block}
 
 /* 画面本体では「カードの壁」を減らし、節と余白で情報を分ける。強く見せる情報だけ面に残す。 */
 .wrap > .card:not(.lead):not(.hero):not(.money-glance):not(.alert){background:none;border:0;border-radius:0;box-shadow:none;margin:0;padding:23px 1px}
@@ -528,7 +536,7 @@ body[data-can-back="1"] .home-back,body[data-can-back="1"] .mini-logo{display:no
 @keyframes ptrspin{to{transform:rotate(360deg)}}
 
 /* ---- settings sheet ---- */
-.gear{display:flex;align-items:center;gap:6px;min-height:40px;color:var(--fg);background:var(--card2);border:1px solid #39495A;padding:6px 10px;border-radius:12px;flex:none;line-height:1;box-shadow:0 4px 12px rgba(0,0,0,.12)}
+.gear{display:flex;align-items:center;gap:6px;min-height:44px;color:var(--fg);background:var(--card2);border:1px solid #39495A;padding:6px 10px;border-radius:12px;flex:none;line-height:1;box-shadow:0 4px 12px rgba(0,0,0,.12)}
 .gearico{display:grid;place-items:center;width:22px;height:22px;color:var(--accent)}
 .gearico .ui-icon{width:21px;height:21px;stroke-width:2.05}
 .geartxt{font-size:11px;font-weight:750;letter-spacing:.04em}
@@ -894,11 +902,12 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
       <div class="outlook-row"><span>今残っているお金</span><b id="outlookRemaining">---</b></div>
       <div class="outlook-row"><span>今後の支払い予定</span><b id="outlookBills">---</b></div>
       <div class="outlook-row"><span>今後入る予定</span><b id="outlookIncoming">---</b></div>
+      <div class="outlook-row"><span>生活を支える収入（手当）</span><b id="outlookBenefit">---</b></div>
     </div>
     <div class="outlook-links">
       <button class="btn ghost" type="button" data-moneyview="card">カードの請求を見る</button>
       <button class="btn ghost" type="button" data-moneyview="scheduled">固定費・サブスクを見る</button>
-      <button class="btn ghost" type="button" data-moneyview="income">生活を支える収入を見る</button>
+      <button class="btn ghost" type="button" data-moneyview="income">手当の申請・振込予定を見る</button>
     </div>
   </section>
 
@@ -1306,8 +1315,14 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.21.0";         // version.txt と一致させること
+const BUILD = "0.22.0";         // version.txt と一致させること
 const KEY = "mainichi.v1";
+// 一日の流れを主役にし、週／月のカレンダーは必要なときだけその下に開く。
+(() => {
+  const day = document.getElementById("calendarDayPage");
+  const browse = document.getElementById("calendarBrowse");
+  if(day && browse) day.after(browse);
+})();
 let staleBuild = false;         // 古い版のまま開きっぱなしになっていないか
 const CATS = ["食費","日用品","交通","医療","交際","その他"];
 const INCOME_CATS = ["給与・報酬","手当","返金・給付","その他"];
@@ -1599,11 +1614,13 @@ function focusView(kind){
     S.ui.entryType = "expense"; save(); spendView();
   } else if(kind === "calendar-day"){
     document.body.dataset.calFocus = "day";
+    document.body.dataset.calBrowse = "0";
     document.body.dataset.calDayMode = "flow";
     calViewMode = "week"; calSel = ymd(now()); calCursor = ym(new Date());
     document.getElementById("calendarOverview").open = false; calView();
   } else if(kind === "calendar-check"){
     document.body.dataset.calFocus = "day";
+    document.body.dataset.calBrowse = "0";
     calViewMode = "week"; calSel = ymd(now()); calCursor = ym(new Date());
     document.body.dataset.calDayMode = "check";
     document.getElementById("calendarOverview").open = false; calView();
@@ -1646,6 +1663,7 @@ function setTab(t){
   if(t !== "money") document.body.dataset.moneyFocus = "";
   if(t !== "body") document.body.dataset.bodyFocus = "";
   if(t !== "cal") document.body.dataset.calFocus = "";
+  if(t !== "cal") document.body.dataset.calBrowse = "0";
   if(t !== "cal") document.body.dataset.calDayMode = "";
   if(t === "home") setHubStep("root");
   if(t === "today"){
@@ -2223,8 +2241,14 @@ function calDetail(){
       <div style="font-weight:700;font-size:16px">${dt.getMonth()+1}月${dt.getDate()}日（${"日月火水木金土"[dt.getDay()]}）</div>
     </div>
     ${rec.theme ? `<div class="dim" style="margin-bottom:4px">テーマ「${esc(rec.theme)}」</div>` : ""}
+    ${timeline(key)}
+    <div class="day-flow-actions">
+      <button class="btn ghost" type="button" data-dayaction="plan">予定を足す</button>
+      <button class="btn ghost" type="button" data-dayaction="check">チェックリストを開く</button>
+      <button class="btn ghost" type="button" data-dayaction="calendar">週／月を見る</button>
+    </div>
     ${document.body.dataset.calDayMode === "check" ? checklist : ""}
-    <details style="margin-top:12px">
+    <details id="planAdder">
       <summary>予定を足す</summary>
       <div class="catseg" id="planCatSeg">${TCATS.map(c =>
         `<button data-planCat="${c.id}" style="${planCat===c.id?`background:${c.color};color:#0D1015;font-weight:700;border-color:transparent`:""}">${c.label}</button>`).join("")}</div>
@@ -2235,7 +2259,6 @@ function calDetail(){
       </div>
       <div class="tiny" style="margin-top:8px">薄い帯は記録から自動で出ています。自分で足した予定はタップで消せます。</div>
     </details>
-    ${timeline(key)}
     ${isToday && document.body.dataset.calDayMode !== "check" ? `<details class="day-check-fold"><summary>今日のチェックリストを開く</summary>${checklist}</details>` : ""}`;
   // 詳細はこの1行にまとめる。時間割が主役なので、記録は要約だけ
   const habitsDone = habitList().filter(h => rec.habits[h.id]).length;
@@ -2422,6 +2445,8 @@ function moneyOutlookView(){
   set("outlookRemaining", remaining, true);
   set("outlookBills", c.unpaid + c.cardNow);
   set("outlookIncoming", c.incoming);
+  const benefit = (S.incomes || []).find(x => x.benefit || x.id === "benefit");
+  set("outlookBenefit", benefit ? (+benefit.amt || 0) : 0);
 }
 function spendPulse(){
   const cut = new Date(); cut.setDate(cut.getDate()-29); const from = ymd(cut);
@@ -2770,7 +2795,7 @@ function addIncomeLog(amt, cat, method, methodLabel){
 
 /* ---------- events ---------- */
 document.addEventListener("click", e => {
-  const t = e.target.closest("[data-delspend],[data-delincomelog],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate],[data-habit],[data-task],[data-deltask],[data-delplan],[data-gotab],[data-calnav],[data-calday],[data-calview],[data-ring],[data-flowjump],[data-err],[data-delerr],[data-applied],[data-delhabit],[data-plancat],[data-delplan2],[data-errsort],[data-errprio],[data-paysort],[data-subsort],[data-healthsort],[data-healthmetric],[data-healthrange],[data-healthview],[data-bodyview],[data-moneyprivacy],[data-moneysection],[data-moneyview],[data-planit],[data-unplan],[data-mcnav],[data-slotdone],[data-urgent],[data-hub-action],[data-hub-back],[data-addmoneyopt],#lightBtn,#hubSettings,#todayMoreToggle");
+  const t = e.target.closest("[data-delspend],[data-delincomelog],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate],[data-habit],[data-task],[data-deltask],[data-delplan],[data-gotab],[data-calnav],[data-calday],[data-calview],[data-ring],[data-flowjump],[data-err],[data-delerr],[data-applied],[data-delhabit],[data-plancat],[data-delplan2],[data-errsort],[data-errprio],[data-paysort],[data-subsort],[data-healthsort],[data-healthmetric],[data-healthrange],[data-healthview],[data-bodyview],[data-moneyprivacy],[data-moneysection],[data-moneyview],[data-dayaction],[data-planit],[data-unplan],[data-mcnav],[data-slotdone],[data-urgent],[data-hub-action],[data-hub-back],[data-addmoneyopt],#lightBtn,#hubSettings,#todayMoreToggle");
   if(!t) return;
 
   if(t.dataset.delhabit){
@@ -2796,6 +2821,12 @@ document.addEventListener("click", e => {
   }
   if(t.dataset.moneyview){ setMoneyView(t.dataset.moneyview); return; }
   if(t.dataset.bodyview){ setBodyView(t.dataset.bodyview); return; }
+  if(t.dataset.dayaction){
+    if(t.dataset.dayaction === "plan") document.getElementById("planAdder").open = true;
+    if(t.dataset.dayaction === "check"){ document.body.dataset.calDayMode = "check"; calDetail(); }
+    if(t.dataset.dayaction === "calendar"){ document.body.dataset.calBrowse = "1"; document.getElementById("calendarOverview").open = true; }
+    return;
+  }
   if(t.dataset.addmoneyopt){
     if(!canWrite()) return;
     const type = S.ui.entryType === "income" ? "income" : "expense";
@@ -2843,7 +2874,7 @@ document.addEventListener("click", e => {
     return;
   }
   if(t.dataset.flowjump){
-    rememberHere(); setTab("cal"); document.body.dataset.calFocus = "day"; document.body.dataset.calDayMode = "flow";
+    rememberHere(); setTab("cal"); document.body.dataset.calFocus = "day"; document.body.dataset.calBrowse = "0"; document.body.dataset.calDayMode = "flow";
     calViewMode = "week"; calSel = ymd(now()); calCursor = ym(new Date()); document.getElementById("calendarOverview").open = false; calView();
     document.getElementById("calDetail")?.scrollIntoView({behavior:"smooth",block:"start"});
     return;
@@ -3851,13 +3882,17 @@ document.getElementById("restoreBtn").addEventListener("click", ()=>{
   if(flowFolder) flowFolder.remove();
   const lifeSub = document.querySelector("#setLifeFolder summary small");
   if(lifeSub) lifeSub.textContent = "毎日つけるもの・一日の流れ";
+  const lifeTitle = document.querySelector("#setLifeFolder summary strong");
+  if(lifeTitle) lifeTitle.textContent = "毎日の習慣";
+  const moneyTitle = document.querySelector("#setMoneyFolder summary strong");
+  if(moneyTitle) moneyTitle.textContent = "お金の初期設定";
   const stepRule = document.getElementById("ruleSteps")?.closest(".edit-grid");
   const sleepRule = document.getElementById("ruleSleep")?.closest(".edit-grid");
   if(stepRule){ if(stepRule.previousElementSibling) stepRule.previousElementSibling.hidden = true; stepRule.hidden = true; }
   if(sleepRule){ sleepRule.hidden = true; if(sleepRule.nextElementSibling) sleepRule.nextElementSibling.hidden = true; }
   const icons = {
     "カレンダー":"<path d=\"M8.5 12.5 12 16l6-7\"/><path d=\"M5 5h14v14H5z\"/>",
-    "同期":"<path d=\"M7 7h9l-2-2M17 17H8l2 2\"/><path d=\"M16 7a6 6 0 0 1 1 10M8 17a6 6 0 0 1-1-10\"/>",
+    "同期・歩数／睡眠":"<path d=\"M7 7h9l-2-2M17 17H8l2 2\"/><path d=\"M16 7a6 6 0 0 1 1 10M8 17a6 6 0 0 1-1-10\"/>",
     "バックアップ":"<path d=\"M12 3v12M7 10l5 5 5-5\"/><path d=\"M5 20h14\"/>"
   };
   const group = (id, title, sub, ids) => {
@@ -3873,7 +3908,7 @@ document.getElementById("restoreBtn").addEventListener("click", ()=>{
     }
   };
   group("setCalendar", "カレンダー", "予定の書き出し", ["icsCard"]);
-  group("setSync", "同期", "歩数・睡眠・端末同期", ["syncCard"]);
+  group("setSync", "同期・歩数／睡眠", "端末同期・読み取り専用", ["syncCard"]);
   group("setData", "バックアップ", "保存・復元", ["backupCard"]);
 })();
 
