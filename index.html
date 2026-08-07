@@ -354,6 +354,13 @@ body[data-tab="pay"]   [data-pg="pay"]{display:block}
 .money-glance-amount{font-size:clamp(30px,9vw,44px);font-weight:850;line-height:1.05;margin-top:12px;color:var(--ok);font-variant-numeric:tabular-nums}
 .money-glance-amount.neg{color:var(--bad)}
 .money-glance-amount + .tiny{margin-top:7px}
+.money-private-summary{margin:0 0 16px;padding:16px;border:1px solid color-mix(in srgb,var(--accent) 34%,var(--line));border-radius:16px;background:linear-gradient(145deg,color-mix(in srgb,var(--accent) 12%,var(--card)),var(--card))}
+.money-private-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:13px}.money-private-head strong{display:block;font-size:18px}.money-private-head small{display:block;margin-top:3px;color:var(--dim);font-size:12px}
+.privacy-toggle{min-height:38px;padding:7px 10px;font-size:12px;white-space:nowrap}
+.money-private-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.money-private-metric{min-width:0;padding:12px;border-radius:12px;background:color-mix(in srgb,var(--bg) 35%,transparent);border:1px solid color-mix(in srgb,var(--line) 80%,transparent)}
+.money-private-metric span{display:block;color:var(--dim);font-size:11px;font-weight:700}.money-private-metric b{display:block;margin-top:5px;font-size:clamp(20px,6.4vw,29px);line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}.money-private-metric b.hidden-money{letter-spacing:.12em;color:var(--dim)}
+.money-private-metric small{display:block;margin-top:5px;color:var(--dim);font-size:10px;line-height:1.35}
 [data-moneysection]{transition:background .15s,color .15s,border-color .15s}
 #moneySectionSeg button[data-moneysection="expense"].on{background:var(--coral);color:#241719;box-shadow:0 4px 14px rgba(240,154,155,.16)}
 #moneySectionSeg button[data-moneysection="income"].on{background:var(--green2);color:#11241b;box-shadow:0 4px 14px rgba(111,218,169,.14)}
@@ -680,7 +687,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
       <div class="hub-primary">
         <button class="hub-primary-btn" data-hub-action="record">
           <span class="hub-primary-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24"><path d="m13.5 5.2 5.3 5.3"/><path d="m5 19 3.7-.8L19.5 7.4a1.9 1.9 0 0 0-2.7-2.7L6 15.5 5 19Z"/></svg></span>
-          <span><strong>記録する</strong><small>体調・使ったお金・収入・予定・支払い</small></span><span class="hub-arrow" aria-hidden="true">›</span>
+          <span><strong>記録する</strong><small>支出・収入、こころとからだ</small></span><span class="hub-arrow" aria-hidden="true">›</span>
         </button>
         <button class="hub-primary-btn" data-hub-action="today">
           <span class="hub-primary-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M18.7 5.3l-1.4 1.4M6.7 17.3l-1.4 1.4"/></svg></span>
@@ -697,11 +704,8 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
       <button class="hub-back" data-hub-back>戻る</button>
       <h2 class="hub-stage-title">何を記録しますか？</h2>
       <div class="hub-choices">
-        <button class="hub-choice-btn" data-gotab="body" data-focus="health-entry"><span class="hub-choice-icon"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M12 21s-7-4.6-7-10.1A4.1 4.1 0 0 1 12 8a4.1 4.1 0 0 1 7 2.9C19 16.4 12 21 12 21Z"/></svg></span><span><b>体調</b><small>歩数・睡眠・からだ・こころ</small></span></button>
-        <button class="hub-choice-btn" data-gotab="money" data-moneysection="expense" data-focus="money-entry"><span class="hub-choice-icon"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M4 7.5h16v10H4z"/><path d="M4 10h16M7 15h3"/></svg></span><span><b>使ったお金</b><small>金額・分類・支払い方法</small></span></button>
-        <button class="hub-choice-btn" data-gotab="money" data-moneysection="expense" data-focus="income-entry"><span class="hub-choice-icon"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M12 19V5M7 10l5-5 5 5"/><path d="M5 19h14"/></svg></span><span><b>収入</b><small>手当・給与・返金・給付</small></span></button>
-        <button class="hub-choice-btn" data-gotab="cal" data-focus="calendar-day"><span class="hub-choice-icon"><svg class="ui-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg></span><span><b>予定</b><small>時間・内容・優先度を変える</small></span></button>
-        <button class="hub-choice-btn wide" data-gotab="money" data-moneysection="scheduled"><span class="hub-choice-icon"><svg class="ui-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7v10M15 9.5c-.5-.7-1.5-1-2.7-1-1.5 0-2.7.7-2.7 2s1.2 1.8 2.7 2 2.7.7 2.7 2-1.2 2-2.7 2c-1.2 0-2.2-.3-2.8-1"/></svg></span><span><b>支払い予定</b><small>固定費・サブスク・カード請求を確認する</small></span><span class="hub-arrow" aria-hidden="true">›</span></button>
+        <button class="hub-choice-btn" data-gotab="money" data-moneysection="expense" data-focus="money-entry"><span class="hub-choice-icon"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M4 7.5h16v10H4z"/><path d="M4 10h16M7 15h3"/></svg></span><span><b>支出／収入</b><small>金額・分類・支払い／受取方法</small></span></button>
+        <button class="hub-choice-btn" data-gotab="body" data-focus="health-entry"><span class="hub-choice-icon"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M12 21s-7-4.6-7-10.1A4.1 4.1 0 0 1 12 8a4.1 4.1 0 0 1 7 2.9C19 16.4 12 21 12 21Z"/></svg></span><span><b>こころとからだ</b><small>歩数・睡眠・からだ・こころ</small></span></button>
       </div>
     </div>
 
@@ -709,9 +713,9 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
       <button class="hub-back" data-hub-back>戻る</button>
       <h2 class="hub-stage-title">今日をどう整えますか？</h2>
       <div class="hub-choices">
-        <button class="hub-choice-btn" data-gotab="today" data-focus="today-theme"><span class="hub-choice-icon"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M5 4.5h14v15H5z"/><path d="M8 9h8M8 13h5"/></svg></span><span><b>テーマを決める</b><small>今日の軸をひとことで</small></span></button>
-        <button class="hub-choice-btn" data-gotab="today" data-focus="today-flow"><span class="hub-choice-icon"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M5 6h14M5 12h10M5 18h6"/><circle cx="18" cy="12" r="1"/><circle cx="14" cy="18" r="1"/></svg></span><span><b>流れを見る</b><small>時間ごとの取り組み</small></span></button>
-        <button class="hub-choice-btn wide" data-gotab="today" data-focus="today-actions"><span class="hub-choice-icon"><svg class="ui-icon" viewBox="0 0 24 24"><path d="m6 12 3.4 3.4L18 6.8"/><path d="M20 12a8 8 0 1 1-4-6.9"/></svg></span><span><b>習慣・やること</b><small>今日やるものだけを確認して、終わったら押す</small></span><span class="hub-arrow" aria-hidden="true">›</span></button>
+        <button class="hub-choice-btn" data-gotab="today" data-focus="today-actions"><span class="hub-choice-icon"><svg class="ui-icon" viewBox="0 0 24 24"><path d="m6 12 3.4 3.4L18 6.8"/><path d="M20 12a8 8 0 1 1-4-6.9"/></svg></span><span><b>チェックリスト</b><small>生活と回復を優先して並べる</small></span></button>
+        <button class="hub-choice-btn" data-gotab="cal" data-focus="calendar-day"><span class="hub-choice-icon"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M5 6h14M5 12h10M5 18h6"/><circle cx="18" cy="12" r="1"/><circle cx="14" cy="18" r="1"/></svg></span><span><b>一日の流れ</b><small>現在時刻と時間ごとの予定</small></span></button>
+        <button class="hub-choice-btn wide" data-gotab="today" data-focus="today-theme"><span class="hub-choice-icon"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M5 4.5h14v15H5z"/><path d="M8 9h8M8 13h5"/></svg></span><span><b>テーマ設定</b><small>今日の軸をひとことで</small></span><span class="hub-arrow" aria-hidden="true">›</span></button>
       </div>
     </div>
 
@@ -738,31 +742,6 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 
   <!-- ===== MODE (体力予算) ===== -->
   <div class="card mode" id="modeCard" data-pg="today"></div>
-
-  <!-- ===== HERO ===== -->
-  <div class="card hero" data-pg="money" data-money-group="overview">
-    <div class="lab">今日 使えるお金</div>
-    <div class="big num" id="heroAmt">¥0</div>
-    <div class="sub" id="heroSub">—</div>
-    <div class="bar"><i id="heroBar" style="width:0%"></i></div>
-    <div class="tiny" id="heroFoot">—</div>
-  </div>
-
-  <div class="card money-glance" data-pg="money" data-money-group="overview">
-    <div class="money-glance-head"><h2 class="section-title" data-icon="▣">今残っているお金</h2><span class="tiny">支払い予定を差し引いた見込み</span></div>
-    <div id="moneyRemainingTop" class="money-glance-amount">¥0</div>
-    <div id="moneyRemainingTopSub" class="tiny">口座・手元の残高から、固定費とカード請求予定を差し引いています。</div>
-  </div>
-
-  <div class="card money-switch" data-pg="money" data-money-group="overview">
-    <div class="money-switch-title"><span class="section-kicker">おかねの見方</span><span class="tiny">支出・収入・予定・分析を切り替え</span></div>
-    <div class="seg money-seg" id="moneySectionSeg">
-      <button data-moneysection="expense" class="on">支出</button>
-      <button data-moneysection="income">収入</button>
-      <button data-moneysection="scheduled">支払い予定</button>
-      <button data-moneysection="analysis">分析</button>
-    </div>
-  </div>
 
   <!-- ===== 毎日つけるもの ===== -->
   <div class="card" id="todayHabits" data-pg="today">
@@ -864,6 +843,15 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   <!-- ===== SPEND ===== -->
   <div class="card" id="moneyEntry" data-pg="money" data-money-group="expense">
     <h2 class="section-title" data-icon="¥">支出・収入を記録</h2>
+    <div class="money-private-summary">
+      <div class="money-private-head"><div><strong>お金の状況</strong><small>他の人に見せないため、金額は隠しています。</small></div><button class="btn ghost sm privacy-toggle" data-moneyprivacy aria-pressed="false">金額を表示</button></div>
+      <div class="money-private-grid">
+        <div class="money-private-metric"><span>今日使えるお金</span><b class="hidden-money" id="heroAmt">---</b><small id="heroSub">タップすると確認できます</small></div>
+        <div class="money-private-metric"><span>今残っているお金</span><b class="hidden-money" id="moneyRemainingTop">---</b><small id="moneyRemainingTopSub">支払い予定を差し引いた見込み</small></div>
+      </div>
+      <div class="bar" style="margin-top:12px"><i id="heroBar" style="width:0%"></i></div>
+      <div class="tiny" id="heroFoot" style="margin-top:7px">金額を表示すると計算の内訳を確認できます。</div>
+    </div>
     <div class="tiny spend-help">入力した支出は下の分析に自動でまとまります。記録は金額と分類を選ぶだけです。</div>
     <div class="seg" id="entryTypeSeg">
       <button data-entrytype="expense" class="on">支出</button>
@@ -1236,7 +1224,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.18.0";         // version.txt と一致させること
+const BUILD = "0.19.0";         // version.txt と一致させること
 const KEY = "mainichi.v1";
 let staleBuild = false;         // 古い版のまま開きっぱなしになっていないか
 const CATS = ["食費","日用品","交通","医療","交際","その他"];
@@ -1324,6 +1312,7 @@ function normalize(o){
   if(!s.ui || typeof s.ui !== "object") s.ui = b.ui;
   if(!["expense","income"].includes(s.ui.entryType)) s.ui.entryType = "expense";
   if(!["cash","paypay","card"].includes(s.ui.pay)) s.ui.pay = "cash";
+  if(typeof s.ui.moneyVisible !== "boolean") s.ui.moneyVisible = false;
   for(const k of ["health","daily","doneFixed","doneIncome","benefitMonths","plan"])
     if(!s[k] || typeof s[k] !== "object") s[k] = {};
   for(const k of Object.keys(s.plan)) if(!Array.isArray(s.plan[k])) delete s.plan[k];
@@ -1722,21 +1711,32 @@ function modeView(){
 }
 
 /* ---------- やること ---------- */
-// 重要度×緊急度の4分類。色そのものが優先度を表す
+// 生活を守ることを先に、回復・仕事は無理をさせない順番で並べる
 const PRIOS = [
-  {id:"iu", label:"重要・急ぎ", color:"#E06B5A"},
-  {id:"i",  label:"重要",       color:"#7AA7F0"},
-  {id:"u",  label:"急ぎ",       color:"#E39A5C"},
-  {id:"n",  label:"いつか",     color:"#6F7C93"}
+  {id:"a", label:"A 生活を守る", color:"#E06B5A"},
+  {id:"b", label:"B 暮らしの土台", color:"#DFC661"},
+  {id:"c", label:"C 仕事・回復", color:"#7AA7F0"},
+  {id:"d", label:"D 余裕があるとき", color:"#6F7C93"}
 ];
 const prioOf = id => PRIOS.find(p => p.id === id) || PRIOS[3];
+function autoPriority(e){
+  const text = `${e.text || ""} ${e.note || ""}`.toLowerCase();
+  let id = /家賃|共益|クレジット|カード.*支払|引落|傷病手当|手当.*申請|振込|保険|年金|税金|期限/.test(text) ? "a"
+    : /風呂|歯磨|薬|服薬|食事|自炊|洗濯|掃除|睡眠|通院/.test(text) ? "b"
+    : /プラグイン|アプリ|開発|制作|仕事|歩|散歩|走|外に出|運動|体調|こころ/.test(text) ? "c" : "d";
+  if(e.due){
+    const days = Math.round((new Date(`${e.due}T00:00:00`) - new Date(`${ymd(now())}T00:00:00`)) / 86400000);
+    if(days <= 0) id = "a";
+    else if(days <= 3) id = PRIOS[Math.max(0, PRIOS.findIndex(p => p.id === id) - 1)].id;
+  }
+  return prioOf(id);
+}
 const ERR_SORTS = [["prio","優先度順"],["due","期限順"],["new","追加順"]];
 let errSort = "prio";
-let errPrio = "n";
 
 function errView(){
   const tk = ymd(now());
-  const rank = e => PRIOS.findIndex(p => p.id === (e.prio || "n"));
+  const rank = e => PRIOS.findIndex(p => p.id === autoPriority(e).id);
   // 今日に入れたものは上のカードにいるので、ここには出さない
   const list = S.errands.filter(e => e.plan !== tk).sort((a,b) => {
     if(a.done !== b.done) return a.done ? 1 : -1;
@@ -1754,12 +1754,11 @@ function errView(){
 
   document.getElementById("errSorts").innerHTML = ERR_SORTS.map(([id,lab]) =>
     `<button data-errsort="${id}" class="${errSort===id?"on":""}">${lab}</button>`).join("");
-  document.getElementById("errPrioSeg").innerHTML = PRIOS.map(p =>
-    `<button data-errprio="${p.id}" style="${errPrio===p.id?`background:${p.color};color:#0D1015;font-weight:700;border-color:transparent`:""}">${p.label}</button>`).join("");
+  document.getElementById("errPrioSeg").innerHTML = `<span class="tiny">優先順位は、生活を守ること → 暮らしの土台 → 仕事・回復 の順に自動で決めます。</span>`;
 
   document.getElementById("errList").innerHTML = list.length
     ? list.map(e => {
-        const p = prioOf(e.prio);
+        const p = autoPriority(e);
         const over = e.due && !e.done && e.due < tk;
         const due = e.due
           ? `<span class="err-due${over ? " over" : ""}">${over ? "期限すぎ " : ""}${e.due.slice(5).replace("-","/")}まで</span>` : "";
@@ -1899,7 +1898,7 @@ function autoBlocks(key){
   // やること: 時刻を入れたものだけ帯にする。色は優先度そのもの
   for(const e of errandsOn(key))
     if(e.from && e.to)
-      out.push({auto:true, errand:true, color: prioOf(e.prio).color, text: e.text,
+      out.push({auto:true, errand:true, color: autoPriority(e).color, text: e.text,
                 a: onTl(toMin(e.from)), b: onTl(toMin(e.to))});
   return out.filter(x => x.a != null && x.b != null && x.b > x.a);
 }
@@ -1957,7 +1956,7 @@ function calView(){
     body.innerHTML = `<div class="cal-week">${days.map(key => {
       const dt = new Date(key+"T00:00:00"), blocks = allBlocks(key), errands = errandsOn(key);
       const items = blocks.filter(b => b.cat !== "sleep").slice(0,3).map(b => `<span class="witem" style="border-left-color:${b.color || catOf(b.cat).color}">${esc(b.text)}</span>`).join("");
-      const plain = errands.filter(e => !e.from).slice(0,2).map(e => `<span class="witem" style="border-left-color:${prioOf(e.prio).color}">${esc(e.text)}</span>`).join("");
+      const plain = errands.filter(e => !e.from).slice(0,2).map(e => `<span class="witem" style="border-left-color:${autoPriority(e).color}">${esc(e.text)}</span>`).join("");
       return `<button class="cal-week-day${key===ymd(now())?" today":""}" data-calday="${key}"><span class="wd">${"月火水木金土日"[iDay(key)]}</span><b>${dt.getMonth()+1}/${dt.getDate()}</b>${items||plain||`<span class="tiny" style="margin-top:12px">予定なし</span>`}</button>`;
     }).join("")}</div>`;
     legend.innerHTML = `<span class="hd" style="width:100%">週の予定。日付をタップすると、その日の編集欄を開きます。</span>`;
@@ -1985,7 +1984,7 @@ function calView(){
     // 時刻なしの やること も、優先度の色で1本だけ足す
     for(const e of errandsOn(key)){
       if(e.from && e.to) continue;
-      const c = prioOf(e.prio).color;
+      const c = autoPriority(e).color;
       if(!cols.includes(c)) cols.push(c);
     }
     const bars = cols.slice(0,4).map(c => `<i style="background:${c}"></i>`).join("");
@@ -2018,7 +2017,7 @@ function errandRows(key){
   const list = errandsOn(key);
   if(!list.length) return "";
   return `<div style="margin:8px 0 4px">` + list.map(e => {
-    const p = prioOf(e.prio);
+    const p = autoPriority(e);
     const why = e.plan === key ? "今日やること" : "期限";
     return `<div style="border-top:1px solid var(--line);padding:9px 0">
       <div class="row" style="gap:10px">
@@ -2149,12 +2148,12 @@ function todayView(){
     `<button class="pad ${rec.habits[h.id] ? "on" : ""}" data-habit="${h.id}">
        <i>${esc(h.icon || "・")}</i>${esc(h.label)}</button>`).join("");
 
-  const list = plannedOn(tk);
+  const list = plannedOn(tk).slice().sort((a,b) => PRIOS.findIndex(p=>p.id===autoPriority(a).id) - PRIOS.findIndex(p=>p.id===autoPriority(b).id));
   document.getElementById("todayCount").textContent =
     list.length ? `${list.filter(t => t.done).length}/${list.length}` : "";
   document.getElementById("taskList").innerHTML = list.length
     ? list.map(t => {
-        const p = prioOf(t.prio);
+        const p = autoPriority(t);
         return `<div class="item">
           <button class="tick ${t.done ? "on" : ""}" data-err="${t.id}">✓</button>
           <span style="width:4px;align-self:stretch;border-radius:2px;flex:none;background:${t.done?"transparent":p.color}"></span>
@@ -2204,22 +2203,30 @@ function apptView(){
 function heroView(){
   const c = calc();
   const el = id => document.getElementById(id);
+  const visible = S.ui.moneyVisible === true;
 
-  el("heroAmt").textContent = yen(c.left);
-  el("heroAmt").classList.toggle("neg", c.left < 0);
-  el("heroSub").textContent =
-    `1日 ${yen(c.perDay)} のうち 今日 ${yen(c.spentToday)} 使いました`;
+  el("heroAmt").textContent = visible ? yen(c.left) : "---";
+  el("heroAmt").classList.toggle("neg", visible && c.left < 0);
+  el("heroAmt").classList.toggle("hidden-money", !visible);
+  el("heroSub").textContent = visible
+    ? `1日 ${yen(c.perDay)} のうち 今日 ${yen(c.spentToday)} 使いました`
+    : "タップすると確認できます";
 
   const ratio = c.perDay > 0 ? Math.min(c.spentToday / c.perDay, 1) : (c.spentToday>0?1:0);
   const bar = el("heroBar");
-  bar.style.width = (ratio*100).toFixed(1) + "%";
+  bar.style.width = visible ? (ratio*100).toFixed(1) + "%" : "0%";
   bar.classList.toggle("over", c.left < 0);
 
-  el("heroFoot").textContent =
-    `残高 ${yen(c.balance)}　＋入金予定 ${yen(c.incoming)}　−固定費 ${yen(c.unpaid)}　−カード請求予定 ${yen(c.cardNow)}　＝ ${yen(c.pool)}`;
+  el("heroFoot").textContent = visible
+    ? `残高 ${yen(c.balance)}　＋入金予定 ${yen(c.incoming)}　−固定費 ${yen(c.unpaid)}　−カード請求予定 ${yen(c.cardNow)}　＝ ${yen(c.pool)}`
+    : "金額を表示すると計算の内訳を確認できます。";
+  document.querySelectorAll("[data-moneyprivacy]").forEach(b => {
+    b.textContent = visible ? "金額を隠す" : "金額を表示";
+    b.setAttribute("aria-pressed", String(visible));
+  });
 
   const sc = el("shortCard");
-  if(c.pool < 0){
+  if(visible && c.pool < 0){
     sc.hidden = false;
     el("shortAmt").textContent = yen(-c.pool);
   } else sc.hidden = true;
@@ -2230,10 +2237,12 @@ function moneyAtGlanceView(){
   const el = document.getElementById("moneyRemainingTop");
   const sub = document.getElementById("moneyRemainingTopSub");
   if(!el || !sub) return;
+  const visible = S.ui.moneyVisible === true;
   const remaining = c.balance - c.unpaid - c.cardNow;
-  el.textContent = yen(remaining);
-  el.classList.toggle("neg", remaining < 0);
-  sub.textContent = `残高 ${yen(c.balance)} − 固定費 ${yen(c.unpaid)} − カード請求予定 ${yen(c.cardNow)}`;
+  el.textContent = visible ? yen(remaining) : "---";
+  el.classList.toggle("neg", visible && remaining < 0);
+  el.classList.toggle("hidden-money", !visible);
+  sub.textContent = visible ? `残高 ${yen(c.balance)} − 固定費 ${yen(c.unpaid)} − カード請求予定 ${yen(c.cardNow)}` : "支払い予定を差し引いた見込み";
 }
 
 // よく使う「金額×分類」を直近から学習してパッドにする。手入力の回数を減らすため
@@ -2582,7 +2591,7 @@ function addIncomeLog(amt, cat, method){
 
 /* ---------- events ---------- */
 document.addEventListener("click", e => {
-  const t = e.target.closest("[data-delspend],[data-delincomelog],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate],[data-habit],[data-task],[data-deltask],[data-delplan],[data-gotab],[data-calnav],[data-calday],[data-calview],[data-ring],[data-flowjump],[data-err],[data-delerr],[data-applied],[data-delhabit],[data-plancat],[data-delplan2],[data-errsort],[data-errprio],[data-paysort],[data-subsort],[data-healthsort],[data-healthmetric],[data-healthrange],[data-healthview],[data-moneysection],[data-planit],[data-unplan],[data-mcnav],[data-slotdone],[data-urgent],[data-hub-action],[data-hub-back],#lightBtn,#hubSettings,#todayMoreToggle");
+  const t = e.target.closest("[data-delspend],[data-delincomelog],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate],[data-habit],[data-task],[data-deltask],[data-delplan],[data-gotab],[data-calnav],[data-calday],[data-calview],[data-ring],[data-flowjump],[data-err],[data-delerr],[data-applied],[data-delhabit],[data-plancat],[data-delplan2],[data-errsort],[data-errprio],[data-paysort],[data-subsort],[data-healthsort],[data-healthmetric],[data-healthrange],[data-healthview],[data-moneyprivacy],[data-moneysection],[data-planit],[data-unplan],[data-mcnav],[data-slotdone],[data-urgent],[data-hub-action],[data-hub-back],#lightBtn,#hubSettings,#todayMoreToggle");
   if(!t) return;
 
   if(t.dataset.delhabit){
@@ -2610,6 +2619,11 @@ document.addEventListener("click", e => {
     const open = document.body.dataset.todayMore === "1";
     document.body.dataset.todayMore = open ? "0" : "1";
     t.textContent = open ? "その他の情報を表示" : "その他の情報を隠す";
+    return;
+  }
+  if(t.hasAttribute("data-moneyprivacy")){
+    S.ui.moneyVisible = !S.ui.moneyVisible;
+    save(); heroView(); moneyAtGlanceView();
     return;
   }
   if(t.dataset.moneysection){ setMoneySection(t.dataset.moneysection); return; }
@@ -2678,7 +2692,7 @@ document.addEventListener("click", e => {
   }
   if(t.dataset.plancat){ planCat = t.dataset.plancat; calDetail(); return; }
   if(t.dataset.errsort){ errSort = t.dataset.errsort; errView(); return; }
-  if(t.dataset.errprio){ errPrio = t.dataset.errprio; errView(); return; }
+  if(t.dataset.errprio){ errView(); return; }
   if(t.dataset.paysort){ paySort = t.dataset.paysort; fixedView(); return; }
   if(t.dataset.subsort){ subSort = t.dataset.subsort; subsView(); return; }
   if(t.dataset.delplan2){
@@ -3171,7 +3185,7 @@ function addErrand(){
   const noteEl = document.getElementById("errNote"), dueEl = document.getElementById("errDue");
   const fromEl = document.getElementById("errFrom"), toEl = document.getElementById("errTo");
   S.errands.push({id:uid(), text, note:noteEl.value.trim(), due:dueEl.value,
-                  from:fromEl.value, to:toEl.value, prio:errPrio, done:false, plan:null});
+                  from:fromEl.value, to:toEl.value, prio:"d", done:false, plan:null});
   el.value = ""; noteEl.value = ""; dueEl.value = ""; fromEl.value = ""; toEl.value = "";
   save(); render(); toast("追加しました");
 }
