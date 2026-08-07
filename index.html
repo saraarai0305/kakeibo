@@ -391,6 +391,18 @@ body[data-tab="money"][data-money-focus="entry"] [data-pg="money"][data-money-gr
 body[data-tab="money"][data-money-focus="entry"] #moneyEntry{display:block !important}
 body[data-tab="money"][data-money-focus="analysis"] #spendCalendar{display:none !important}
 body[data-tab="money"][data-money-focus="analysis"] #spendAnalysisCard{display:block !important}
+
+/* ---- 新しい骨格: お金は「入口 → 1目的」のみを表示する ---- */
+.focus-page{display:none}.focus-page-head{padding:10px 1px 20px}.focus-page-kicker{margin:0 0 5px;color:var(--accent);font-size:12px;font-weight:800;letter-spacing:.13em}.focus-page-title{margin:0;font-size:clamp(30px,9vw,42px);line-height:1.08;letter-spacing:-.03em}.focus-page-lead{margin:8px 0 0;color:var(--dim);font-size:14px}
+.portal-actions{display:grid;gap:10px}.portal-action{min-height:96px;display:grid;grid-template-columns:48px minmax(0,1fr) 20px;align-items:center;gap:14px;padding:15px 14px;text-align:left;border:1px solid var(--line);border-radius:18px;background:linear-gradient(135deg,#1C2938,#151E29)}.portal-action b{display:block;font-size:20px;line-height:1.2}.portal-action small{display:block;margin-top:5px;color:var(--dim);font-size:13px}.portal-action i{width:48px;height:48px;display:grid;place-items:center;border-radius:15px;font-style:normal;font-size:23px;background:color-mix(in srgb,var(--accent) 16%,var(--card2));color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 38%,var(--line))}.portal-action:nth-child(2) i{background:color-mix(in srgb,var(--yellow) 15%,var(--card2));color:var(--yellow);border-color:color-mix(in srgb,var(--yellow) 38%,var(--line))}.portal-action:nth-child(3) i{background:color-mix(in srgb,var(--violet) 16%,var(--card2));color:var(--violet);border-color:color-mix(in srgb,var(--violet) 38%,var(--line))}.portal-action em{font-style:normal;color:var(--dim);font-size:25px;text-align:center}
+.subpage-back{display:inline-flex;align-items:center;gap:4px;min-height:44px;margin:0 0 12px;padding:8px 4px;color:var(--dim);font-size:14px;font-weight:750}.subpage-back::before{content:"‹";font-size:27px;line-height:.7;color:var(--accent)}
+.outlook-hero{padding:20px 18px;border:1px solid color-mix(in srgb,var(--ok) 40%,var(--line));border-radius:18px;background:linear-gradient(145deg,color-mix(in srgb,var(--ok) 14%,var(--card)),var(--card))}.outlook-hero span{display:block;color:var(--dim);font-size:13px;font-weight:700}.outlook-hero b{display:block;margin-top:5px;font-size:clamp(38px,12vw,52px);line-height:1;color:var(--ok);font-variant-numeric:tabular-nums}.outlook-rows{margin-top:14px;border-top:1px solid var(--line)}.outlook-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 0;border-bottom:1px solid var(--line)}.outlook-row span{color:var(--dim);font-size:14px}.outlook-row b{font-size:18px;font-variant-numeric:tabular-nums}.outlook-links{display:grid;gap:8px;margin-top:18px}.outlook-links .btn{min-height:50px;text-align:left;display:flex;align-items:center;justify-content:space-between}.outlook-links .btn::after{content:"›";font-size:22px;color:var(--dim)}
+body[data-tab="money"] #moneyPortal,body[data-tab="money"] #moneyOutlook{display:none!important}body[data-tab="money"] [data-pg="money"][data-money-group]{display:none!important}
+body[data-tab="money"][data-money-view="portal"] #moneyPortal,body[data-tab="money"][data-money-view="outlook"] #moneyOutlook,body[data-tab="money"][data-money-view="record"] #moneyEntry,body[data-tab="money"][data-money-view="analysis"] #spendAnalysisCard,body[data-tab="money"][data-money-view="card"] #cardCard,body[data-tab="money"][data-money-view="scheduled"] [data-money-group="scheduled"],body[data-tab="money"][data-money-view="income"] #incomeCard,body[data-tab="money"][data-money-view="income"] #benefitCard,body[data-tab="money"][data-money-view="income"] #acctCard{display:block!important}
+body[data-tab="money"][data-money-view="scheduled"] #spendCalendar{display:none!important}
+body[data-tab="body"] #bodyPortal,body[data-tab="body"] #healthEntry{display:none!important}
+body[data-tab="body"][data-body-view="portal"] #bodyPortal,body[data-tab="body"][data-body-view="record"] #healthEntry,body[data-tab="body"][data-body-view="analysis"] #healthEntry{display:block!important}
+body[data-tab="body"] #healthEntry .focus-seg{display:none}
 body[data-tab="body"][data-body-focus="record"] #healthAnalysis{display:none}
 body[data-tab="body"][data-body-focus="analysis"] .health-auto,
 body[data-tab="body"][data-body-focus="analysis"] .health-body,
@@ -855,8 +867,44 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
     <div class="tiny" style="margin-top:8px">支払いの項目は「今月の支払い」の編集欄で、1件ずつ出す／出さないを選べます。</div>
   </div>
 
+  <!-- ===== MONEY PORTAL ===== -->
+  <section class="focus-page" id="moneyPortal" data-pg="money">
+    <div class="focus-page-head">
+      <p class="focus-page-kicker">LIFE NOTE</p>
+      <h1 class="focus-page-title">おかね</h1>
+      <p class="focus-page-lead">何をしますか？</p>
+    </div>
+    <div class="portal-actions">
+      <button class="portal-action" type="button" data-moneyview="record"><i>￥</i><span><b>支出・収入を記録</b><small>使ったお金／入ったお金</small></span><em>›</em></button>
+      <button class="portal-action" type="button" data-moneyview="outlook"><i>◒</i><span><b>お金の見通し</b><small>今日使えるお金・支払い予定</small></span><em>›</em></button>
+      <button class="portal-action" type="button" data-moneyview="analysis"><i>▥</i><span><b>お金を分析</b><small>収支・支払い方法・カテゴリー</small></span><em>›</em></button>
+    </div>
+  </section>
+
+  <!-- ===== MONEY OUTLOOK ===== -->
+  <section class="focus-page" id="moneyOutlook" data-pg="money">
+    <button class="subpage-back" type="button" data-moneyview="portal">おかねに戻る</button>
+    <div class="focus-page-head">
+      <p class="focus-page-kicker">MONEY OUTLOOK</p>
+      <div class="row between" style="align-items:center;gap:12px"><h1 class="focus-page-title">お金の見通し</h1><button class="btn ghost sm privacy-toggle" type="button" data-moneyprivacy>金額を表示</button></div>
+      <p class="focus-page-lead">今日と今月のお金をひとつにまとめます。</p>
+    </div>
+    <div class="outlook-hero"><span>今日使えるお金</span><b id="outlookToday">---</b></div>
+    <div class="outlook-rows">
+      <div class="outlook-row"><span>今残っているお金</span><b id="outlookRemaining">---</b></div>
+      <div class="outlook-row"><span>今後の支払い予定</span><b id="outlookBills">---</b></div>
+      <div class="outlook-row"><span>今後入る予定</span><b id="outlookIncoming">---</b></div>
+    </div>
+    <div class="outlook-links">
+      <button class="btn ghost" type="button" data-moneyview="card">カードの請求を見る</button>
+      <button class="btn ghost" type="button" data-moneyview="scheduled">固定費・サブスクを見る</button>
+      <button class="btn ghost" type="button" data-moneyview="income">生活を支える収入を見る</button>
+    </div>
+  </section>
+
   <!-- ===== SPEND ===== -->
   <div class="card" id="moneyEntry" data-pg="money" data-money-group="expense">
+    <button class="subpage-back" type="button" data-moneyview="portal">おかねに戻る</button>
     <h2 class="section-title" data-icon="¥">支出・収入を記録</h2>
     <div class="money-private-summary">
       <div class="money-private-head"><strong>お金の状況</strong><button class="btn ghost sm privacy-toggle" data-moneyprivacy aria-pressed="false">金額を表示</button></div>
@@ -898,6 +946,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   </div>
 
   <div class="card" data-pg="money" data-money-group="analysis" id="spendAnalysisCard">
+    <button class="subpage-back" type="button" data-moneyview="portal">おかねに戻る</button>
     <h2 class="section-title" data-icon="↗">直近30日の支払い分析</h2>
     <div class="tiny" style="margin:-4px 0 9px">支払い方法とカテゴリーの傾向を見ます。</div>
     <div id="spendPulse"></div>
@@ -905,6 +954,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 
   <!-- ===== CARD PROJECTION ===== -->
   <div class="card" id="cardCard" data-pg="money" data-money-group="expense">
+    <button class="subpage-back" type="button" data-moneyview="outlook">お金の見通しに戻る</button>
     <div class="credit-card-face">
       <div class="credit-card-top"><span class="credit-chip">CARD</span><span class="credit-label">来月のカード請求</span></div>
       <div class="credit-card-grid">
@@ -931,6 +981,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 
   <!-- ===== UPCOMING ===== -->
   <div class="card lead" data-pg="money" data-money-group="scheduled">
+    <button class="subpage-back" type="button" data-moneyview="outlook">お金の見通しに戻る</button>
     <h2 class="section-title" data-icon="▰">今月の固定費 <span class="tiny" id="fixedTotal"></span></h2>
     <div class="sorts" id="paySorts"></div>
     <div id="fixedList"></div>
@@ -963,6 +1014,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 
   <!-- ===== INCOME / BENEFIT ===== -->
   <div class="card" id="incomeCard" data-pg="money" data-money-group="income">
+    <button class="subpage-back" type="button" data-moneyview="outlook">お金の見通しに戻る</button>
     <h2 class="section-title" data-icon="＋">入ってくるお金</h2>
     <div class="tiny" style="margin:-4px 0 9px">実際に口座へ入ったら、右の「入金を記録」を押します。予定日を過ぎた未入金は計算から外します。</div>
     <div id="incomeList"></div>
@@ -977,7 +1029,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   </div>
 
   <!-- ===== BENEFIT COUNTER ===== -->
-  <div class="card" data-pg="money" data-money-group="income">
+  <div class="card" id="benefitCard" data-pg="money" data-money-group="income">
     <h2 class="section-title" data-icon="◒">手当 のこり</h2>
     <div class="benefit-summary">
       <div><div class="benefit-kicker">支給対象の残り</div><div><span class="num benefit-number" id="benLeft">0</span><span class="dim">か月</span></div><div class="tiny" id="benGot">—</div></div>
@@ -988,7 +1040,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   </div>
 
   <!-- ===== BALANCE ===== -->
-  <div class="card" data-pg="money" data-money-group="overview">
+  <div class="card" id="acctCard" data-pg="money" data-money-group="overview">
     <h2 class="section-title" data-icon="▣">いま持っているお金</h2>
     <div id="acctList"></div>
     <details>
@@ -1001,8 +1053,22 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
     </details>
   </div>
 
+  <!-- ===== HEALTH PORTAL ===== -->
+  <section class="focus-page" id="bodyPortal" data-pg="body">
+    <div class="focus-page-head">
+      <p class="focus-page-kicker">LIFE NOTE</p>
+      <h1 class="focus-page-title">からだとこころ</h1>
+      <p class="focus-page-lead">何をしますか？</p>
+    </div>
+    <div class="portal-actions">
+      <button class="portal-action" type="button" data-bodyview="record"><i>♡</i><span><b>今日の調子を記録</b><small>からだ・こころ・睡眠を保存</small></span><em>›</em></button>
+      <button class="portal-action" type="button" data-bodyview="analysis"><i>⌁</i><span><b>変化を分析</b><small>睡眠・歩数・調子の関係を見る</small></span><em>›</em></button>
+    </div>
+  </section>
+
   <!-- ===== HEALTH ===== -->
   <div class="card lead" id="healthEntry" data-pg="body">
+    <button class="subpage-back" type="button" data-bodyview="portal">からだとこころに戻る</button>
     <div class="health-topline">
       <div><div class="health-kicker">今日の記録</div><div class="health-title">からだとこころ</div></div>
       <div class="health-date" id="healthTodayLabel">—</div>
@@ -1240,7 +1306,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.20.0";         // version.txt と一致させること
+const BUILD = "0.21.0";         // version.txt と一致させること
 const KEY = "mainichi.v1";
 let staleBuild = false;         // 古い版のまま開きっぱなしになっていないか
 const CATS = ["食費","日用品","交通","医療","交際","その他"];
@@ -1447,6 +1513,7 @@ function render(){
   const box = document.getElementById("crashBox");
   box.hidden = !bad.length;
   if(bad.length) box.textContent = "うまく出せなかった部分: " + bad.join(" / ");
+  try{ moneyOutlookView(); }catch(e){ bad.push("お金の見通し" + ": " + e.message); console.error("money outlook", e); }
   setMoneySection(moneySection, false, true);
 }
 
@@ -1457,8 +1524,8 @@ let moneySection = "expense";
 let navHistory = [];
 function pageState(){
   return {tab:document.body.dataset.tab || "home", money:moneySection,
-    moneyFocus:document.body.dataset.moneyFocus || "", bodyFocus:document.body.dataset.bodyFocus || "",
-    calFocus:document.body.dataset.calFocus || "", calSel, calViewMode};
+    moneyFocus:document.body.dataset.moneyFocus || "", bodyFocus:document.body.dataset.bodyFocus || "", bodyView:document.body.dataset.bodyView || "portal",
+    moneyView:document.body.dataset.moneyView || "portal", calFocus:document.body.dataset.calFocus || "", calSel, calViewMode};
 }
 function paintBack(){ document.body.dataset.canBack = navHistory.length ? "1" : "0"; }
 function rememberHere(){
@@ -1473,8 +1540,10 @@ function goBack(){
   if(!state) return;
   setTab(state.tab);
   moneySection = state.money || "expense";
+  document.body.dataset.moneyView = state.moneyView || "portal";
   document.body.dataset.moneyFocus = state.moneyFocus || "";
   document.body.dataset.bodyFocus = state.bodyFocus || "";
+  document.body.dataset.bodyView = state.bodyView || "portal";
   document.body.dataset.calFocus = state.calFocus || "";
   calSel = state.calSel || ymd(now()); calViewMode = state.calViewMode || "week";
   setMoneySection(moneySection, false, true); render();
@@ -1490,6 +1559,7 @@ function setHubStep(step){
 }
 function setHealthView(kind){
   kind = kind === "analysis" ? "analysis" : "record";
+  document.body.dataset.bodyView = kind;
   document.body.dataset.bodyFocus = kind;
   document.querySelectorAll("[data-healthview]").forEach(b => b.classList.toggle("on", b.dataset.healthview === kind));
   const copy = document.getElementById("healthPageCopy");
@@ -1500,12 +1570,32 @@ function setHealthView(kind){
   if(analysis) analysis.open = kind === "analysis";
   window.scrollTo({top:0,behavior:"smooth"});
 }
+function setBodyView(view, remember = true){
+  if(!["portal","record","analysis"].includes(view)) view = "portal";
+  if(remember && document.body.dataset.tab === "body" && document.body.dataset.bodyView !== view) rememberHere();
+  if(view === "portal"){
+    document.body.dataset.bodyView = "portal";
+    document.body.dataset.bodyFocus = "";
+    window.scrollTo({top:0,behavior:"smooth"});
+    return;
+  }
+  setHealthView(view);
+}
+function setMoneyView(view, remember = true){
+  const allowed = ["portal","record","outlook","analysis","card","scheduled","income"];
+  if(!allowed.includes(view)) view = "portal";
+  if(remember && document.body.dataset.tab === "money" && document.body.dataset.moneyView !== view) rememberHere();
+  document.body.dataset.moneyView = view;
+  document.body.dataset.moneyFocus = view === "record" ? "entry" : view === "analysis" ? "analysis" : "";
+  if(view === "record") spendView();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
 function focusView(kind){
   if(kind === "income-entry"){
-    document.body.dataset.moneyFocus = "entry";
+    document.body.dataset.moneyFocus = "entry"; document.body.dataset.moneyView = "record";
     S.ui.entryType = "income"; save(); spendView();
   } else if(kind === "money-entry"){
-    document.body.dataset.moneyFocus = "entry";
+    document.body.dataset.moneyFocus = "entry"; document.body.dataset.moneyView = "record";
     S.ui.entryType = "expense"; save(); spendView();
   } else if(kind === "calendar-day"){
     document.body.dataset.calFocus = "day";
@@ -1522,7 +1612,7 @@ function focusView(kind){
   } else if(kind === "health-analysis"){
     setHealthView("analysis");
   } else if(kind === "money-analysis"){
-    document.body.dataset.moneyFocus = "analysis";
+    document.body.dataset.moneyFocus = "analysis"; document.body.dataset.moneyView = "analysis";
   }
   const target = {
     "health-entry":"healthEntry", "money-entry":"moneyEntry", "income-entry":"moneyEntry",
@@ -1551,6 +1641,8 @@ function setTab(t){
   const changed = document.body.dataset.tab !== t;
   S.ui.tab = t; save();
   document.body.dataset.tab = t;
+  if(t === "money") document.body.dataset.moneyView = "portal";
+  if(t === "body") document.body.dataset.bodyView = "portal";
   if(t !== "money") document.body.dataset.moneyFocus = "";
   if(t !== "body") document.body.dataset.bodyFocus = "";
   if(t !== "cal") document.body.dataset.calFocus = "";
@@ -2316,6 +2408,21 @@ function learnedPads(){
   return top.concat([[null, "手入力"]]);
 }
 
+function moneyOutlookView(){
+  const c = calc(), visible = S.ui.moneyVisible === true;
+  const remaining = c.balance - c.unpaid - c.cardNow;
+  const value = n => visible ? yen(n) : "---";
+  const set = (id, n, negative = false) => {
+    const el = document.getElementById(id); if(!el) return;
+    el.textContent = value(n);
+    el.classList.toggle("neg", visible && negative && n < 0);
+    el.classList.toggle("hidden-money", !visible);
+  };
+  set("outlookToday", c.left, true);
+  set("outlookRemaining", remaining, true);
+  set("outlookBills", c.unpaid + c.cardNow);
+  set("outlookIncoming", c.incoming);
+}
 function spendPulse(){
   const cut = new Date(); cut.setDate(cut.getDate()-29); const from = ymd(cut);
   const byPay = {cash:0,paypay:0,card:0}, byCat = {};
@@ -2663,7 +2770,7 @@ function addIncomeLog(amt, cat, method, methodLabel){
 
 /* ---------- events ---------- */
 document.addEventListener("click", e => {
-  const t = e.target.closest("[data-delspend],[data-delincomelog],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate],[data-habit],[data-task],[data-deltask],[data-delplan],[data-gotab],[data-calnav],[data-calday],[data-calview],[data-ring],[data-flowjump],[data-err],[data-delerr],[data-applied],[data-delhabit],[data-plancat],[data-delplan2],[data-errsort],[data-errprio],[data-paysort],[data-subsort],[data-healthsort],[data-healthmetric],[data-healthrange],[data-healthview],[data-moneyprivacy],[data-moneysection],[data-planit],[data-unplan],[data-mcnav],[data-slotdone],[data-urgent],[data-hub-action],[data-hub-back],[data-addmoneyopt],#lightBtn,#hubSettings,#todayMoreToggle");
+  const t = e.target.closest("[data-delspend],[data-delincomelog],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate],[data-habit],[data-task],[data-deltask],[data-delplan],[data-gotab],[data-calnav],[data-calday],[data-calview],[data-ring],[data-flowjump],[data-err],[data-delerr],[data-applied],[data-delhabit],[data-plancat],[data-delplan2],[data-errsort],[data-errprio],[data-paysort],[data-subsort],[data-healthsort],[data-healthmetric],[data-healthrange],[data-healthview],[data-bodyview],[data-moneyprivacy],[data-moneysection],[data-moneyview],[data-planit],[data-unplan],[data-mcnav],[data-slotdone],[data-urgent],[data-hub-action],[data-hub-back],[data-addmoneyopt],#lightBtn,#hubSettings,#todayMoreToggle");
   if(!t) return;
 
   if(t.dataset.delhabit){
@@ -2687,6 +2794,8 @@ document.addEventListener("click", e => {
     if(t.dataset.focus) focusView(t.dataset.focus);
     return;
   }
+  if(t.dataset.moneyview){ setMoneyView(t.dataset.moneyview); return; }
+  if(t.dataset.bodyview){ setBodyView(t.dataset.bodyview); return; }
   if(t.dataset.addmoneyopt){
     if(!canWrite()) return;
     const type = S.ui.entryType === "income" ? "income" : "expense";
@@ -2705,7 +2814,7 @@ document.addEventListener("click", e => {
   }
   if(t.hasAttribute("data-moneyprivacy")){
     S.ui.moneyVisible = !S.ui.moneyVisible;
-    save(); heroView(); moneyAtGlanceView();
+    save(); heroView(); moneyAtGlanceView(); moneyOutlookView();
     return;
   }
   if(t.dataset.moneysection){ setMoneySection(t.dataset.moneysection); return; }
@@ -3735,10 +3844,21 @@ document.getElementById("restoreBtn").addEventListener("click", ()=>{
 // 既存のカードを「移動」させる。作り直さないので今動いている処理はそのまま生きる
 (function buildSettings(){
   const slot = document.getElementById("settingsSlot");
+  const lifeBody = document.querySelector("#setLifeFolder .settings-folder-body");
+  const flowCard = document.getElementById("grpFlow");
+  const flowFolder = document.getElementById("setFlowFolder");
+  if(lifeBody && flowCard) lifeBody.appendChild(flowCard);
+  if(flowFolder) flowFolder.remove();
+  const lifeSub = document.querySelector("#setLifeFolder summary small");
+  if(lifeSub) lifeSub.textContent = "毎日つけるもの・一日の流れ";
+  const stepRule = document.getElementById("ruleSteps")?.closest(".edit-grid");
+  const sleepRule = document.getElementById("ruleSleep")?.closest(".edit-grid");
+  if(stepRule){ if(stepRule.previousElementSibling) stepRule.previousElementSibling.hidden = true; stepRule.hidden = true; }
+  if(sleepRule){ sleepRule.hidden = true; if(sleepRule.nextElementSibling) sleepRule.nextElementSibling.hidden = true; }
   const icons = {
-    "連携":"<path d=\"M8.5 12.5 12 16l6-7\"/><path d=\"M5 5h14v14H5z\"/>",
-    "同期・歩数連携":"<path d=\"M7 7h9l-2-2M17 17H8l2 2\"/><path d=\"M16 7a6 6 0 0 1 1 10M8 17a6 6 0 0 1-1-10\"/>",
-    "データ":"<path d=\"M12 3v12M7 10l5 5 5-5\"/><path d=\"M5 20h14\"/>"
+    "カレンダー":"<path d=\"M8.5 12.5 12 16l6-7\"/><path d=\"M5 5h14v14H5z\"/>",
+    "同期":"<path d=\"M7 7h9l-2-2M17 17H8l2 2\"/><path d=\"M16 7a6 6 0 0 1 1 10M8 17a6 6 0 0 1-1-10\"/>",
+    "バックアップ":"<path d=\"M12 3v12M7 10l5 5 5-5\"/><path d=\"M5 20h14\"/>"
   };
   const group = (id, title, sub, ids) => {
     const wrap = document.createElement("details");
@@ -3752,9 +3872,9 @@ document.getElementById("restoreBtn").addEventListener("click", ()=>{
       if(el){ el.removeAttribute("data-pg"); body.appendChild(el); }
     }
   };
-  group("setCalendar", "連携", "カレンダーへの書き出し", ["icsCard"]); // ヘルスケアの手順は「からだ」に残す
-  group("setSync", "同期・歩数連携", "端末同期・読み取り専用", ["syncCard"]);
-  group("setData", "データ", "バックアップ・復元", ["backupCard"]);
+  group("setCalendar", "カレンダー", "予定の書き出し", ["icsCard"]);
+  group("setSync", "同期", "歩数・睡眠・端末同期", ["syncCard"]);
+  group("setData", "バックアップ", "保存・復元", ["backupCard"]);
 })();
 
 function openSettings(open){
