@@ -1,5 +1,5 @@
 /* Offline shell. Data lives in localStorage, never in this cache. */
-const CACHE = "mainichi-v26";
+const CACHE = "mainichi-v27";
 const ASSETS = [
   "./",
   "./index.html",
