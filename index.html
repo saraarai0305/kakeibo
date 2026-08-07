@@ -81,10 +81,12 @@ input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px}
 .spend-help{margin:-4px 0 10px}
 .pad:active{background:var(--line)}
 .pad small{display:block;font-size:10px;color:var(--faint);font-weight:400;margin-top:2px}
-.spendform{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:end}
+.spendform{display:grid;grid-template-columns:1fr;gap:10px;align-items:end}
 .entry-field{display:grid;gap:4px;min-width:0;color:var(--dim);font-size:11px;font-weight:700}
 .entry-field input,.entry-field select{margin:0}
-.entry-form-submit{grid-column:1 / -1;width:100%;min-height:46px}
+.entry-form-submit{width:100%;min-height:52px;font-size:16px}
+.money-option-add{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:10px}
+.money-option-add .btn{min-height:44px}
 .seg{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-bottom:9px;
   padding:3px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#111821}
 .seg button{padding:9px 4px;font-size:13px;color:var(--dim);background:transparent;border-radius:9px}
@@ -93,7 +95,7 @@ input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px}
 .btn.ghost{background:var(--card2);color:var(--fg);border:1px solid #39495A;box-shadow:none}
 .btn[data-icon]{display:inline-flex;align-items:center;justify-content:center;gap:6px}
 .btn[data-icon]::before{content:attr(data-icon);font-size:1.05em;font-weight:800;line-height:1}
-.btn.sm{padding:6px 12px;font-size:13px;border-radius:9px}
+.btn.sm{min-height:40px;padding:8px 14px;font-size:14px;border-radius:10px}
 .btn:disabled{opacity:.4}
 
 /* lists */
@@ -251,7 +253,7 @@ details[open] > summary::before{content:"▾ "}
 .hub-primary-btn strong{display:block;font-size:20px;line-height:1.2;letter-spacing:.02em}.hub-primary-btn small{display:block;margin-top:5px;color:var(--dim);font-size:12px;line-height:1.35}
 .hub-arrow{display:grid;place-items:center;color:var(--faint);font-size:28px;line-height:1;font-weight:300}
 .hub-stage-title{display:flex;align-items:center;justify-content:center;gap:10px;margin:2px 0 20px;font-size:21px;font-weight:800;text-align:center}
-.hub-back{position:absolute;left:0;top:1px;display:inline-flex;align-items:center;gap:4px;padding:7px 3px;color:var(--dim);font-size:13px}.hub-back::before{content:"‹";font-size:24px;line-height:.7}
+.hub-back{position:absolute;left:0;top:1px;display:inline-flex;align-items:center;gap:4px;min-height:42px;padding:8px 5px;color:var(--dim);font-size:15px;font-weight:750}.hub-back::before{content:"‹";font-size:26px;line-height:.7}
 .hub-stage-wrap{position:relative;padding-top:4px}
 .hub-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .hub-choice-btn{grid-template-columns:1fr;justify-items:center;min-height:138px;padding:17px 10px 13px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(155deg,#1B2836,#121A23);text-align:center}
@@ -294,6 +296,9 @@ details[open] > summary::before{content:"▾ "}
 .rank-name i{width:9px;height:9px;border-radius:3px;display:block;flex:none}
 .rank-row .bar{margin:0;height:10px}
 .rank-row b{font-size:15px;color:var(--fg);white-space:nowrap;font-variant-numeric:tabular-nums}
+.analysis-balance{display:grid;grid-template-columns:1fr 1fr;gap:1px;overflow:hidden;border:1px solid var(--line);border-radius:14px;background:var(--line);margin:0 0 16px}
+.analysis-balance div{padding:13px;background:var(--card2)}.analysis-balance span{display:block;font-size:11px;color:var(--dim);font-weight:700}.analysis-balance b{display:block;margin-top:4px;font-size:20px;line-height:1.1;font-variant-numeric:tabular-nums}.analysis-balance .income b{color:var(--ok)}.analysis-balance .expense b{color:var(--coral)}
+.category-chart{display:grid;grid-template-columns:112px minmax(0,1fr);gap:14px;align-items:center;padding:4px 0 7px}.donut{width:112px;aspect-ratio:1;border-radius:50%;position:relative}.donut::after{content:"カテゴリー";position:absolute;inset:24px;border-radius:50%;display:grid;place-items:center;text-align:center;background:var(--card);color:var(--dim);font-size:11px;font-weight:700;line-height:1.25}.category-legend{display:grid;gap:8px}.category-legend div{display:flex;justify-content:space-between;gap:8px;font-size:12px}.category-legend span{display:flex;align-items:center;gap:6px;color:var(--dim);min-width:0}.category-legend i{width:9px;height:9px;border-radius:99px;flex:none}.category-legend b{white-space:nowrap;font-variant-numeric:tabular-nums}
 .mc-tags{display:flex;gap:3px;width:100%;margin-top:auto;padding-top:2px;overflow:hidden}
 .mc-tags i{display:block;width:100%;height:4px;border-radius:3px;min-width:4px}
 .credit-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:12px}
@@ -355,12 +360,12 @@ body[data-tab="pay"]   [data-pg="pay"]{display:block}
 .money-glance-amount.neg{color:var(--bad)}
 .money-glance-amount + .tiny{margin-top:7px}
 .money-private-summary{margin:0 0 16px;padding:16px;border:1px solid color-mix(in srgb,var(--accent) 34%,var(--line));border-radius:16px;background:linear-gradient(145deg,color-mix(in srgb,var(--accent) 12%,var(--card)),var(--card))}
-.money-private-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:13px}.money-private-head strong{display:block;font-size:18px}.money-private-head small{display:block;margin-top:3px;color:var(--dim);font-size:12px}
+.money-private-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:13px}.money-private-head strong{display:block;font-size:18px}
 .privacy-toggle{min-height:38px;padding:7px 10px;font-size:12px;white-space:nowrap}
 .money-private-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
-.money-private-metric{min-width:0;padding:12px;border-radius:12px;background:color-mix(in srgb,var(--bg) 35%,transparent);border:1px solid color-mix(in srgb,var(--line) 80%,transparent)}
-.money-private-metric span{display:block;color:var(--dim);font-size:11px;font-weight:700}.money-private-metric b{display:block;margin-top:5px;font-size:clamp(20px,6.4vw,29px);line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}.money-private-metric b.hidden-money{letter-spacing:.12em;color:var(--dim)}
-.money-private-metric small{display:block;margin-top:5px;color:var(--dim);font-size:10px;line-height:1.35}
+.money-private-metric{min-width:0;padding:14px 12px;border-radius:12px;background:color-mix(in srgb,var(--bg) 35%,transparent);border:1px solid color-mix(in srgb,var(--line) 80%,transparent)}
+.money-private-metric:first-child{grid-column:1 / -1;border-color:color-mix(in srgb,var(--ok) 45%,var(--line));background:color-mix(in srgb,var(--ok) 10%,var(--card2))}
+.money-private-metric span{display:block;color:var(--dim);font-size:11px;font-weight:700}.money-private-metric b{display:block;margin-top:5px;font-size:clamp(24px,7.8vw,36px);line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}.money-private-metric b.hidden-money{letter-spacing:.12em;color:var(--dim)}
 [data-moneysection]{transition:background .15s,color .15s,border-color .15s}
 #moneySectionSeg button[data-moneysection="expense"].on{background:var(--coral);color:#241719;box-shadow:0 4px 14px rgba(240,154,155,.16)}
 #moneySectionSeg button[data-moneysection="income"].on{background:var(--green2);color:#11241b;box-shadow:0 4px 14px rgba(111,218,169,.14)}
@@ -391,7 +396,7 @@ body[data-tab="body"][data-body-focus="analysis"] .health-auto,
 body[data-tab="body"][data-body-focus="analysis"] .health-body,
 body[data-tab="body"][data-body-focus="analysis"] .health-mind,
 body[data-tab="body"][data-body-focus="analysis"] .health-save-row{display:none}
-body[data-tab="cal"][data-cal-focus="day"] #calendarBrowse{display:none}
+body[data-tab="cal"][data-cal-focus="day"] #calendarBrowse{display:block}
 
 /* 画面本体では「カードの壁」を減らし、節と余白で情報を分ける。強く見せる情報だけ面に残す。 */
 .wrap > .card:not(.lead):not(.hero):not(.money-glance):not(.alert){background:none;border:0;border-radius:0;box-shadow:none;margin:0;padding:23px 1px}
@@ -440,6 +445,7 @@ body:not([data-tab="home"]) .tabbar{display:grid}
 .mini-logo i:nth-child(3){height:19px;background:#5ECFA0}
 .top .t{grid-column:2;font-size:17px;font-weight:800;min-width:0;letter-spacing:.04em;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .top .mini-logo{grid-column:1;justify-self:start}.top .home-back{grid-column:1;justify-self:start}.top .gear{grid-column:3;justify-self:end}
+.top .nav-back{grid-column:1;justify-self:start}
 body[data-tab="home"] .top .home-back,body:not([data-tab="home"]) .top .mini-logo{display:none}
 .home-back{display:none;align-items:center;gap:4px;min-height:38px;padding:6px 9px;border-radius:11px;border:1px solid var(--line);background:var(--card2);color:var(--dim);font-size:11px;font-weight:750;flex:none}
 body:not([data-tab="home"]) .home-back{display:flex}
@@ -447,6 +453,10 @@ body[data-tab="home"][data-hub-step]:not([data-hub-step="root"]) .top .home-back
 body[data-tab="home"][data-hub-step]:not([data-hub-step="root"]) .top .mini-logo{display:none}
 .home-back span:first-child{display:grid;place-items:center;align-content:center;line-height:0;color:var(--accent)}
 .home-back .ui-icon{width:19px;height:19px;stroke-width:2.1}
+.nav-back{display:none;align-items:center;gap:4px;min-height:40px;padding:7px 4px;color:var(--fg);font-size:14px;font-weight:800}
+.nav-back::before{content:"‹";font-size:27px;line-height:.7;color:var(--accent)}
+body[data-can-back="1"] .nav-back{display:flex}
+body[data-can-back="1"] .home-back,body[data-can-back="1"] .mini-logo{display:none !important}
 .streak{font-size:12.5px;color:var(--dim);background:var(--card);
   border:1px solid var(--line);border-radius:99px;padding:4px 11px}
 .streak b{color:var(--ok);font-size:14px}
@@ -519,8 +529,10 @@ body[data-tab="home"][data-hub-step]:not([data-hub-step="root"]) .top .mini-logo
 .sheetbody{max-width:560px;margin:0 auto;padding:14px 14px 0}
 .sheetbody .card{margin-bottom:12px}
 .settings-folder{border-bottom:1px solid var(--line)}
+.settings-folder:not([open])>.settings-folder-body{display:none}
 .settings-folder>summary{display:grid;grid-template-columns:42px minmax(0,1fr) 18px;align-items:center;gap:12px;min-height:78px;list-style:none;cursor:pointer}
 .settings-folder>summary::-webkit-details-marker{display:none}
+.settings-folder>summary::before{display:none}
 .settings-folder>summary::after{content:"›";font-size:24px;color:var(--dim);text-align:center;transition:transform .16s}
 .settings-folder[open]>summary::after{transform:rotate(90deg)}
 .settings-folder-icon{width:42px;height:42px;display:grid;place-items:center;border:1px solid color-mix(in srgb,var(--accent) 40%,var(--line));border-radius:13px;background:color-mix(in srgb,var(--accent) 11%,var(--card));color:var(--accent)}
@@ -555,6 +567,9 @@ body[data-ro="1"] .rocover{display:block}
 .bigin::placeholder{color:var(--faint);font-weight:700}
 .bigin:focus{outline:none;border-bottom-color:var(--accent)}
 .goal .sub{font-size:13px;color:var(--dim);margin-top:8px}
+.theme-marquee{overflow:hidden;white-space:nowrap;margin-top:9px;color:var(--fg);font-size:15px;font-weight:700;text-align:left}
+.theme-marquee span{display:inline-block;padding-left:100%;animation:theme-marquee 10s linear infinite}
+@keyframes theme-marquee{0%{transform:translateX(0)}100%{transform:translateX(-100%)}}
 .goal .lab::before{content:"";display:inline-grid;width:8px;height:8px;margin-right:8px;border-radius:50%;background:var(--violet);vertical-align:2px}
 .money-summary{padding:10px 12px;margin-bottom:8px;border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line));border-radius:13px;background:color-mix(in srgb,var(--accent) 7%,var(--card2))}
 .money-summary-row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid color-mix(in srgb,var(--line) 72%,transparent);font-size:13px;color:var(--dim)}
@@ -641,8 +656,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   .card{padding:16px;border-radius:16px}
   .top{padding-bottom:13px}
   .streak{padding-left:9px;padding-right:9px;font-size:11.5px}
-  .spendform{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
-  .spendform .btn{grid-column:1 / -1;width:100%}
+  .spendform{grid-template-columns:1fr}
   .flmain{grid-template-columns:54px minmax(0,1fr);gap:8px}
   .fl{gap:9px;padding-left:10px;padding-right:10px}
   .tlrow{grid-template-columns:37px 1fr}
@@ -669,6 +683,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   <div class="robar" id="roBar" hidden>読み取り専用です。この端末では記録できません。</div>
 
   <header class="top">
+    <button class="nav-back" id="navBack" type="button">戻る</button>
     <div class="mini-logo"><i></i><i></i><i></i></div>
     <div class="t">まとめて管理</div>
     <button class="home-back" data-gotab="home" aria-label="ホームへ戻る"><span aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M3 10.8 12 3l9 7.8"/><path d="M5.5 9.5v10h13v-10"/><path d="M9.5 19.5v-6h5v6"/></svg></span><span>ホーム</span></button>
@@ -680,7 +695,6 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
     <div class="hub-intro">
       <p class="hub-eyebrow">LIFE NOTE</p>
       <h1>いま、何をしますか？</h1>
-      <p>目的を選ぶと、必要な操作だけを表示します。</p>
     </div>
 
     <div class="hub-stage" data-hub-stage="root">
@@ -704,16 +718,16 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
       <button class="hub-back" data-hub-back>戻る</button>
       <h2 class="hub-stage-title">何を記録しますか？</h2>
       <div class="hub-choices">
-        <button class="hub-choice-btn" data-gotab="money" data-moneysection="expense" data-focus="money-entry"><span class="hub-choice-icon"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M4 7.5h16v10H4z"/><path d="M4 10h16M7 15h3"/></svg></span><span><b>支出／収入</b><small>金額・分類・支払い／受取方法</small></span></button>
+        <button class="hub-choice-btn" data-gotab="money" data-moneysection="expense" data-focus="money-entry"><span class="hub-choice-icon"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M4 7.5h16v10H4z"/><path d="M4 10h16M7 15h3"/></svg></span><span><b>支出／収入</b><small>金額・カテゴリー・支払い／受取方法</small></span></button>
         <button class="hub-choice-btn" data-gotab="body" data-focus="health-entry"><span class="hub-choice-icon"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M12 21s-7-4.6-7-10.1A4.1 4.1 0 0 1 12 8a4.1 4.1 0 0 1 7 2.9C19 16.4 12 21 12 21Z"/></svg></span><span><b>こころとからだ</b><small>歩数・睡眠・からだ・こころ</small></span></button>
       </div>
     </div>
 
     <div class="hub-stage hub-stage-wrap" data-hub-stage="today">
       <button class="hub-back" data-hub-back>戻る</button>
-      <h2 class="hub-stage-title">今日をどう整えますか？</h2>
+      <h2 class="hub-stage-title">何をしますか？</h2>
       <div class="hub-choices">
-        <button class="hub-choice-btn" data-gotab="today" data-focus="today-actions"><span class="hub-choice-icon"><svg class="ui-icon" viewBox="0 0 24 24"><path d="m6 12 3.4 3.4L18 6.8"/><path d="M20 12a8 8 0 1 1-4-6.9"/></svg></span><span><b>チェックリスト</b><small>生活と回復を優先して並べる</small></span></button>
+        <button class="hub-choice-btn" data-gotab="cal" data-focus="calendar-check"><span class="hub-choice-icon"><svg class="ui-icon" viewBox="0 0 24 24"><path d="m6 12 3.4 3.4L18 6.8"/><path d="M20 12a8 8 0 1 1-4-6.9"/></svg></span><span><b>チェックリスト</b><small>生活と回復を優先して並べる</small></span></button>
         <button class="hub-choice-btn" data-gotab="cal" data-focus="calendar-day"><span class="hub-choice-icon"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M5 6h14M5 12h10M5 18h6"/><circle cx="18" cy="12" r="1"/><circle cx="14" cy="18" r="1"/></svg></span><span><b>一日の流れ</b><small>現在時刻と時間ごとの予定</small></span></button>
         <button class="hub-choice-btn wide" data-gotab="today" data-focus="today-theme"><span class="hub-choice-icon"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M5 4.5h14v15H5z"/><path d="M8 9h8M8 13h5"/></svg></span><span><b>テーマ設定</b><small>今日の軸をひとことで</small></span><span class="hub-arrow" aria-hidden="true">›</span></button>
       </div>
@@ -724,8 +738,8 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
       <h2 class="hub-stage-title">何を見える化しますか？</h2>
       <div class="hub-choices">
         <button class="hub-choice-btn" data-gotab="body" data-focus="health-analysis"><span class="hub-choice-icon"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M4 19V5M4 19h16"/><path d="m7 15 3-3 3 2 5-6"/></svg></span><span><b>からだとこころ</b><small>睡眠・歩数・調子の関係</small></span></button>
-        <button class="hub-choice-btn" data-gotab="money" data-moneysection="analysis" data-focus="money-analysis"><span class="hub-choice-icon"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-8M22 19H2"/></svg></span><span><b>お金の内訳</b><small>分類・支払い方法・推移</small></span></button>
-        <button class="hub-choice-btn wide" data-gotab="money" data-moneysection="income" data-focus="money-balance"><span class="hub-choice-icon"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16M8 7v10M16 7v10"/></svg></span><span><b>収入と支出のバランス</b><small>入るお金、使ったお金、手当の残りを確認する</small></span><span class="hub-arrow" aria-hidden="true">›</span></button>
+        <button class="hub-choice-btn" data-gotab="money" data-moneysection="analysis" data-focus="money-analysis"><span class="hub-choice-icon"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-8M22 19H2"/></svg></span><span><b>お金の内訳</b><small>カテゴリー・支払い方法・推移</small></span></button>
+        <button class="hub-choice-btn wide" data-gotab="money" data-moneysection="analysis" data-focus="money-analysis"><span class="hub-choice-icon"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16M8 7v10M16 7v10"/></svg></span><span><b>収入と支出のバランス</b><small>入るお金、使ったお金、手当の残りを確認する</small></span><span class="hub-arrow" aria-hidden="true">›</span></button>
       </div>
     </div>
   </section>
@@ -736,21 +750,22 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
       <div class="lab">今日のテーマ</div>
       <input id="themeInput" class="bigin" placeholder="ひとことで決める" maxlength="40">
       <div class="sub" id="themeSub"></div>
+      <div class="theme-marquee" id="themeMarquee" hidden><span id="themeMarqueeText"></span></div>
     </div>
     <div id="endBox" hidden></div>
   </div>
 
   <!-- ===== MODE (体力予算) ===== -->
-  <div class="card mode" id="modeCard" data-pg="today"></div>
+  <div class="card mode" id="modeCard" data-pg="today" hidden></div>
 
   <!-- ===== 毎日つけるもの ===== -->
-  <div class="card" id="todayHabits" data-pg="today">
+  <div class="card" id="todayHabits" data-pg="today" hidden>
     <h2 class="section-title" data-icon="✓">毎日つけるもの <span class="tiny" id="habitCount"></span></h2>
     <div class="habits" id="habitRow"></div>
   </div>
 
   <!-- ===== 今日やること ===== -->
-  <div class="card" id="todayActions" data-pg="today">
+  <div class="card" id="todayActions" data-pg="today" hidden>
     <h2 class="section-title" data-icon="→">今日やること <span class="tiny" id="todayCount"></span></h2>
     <div id="taskList"></div>
     <div class="row" style="gap:8px;margin-top:10px">
@@ -799,7 +814,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   </div>
 
   <!-- ===== APPOINTMENT ===== -->
-  <div class="card" id="apptCard" data-pg="today" data-today-secondary="1">
+  <div class="card" id="apptCard" data-pg="today" data-today-secondary="1" hidden>
     <h2 class="section-title" data-icon="＋">次の通院</h2>
     <div class="row between">
       <div class="grow">
@@ -844,25 +859,29 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   <div class="card" id="moneyEntry" data-pg="money" data-money-group="expense">
     <h2 class="section-title" data-icon="¥">支出・収入を記録</h2>
     <div class="money-private-summary">
-      <div class="money-private-head"><div><strong>お金の状況</strong><small>他の人に見せないため、金額は隠しています。</small></div><button class="btn ghost sm privacy-toggle" data-moneyprivacy aria-pressed="false">金額を表示</button></div>
+      <div class="money-private-head"><strong>お金の状況</strong><button class="btn ghost sm privacy-toggle" data-moneyprivacy aria-pressed="false">金額を表示</button></div>
       <div class="money-private-grid">
-        <div class="money-private-metric"><span>今日使えるお金</span><b class="hidden-money" id="heroAmt">---</b><small id="heroSub">タップすると確認できます</small></div>
-        <div class="money-private-metric"><span>今残っているお金</span><b class="hidden-money" id="moneyRemainingTop">---</b><small id="moneyRemainingTopSub">支払い予定を差し引いた見込み</small></div>
+        <div class="money-private-metric"><span>今日使えるお金</span><b class="hidden-money" id="heroAmt">---</b></div>
+        <div class="money-private-metric"><span>今残っているお金</span><b class="hidden-money" id="moneyRemainingTop">---</b></div>
       </div>
       <div class="bar" style="margin-top:12px"><i id="heroBar" style="width:0%"></i></div>
       <div class="tiny" id="heroFoot" style="margin-top:7px">金額を表示すると計算の内訳を確認できます。</div>
     </div>
-    <div class="tiny spend-help">入力した支出は下の分析に自動でまとまります。記録は金額と分類を選ぶだけです。</div>
     <div class="seg" id="entryTypeSeg">
       <button data-entrytype="expense" class="on">支出</button>
       <button data-entrytype="income">収入</button>
     </div>
     <div class="spendform">
-      <label class="entry-field"><span>金額</span><input id="spAmt" type="number" inputmode="numeric" placeholder="0" min="0" step="1"></label>
+      <label class="entry-field"><span>金額</span><input id="spAmt" type="text" inputmode="numeric" placeholder="￥0"></label>
       <label class="entry-field"><span id="entryMethodLabel">支払い方法</span><select id="spPay"></select></label>
-      <label class="entry-field"><span id="entryCategoryLabel">分類</span><select id="spCat"></select></label>
+      <label class="entry-field"><span id="entryCategoryLabel">カテゴリー</span><select id="spCat"></select></label>
       <button class="btn entry-form-submit" id="spAdd" data-icon="＋">支出を記録</button>
     </div>
+    <details>
+      <summary>方法・カテゴリーを追加する</summary>
+      <div class="money-option-add"><input id="moneyMethodNew" placeholder="方法名（例：交通系IC）"><button class="btn ghost sm" data-addmoneyopt="method">追加</button></div>
+      <div class="money-option-add"><input id="moneyCategoryNew" placeholder="カテゴリー名（例：美容）"><button class="btn ghost sm" data-addmoneyopt="category">追加</button></div>
+    </details>
     <div id="todayList"></div>
   </div>
 
@@ -880,7 +899,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 
   <div class="card" data-pg="money" data-money-group="analysis" id="spendAnalysisCard">
     <h2 class="section-title" data-icon="↗">直近30日の支払い分析</h2>
-    <div class="tiny" style="margin:-4px 0 9px">記録とは分けて、支払い方法と分類の傾向だけを見ます。</div>
+    <div class="tiny" style="margin:-4px 0 9px">支払い方法とカテゴリーの傾向を見ます。</div>
     <div id="spendPulse"></div>
   </div>
 
@@ -993,19 +1012,6 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
       <button data-healthview="analysis">変化を分析する</button>
     </div>
     <p class="health-page-copy" id="healthPageCopy">からだとこころの調子を、今日の分だけ記録します。</p>
-    <div class="health-section health-auto">
-      <div class="health-section-head"><span class="health-icon">↻</span><div><b>歩数・睡眠の自動取り込み</b><span class="health-help" id="healthAutoState">同期を設定すると45秒ごとに確認します</span></div></div>
-      <div class="row" style="gap:8px;margin-top:10px">
-        <button class="btn ghost sm grow" id="hPaste" data-icon="↻">今すぐ取り込む</button>
-        <button class="btn ghost sm grow" id="healthSyncSettings" data-icon="⌘">同期設定を開く</button>
-      </div>
-      <details>
-        <summary>自動取り込みの設定を見る</summary>
-        <div class="tiny" style="margin-top:8px">
-          iPhoneのショートカットがヘルスケアから歩数・睡眠を非公開Gistの受信箱へ送ります。初回は「同期設定を開く」から設定してください。アプリを開いている間は45秒ごと、アプリを開き直した時にも読み込みます。iPhoneの仕様上、アプリを完全に終了した状態でWebアプリが裏側から読み込むことはできません。
-        </div>
-      </details>
-    </div>
     <div class="health-section health-body">
       <div class="health-section-head"><span class="health-icon">♧</span><div><b>からだ</b><span class="health-help">歩数・睡眠・体の調子</span></div></div>
       <div class="health-field-label">歩数 <span class="unit">歩</span></div>
@@ -1046,6 +1052,9 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 
   <!-- ===== CALENDAR PAGE ===== -->
   <div class="card lead" id="calendarBrowse" data-pg="cal">
+    <details id="calendarOverview">
+      <summary>週／月のカレンダーを見る</summary>
+      <div class="calendar-overview-body">
     <div class="row between" style="margin-bottom:11px">
       <button class="btn ghost sm" data-calnav="-1">‹</button>
       <div style="font-weight:700;font-size:16px" id="calTitle">—</div>
@@ -1057,6 +1066,8 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
     <div class="calgrid" id="calHead" style="margin-bottom:4px"></div>
     <div class="calgrid" id="calBody"></div>
     <div class="legend" id="calLegend"></div>
+      </div>
+    </details>
   </div>
 
   <div class="card" id="calendarDayPage" data-pg="cal">
@@ -1075,6 +1086,11 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
 
   <!-- ===== SYNC ===== -->
   <div class="card" data-pg="money" id="syncCard">
+    <div class="health-section health-auto" style="margin-top:0">
+      <div class="health-section-head"><span class="health-icon">↻</span><div><b>歩数・睡眠の自動取り込み</b><span class="health-help" id="healthAutoState">同期を設定すると45秒ごとに確認します</span></div></div>
+      <button class="btn ghost sm" id="hPaste" data-icon="↻" style="width:100%;margin-top:10px">今すぐ取り込む</button>
+      <details><summary>自動取り込みの設定を見る</summary><div class="tiny" style="margin-top:8px">iPhoneのショートカットがヘルスケアから歩数・睡眠を非公開Gistの受信箱へ送ります。アプリを開いた時と、開いている間は45秒ごとに読み込みます。</div></details>
+    </div>
     <h2 class="section-title" data-icon="⇄">同期の接続状態 <span class="tiny" id="syncState">オフ</span></h2>
     <div class="row" style="gap:8px;margin-bottom:10px">
       <span class="syncdot" id="syncDot"></span>
@@ -1224,7 +1240,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.19.0";         // version.txt と一致させること
+const BUILD = "0.20.0";         // version.txt と一致させること
 const KEY = "mainichi.v1";
 let staleBuild = false;         // 古い版のまま開きっぱなしになっていないか
 const CATS = ["食費","日用品","交通","医療","交際","その他"];
@@ -1311,8 +1327,11 @@ function normalize(o){
     if(!Array.isArray(s[k])) s[k] = b[k];
   if(!s.ui || typeof s.ui !== "object") s.ui = b.ui;
   if(!["expense","income"].includes(s.ui.entryType)) s.ui.entryType = "expense";
-  if(!["cash","paypay","card"].includes(s.ui.pay)) s.ui.pay = "cash";
+  if(typeof s.ui.pay !== "string" || !s.ui.pay) s.ui.pay = "cash";
+  if(typeof s.ui.incomeMethod !== "string" || !s.ui.incomeMethod) s.ui.incomeMethod = "bank";
   if(typeof s.ui.moneyVisible !== "boolean") s.ui.moneyVisible = false;
+  for(const k of ["expenseCats","incomeCats","expenseMethods","incomeMethods"])
+    if(!Array.isArray(s[k])) s[k] = [];
   for(const k of ["health","daily","doneFixed","doneIncome","benefitMonths","plan"])
     if(!s[k] || typeof s[k] !== "object") s[k] = {};
   for(const k of Object.keys(s.plan)) if(!Array.isArray(s.plan[k])) delete s.plan[k];
@@ -1435,6 +1454,32 @@ function render(){
 const TABS = ["home","today","money","cal","body"];
 const TAB_LABELS = {home:"ホーム",today:"きょう", money:"おかね", cal:"こよみ", body:"からだ"};
 let moneySection = "expense";
+let navHistory = [];
+function pageState(){
+  return {tab:document.body.dataset.tab || "home", money:moneySection,
+    moneyFocus:document.body.dataset.moneyFocus || "", bodyFocus:document.body.dataset.bodyFocus || "",
+    calFocus:document.body.dataset.calFocus || "", calSel, calViewMode};
+}
+function paintBack(){ document.body.dataset.canBack = navHistory.length ? "1" : "0"; }
+function rememberHere(){
+  const state = pageState();
+  const last = navHistory[navHistory.length-1];
+  if(!last || JSON.stringify(last) !== JSON.stringify(state)) navHistory.push(state);
+  paintBack();
+}
+function goBack(){
+  const state = navHistory.pop();
+  paintBack();
+  if(!state) return;
+  setTab(state.tab);
+  moneySection = state.money || "expense";
+  document.body.dataset.moneyFocus = state.moneyFocus || "";
+  document.body.dataset.bodyFocus = state.bodyFocus || "";
+  document.body.dataset.calFocus = state.calFocus || "";
+  calSel = state.calSel || ymd(now()); calViewMode = state.calViewMode || "week";
+  setMoneySection(moneySection, false, true); render();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
 function setHubStep(step){
   if(!["root","record","today","analyze"].includes(step)) step = "root";
   const hub = document.getElementById("homeHub");
@@ -1464,7 +1509,14 @@ function focusView(kind){
     S.ui.entryType = "expense"; save(); spendView();
   } else if(kind === "calendar-day"){
     document.body.dataset.calFocus = "day";
-    calViewMode = "day"; calSel = ymd(now()); calCursor = ym(new Date()); calView();
+    document.body.dataset.calDayMode = "flow";
+    calViewMode = "week"; calSel = ymd(now()); calCursor = ym(new Date());
+    document.getElementById("calendarOverview").open = false; calView();
+  } else if(kind === "calendar-check"){
+    document.body.dataset.calFocus = "day";
+    calViewMode = "week"; calSel = ymd(now()); calCursor = ym(new Date());
+    document.body.dataset.calDayMode = "check";
+    document.getElementById("calendarOverview").open = false; calView();
   } else if(kind === "health-entry"){
     setHealthView("record");
   } else if(kind === "health-analysis"){
@@ -1474,9 +1526,9 @@ function focusView(kind){
   }
   const target = {
     "health-entry":"healthEntry", "money-entry":"moneyEntry", "income-entry":"moneyEntry",
-    "calendar-day":"calendarDayPage", "today-theme":"todayTheme", "today-flow":"modeCard",
+    "calendar-day":"calendarDayPage", "calendar-check":"calendarDayPage", "today-theme":"todayTheme", "today-flow":"modeCard",
     "today-actions":"todayActions", "health-analysis":"healthEntry", "money-analysis":"spendAnalysisCard",
-    "money-balance":"incomeCard"
+    "money-balance":"spendAnalysisCard"
   }[kind];
   if(target) requestAnimationFrame(() => document.getElementById(target)?.scrollIntoView({behavior:"smooth",block:"start"}));
 }
@@ -1502,6 +1554,7 @@ function setTab(t){
   if(t !== "money") document.body.dataset.moneyFocus = "";
   if(t !== "body") document.body.dataset.bodyFocus = "";
   if(t !== "cal") document.body.dataset.calFocus = "";
+  if(t !== "cal") document.body.dataset.calDayMode = "";
   if(t === "home") setHubStep("root");
   if(t === "today"){
     document.body.dataset.todayMore = "0";
@@ -1539,6 +1592,10 @@ function bigGoalView(){
     if(hdone) bits.push(`毎日つけるもの ${hdone}/${HL.length}`);
     document.getElementById("themeSub").textContent =
       bits.length ? bits.join("　") : "下で今日やることを決めると、ここに進み具合が出ます";
+    const marquee = document.getElementById("themeMarquee"), marqueeText = document.getElementById("themeMarqueeText");
+    const longTheme = (rec.theme || "").trim();
+    marquee.hidden = longTheme.length < 16;
+    marqueeText.textContent = longTheme;
     return;
   }
 
@@ -2061,15 +2118,20 @@ function calDetail(){
   if(!calSel){ box.innerHTML = `<div class="tiny">日付をタップすると、その日の時間割と記録が出ます。</div>`; return; }
   const key = calSel, dt = new Date(key + "T00:00:00");
   const rec = S.daily[key] || {habits:{}, tasks:[]};
-  const spends = S.spends.filter(s => s.d === key);
   const h = S.health[key];
   const dues = duesOn(key);
+  const isToday = key === ymd(now());
+  const habits = habitList();
+  const tasks = plannedOn(key).slice().sort((a,b)=>PRIOS.findIndex(p=>p.id===autoPriority(a).id)-PRIOS.findIndex(p=>p.id===autoPriority(b).id));
+  const checklist = isToday ? `<div class="day-checklist"><div class="analysis-block-title"><span>今日のチェックリスト</span><span class="tiny">生活・予定・制作</span></div>
+    <div class="habits">${habits.map(hb=>`<button class="pad ${rec.habits[hb.id]?"on":""}" data-habit="${hb.id}"><i>${esc(hb.icon||"•")}</i>${esc(hb.label)}</button>`).join("")}</div>
+    ${tasks.map(t=>{const p=autoPriority(t);return `<button class="item" data-err="${t.id}" style="width:100%;text-align:left"><span class="tick ${t.done?"on":""}">✓</span><span class="grow"><span class="nm">${esc(t.text)}</span><span class="mt" style="color:${p.color}">${p.label}</span></span></button>`}).join("") || `<div class="tiny">予定に追加すると、ここでチェックできます。</div>`}</div>` : "";
 
   let html = `<div class="row between" style="margin-bottom:2px">
       <div style="font-weight:700;font-size:16px">${dt.getMonth()+1}月${dt.getDate()}日（${"日月火水木金土"[dt.getDay()]}）</div>
     </div>
     ${rec.theme ? `<div class="dim" style="margin-bottom:4px">テーマ「${esc(rec.theme)}」</div>` : ""}
-    ${errandRows(key)}
+    ${document.body.dataset.calDayMode === "check" ? checklist : ""}
     <details style="margin-top:12px">
       <summary>予定を足す</summary>
       <div class="catseg" id="planCatSeg">${TCATS.map(c =>
@@ -2081,15 +2143,14 @@ function calDetail(){
       </div>
       <div class="tiny" style="margin-top:8px">薄い帯は記録から自動で出ています。自分で足した予定はタップで消せます。</div>
     </details>
-    ${timeline(key)}`;
+    ${timeline(key)}
+    ${isToday && document.body.dataset.calDayMode !== "check" ? `<details class="day-check-fold"><summary>今日のチェックリストを開く</summary>${checklist}</details>` : ""}`;
   // 詳細はこの1行にまとめる。時間割が主役なので、記録は要約だけ
   const habitsDone = habitList().filter(h => rec.habits[h.id]).length;
-  const spendSum = spends.reduce((a,s) => a + (+s.amt||0), 0);
   const sum = [];
   if(habitsDone) sum.push(`習慣 ${habitsDone}/${habitList().length}`);
   const pl = plannedOn(key);
   if(pl.length) sum.push(`やること ${pl.filter(t=>t.done).length}/${pl.length}`);
-  if(spendSum) sum.push(`支出 ${yen(spendSum)}`);
   if(h && h.steps != null) sum.push(`${h.steps.toLocaleString("ja-JP")}歩`);
   if(h && h.bed && h.wake) sum.push(fmtSleep(sleepMin(h.bed, h.wake)));
   if(sum.length) html += `<div class="quiet tiny" style="margin-top:12px">${esc(sum.join("　"))}</div>`;
@@ -2208,9 +2269,6 @@ function heroView(){
   el("heroAmt").textContent = visible ? yen(c.left) : "---";
   el("heroAmt").classList.toggle("neg", visible && c.left < 0);
   el("heroAmt").classList.toggle("hidden-money", !visible);
-  el("heroSub").textContent = visible
-    ? `1日 ${yen(c.perDay)} のうち 今日 ${yen(c.spentToday)} 使いました`
-    : "タップすると確認できます";
 
   const ratio = c.perDay > 0 ? Math.min(c.spentToday / c.perDay, 1) : (c.spentToday>0?1:0);
   const bar = el("heroBar");
@@ -2235,14 +2293,12 @@ function heroView(){
 function moneyAtGlanceView(){
   const c = calc();
   const el = document.getElementById("moneyRemainingTop");
-  const sub = document.getElementById("moneyRemainingTopSub");
-  if(!el || !sub) return;
+  if(!el) return;
   const visible = S.ui.moneyVisible === true;
   const remaining = c.balance - c.unpaid - c.cardNow;
   el.textContent = visible ? yen(remaining) : "---";
   el.classList.toggle("neg", visible && remaining < 0);
   el.classList.toggle("hidden-money", !visible);
-  sub.textContent = visible ? `残高 ${yen(c.balance)} − 固定費 ${yen(c.unpaid)} − カード請求予定 ${yen(c.cardNow)}` : "支払い予定を差し引いた見込み";
 }
 
 // よく使う「金額×分類」を直近から学習してパッドにする。手入力の回数を減らすため
@@ -2268,27 +2324,42 @@ function spendPulse(){
   const total = Object.values(byPay).reduce((a,b)=>a+b,0), max = Math.max(1,...Object.values(byPay));
   const names={cash:"現金・引落",paypay:"PayPay",card:"クレジットカード"};
   const payRows=Object.entries(byPay).map(([k,v])=>`<div class="pulse-row"><span>${names[k]}</span><div class="bar"><i style="width:${(v/max*100).toFixed(1)}%;background:${k==="card"?"var(--bad)":k==="paypay"?"var(--warn)":"var(--ok)"}"></i></div><b>${yen(v)}</b></div>`).join("");
-  const cmax=Math.max(1,...Object.values(byCat));
-  const catRows=Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([k,v],i)=>`<div class="rank-row"><span class="rank-no">${i+1}</span><span class="rank-name"><i style="background:${CAT_COLORS[k]||"var(--accent)"}"></i>${esc(k)}</span><div class="bar"><i style="width:${(v/cmax*100).toFixed(1)}%;background:${CAT_COLORS[k]||"var(--accent)"}"></i></div><b>${yen(v)}</b></div>`).join("");
-  return `<div class="spend-pulse"><div class="analysis-hero"><span>直近30日の支出</span><b>${yen(total)}</b><small>${records.length}件の記録から集計</small></div><div class="analysis-block"><div class="analysis-block-title"><span>支払い方法</span><span class="tiny">金額の比較</span></div>${payRows}</div><div class="analysis-block"><div class="analysis-block-title"><span>お金を使った分類</span><span class="tiny">上位5つ</span></div>${catRows||`<div class="tiny">記録が増えると、ここに分類ごとの棒グラフが出ます。</div>`}</div></div>`;
+  const cats = Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  let pos=0; const stops = cats.map(([k,v])=>{ const start=pos, end=pos+(total ? v/total*100 : 0); pos=end; return `${CAT_COLORS[k]||"#74B5E8"} ${start.toFixed(2)}% ${end.toFixed(2)}%`; }).join(",");
+  const legend = cats.map(([k,v])=>`<div><span><i style="background:${CAT_COLORS[k]||"var(--accent)"}"></i>${esc(k)}</span><b>${yen(v)}</b></div>`).join("");
+  const c = calc();
+  const income30 = (S.incomeLogs||[]).filter(x=>x.d>=from).reduce((a,x)=>a+(+x.amt||0),0);
+  const benefit = (S.incomeLogs||[]).filter(x=>x.cat==="手当" && x.d>=from).reduce((a,x)=>a+(+x.amt||0),0);
+  return `<div class="spend-pulse"><div class="analysis-hero"><span>直近30日の支出</span><b>${yen(total)}</b><small>${records.length}件の記録から集計</small></div>
+    <div class="analysis-balance"><div class="income"><span>直近30日の収入</span><b>${yen(income30)}</b></div><div class="expense"><span>今後の支払い予定</span><b>${yen(c.unpaid + c.cardNow)}</b></div><div><span>生活を支える収入（手当）</span><b>${yen(benefit)}</b></div><div><span>今後入る予定</span><b>${yen(c.incoming)}</b></div></div>
+    <div class="analysis-block"><div class="analysis-block-title"><span>支払い方法</span><span class="tiny">棒グラフ</span></div>${payRows}</div>
+    <div class="analysis-block"><div class="analysis-block-title"><span>カテゴリーごとの消費率</span><span class="tiny">円グラフ</span></div>${cats.length ? `<div class="category-chart"><div class="donut" style="background:conic-gradient(${stops})"></div><div class="category-legend">${legend}</div></div>` : `<div class="tiny">記録が増えると、カテゴリーごとの比率を円グラフで表示します。</div>`}</div></div>`;
 }
 
+function moneyOptions(type){
+  const income = type === "income";
+  const baseCats = income ? INCOME_CATS : CATS;
+  const extraCats = income ? S.incomeCats : S.expenseCats;
+  const baseMethods = income ? [["bank","銀行振込"],["paypay","PayPay"],["cash","現金"],["other","その他"]] : [["cash","現金・引落"],["paypay","PayPay"],["card","クレジットカード"]];
+  const extraMethods = income ? S.incomeMethods : S.expenseMethods;
+  const methods = baseMethods.concat(extraMethods.map(x=>[x,x]));
+  return {cats:[...new Set(baseCats.concat(extraCats))], methods};
+}
 function spendView(){
   document.getElementById("spendPulse").innerHTML = spendPulse();
   const type = S.ui.entryType === "income" ? "income" : "expense";
   document.querySelectorAll("#entryTypeSeg button").forEach(b => b.classList.toggle("on", b.dataset.entrytype === type));
   const sel = document.getElementById("spCat");
-  const cats = type === "income" ? INCOME_CATS : CATS;
+  const {cats, methods} = moneyOptions(type);
   const catValue = sel.value;
   sel.innerHTML = cats.map(c=>`<option>${c}</option>`).join("");
   if(cats.includes(catValue)) sel.value = catValue;
   const pay = document.getElementById("spPay");
-  const methods = type === "income" ? [["bank","銀行振込"],["cash","現金"],["other","その他"]] : [["cash","現金・引落"],["paypay","PayPay"],["card","クレジットカード"]];
   const current = type === "income" ? (S.ui.incomeMethod || "bank") : (S.ui.pay || "cash");
   pay.innerHTML = methods.map(([v,l])=>`<option value="${v}">${l}</option>`).join("");
   pay.value = methods.some(([v])=>v===current) ? current : methods[0][0];
   document.getElementById("entryMethodLabel").textContent = type === "income" ? "受け取り方法" : "支払い方法";
-  document.getElementById("entryCategoryLabel").textContent = type === "income" ? "収入の分類" : "支出の分類";
+  document.getElementById("entryCategoryLabel").textContent = type === "income" ? "収入のカテゴリー" : "支出のカテゴリー";
   document.getElementById("spAdd").textContent = type === "income" ? "収入を記録" : "支出を記録";
 
   const d = ymd(now());
@@ -2296,7 +2367,7 @@ function spendView(){
   const incomeList = (S.incomeLogs || []).filter(s=>s.d===d).slice().reverse();
   const rows = [...list.map(s=>({kind:"expense", ...s})), ...incomeList.map(s=>({kind:"income", ...s}))].sort((a,b)=>(b.t||"").localeCompare(a.t||""));
   document.getElementById("todayList").innerHTML = rows.length
-    ? rows.map(s=>s.kind === "income" ? `<div class="item"><div class="grow"><div class="nm">${esc(s.cat)}<span class="chip done">収入・${esc(s.methodLabel || s.method || "入金")}</span></div><div class="mt">${s.t||""}</div></div><div class="amt" style="color:var(--ok)">＋${yen(s.amt)}</div><button class="del" data-delincomelog="${s.id}">×</button></div>` : `<div class="item"><div class="grow"><div class="nm">${esc(s.cat)}${s.pay==="card"?`<span class="chip due">クレジットカード</span>`:s.pay==="paypay"?`<span class="chip" style="color:var(--warn)">PayPay</span>`:`<span class="chip">現金・引落</span>`}</div><div class="mt">${s.t||""}</div></div><div class="amt">${yen(s.amt)}</div><button class="del" data-delspend="${s.id}">×</button></div>`).join("")
+    ? rows.map(s=>s.kind === "income" ? `<div class="item"><div class="grow"><div class="nm">${esc(s.cat)}<span class="chip done">収入・${esc(s.methodLabel || s.method || "入金")}</span></div><div class="mt">${s.t||""}</div></div><div class="amt" style="color:var(--ok)">＋${yen(s.amt)}</div><button class="del" data-delincomelog="${s.id}">×</button></div>` : `<div class="item"><div class="grow"><div class="nm">${esc(s.cat)}<span class="chip">${esc(s.methodLabel || (s.pay==="card"?"クレジットカード":s.pay==="paypay"?"PayPay":"現金・引落"))}</span></div><div class="mt">${s.t||""}</div></div><div class="amt">${yen(s.amt)}</div><button class="del" data-delspend="${s.id}">×</button></div>`).join("")
     : `<div class="tiny" style="padding-top:10px">今日はまだ記録がありません</div>`;
 }
 
@@ -2562,27 +2633,28 @@ function bankAcct(){
   return S.accounts.find(a => !a.name.includes("現金")) || S.accounts[0];
 }
 
-function addSpend(amt, cat, pay){
+function moneyAmount(v){ return Math.round(Number(String(v || "").replace(/[^0-9.-]/g,"")) || 0); }
+function addSpend(amt, cat, pay, methodLabel){
   if(!canWrite()) return;
-  amt = Math.round(+amt);
+  amt = moneyAmount(amt);
   if(!(amt > 0)) return toast("金額を入れてください");
   pay = pay || S.ui.pay || "cash";
   const d = now();
   S.spends.push({ id:uid(), d:ymd(d), t:`${d.getHours()}:${String(d.getMinutes()).padStart(2,"0")}`,
-                  amt, cat, pay });
+                  amt, cat, pay, methodLabel:methodLabel || "" });
   // カードは今の残高を動かさない。来月の請求として積み上がる
   if(pay === "cash" || pay === "paypay"){ const a = primaryAcct(); if(a) a.bal = (+a.bal||0) - amt; }
   save(); render();
   toast(pay === "card" ? `${yen(amt)}　来月の請求に追加` : `${yen(amt)} を記録`);
 }
 
-function addIncomeLog(amt, cat, method){
+function addIncomeLog(amt, cat, method, methodLabel){
   if(!canWrite()) return;
-  amt = Math.round(+amt);
+  amt = moneyAmount(amt);
   if(!(amt > 0)) return toast("金額を入れてください");
   const d = now();
-  const labels = {bank:"銀行振込",cash:"現金",other:"その他"};
-  S.incomeLogs.push({id:uid(), d:ymd(d), t:`${d.getHours()}:${String(d.getMinutes()).padStart(2,"0")}`, amt, cat, method, methodLabel:labels[method] || "入金"});
+  const labels = {bank:"銀行振込",paypay:"PayPay",cash:"現金",other:"その他"};
+  S.incomeLogs.push({id:uid(), d:ymd(d), t:`${d.getHours()}:${String(d.getMinutes()).padStart(2,"0")}`, amt, cat, method, methodLabel:methodLabel || labels[method] || method || "入金"});
   const a = bankAcct();
   if(a) a.bal = (+a.bal||0) + amt;
   save(); render();
@@ -2591,7 +2663,7 @@ function addIncomeLog(amt, cat, method){
 
 /* ---------- events ---------- */
 document.addEventListener("click", e => {
-  const t = e.target.closest("[data-delspend],[data-delincomelog],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate],[data-habit],[data-task],[data-deltask],[data-delplan],[data-gotab],[data-calnav],[data-calday],[data-calview],[data-ring],[data-flowjump],[data-err],[data-delerr],[data-applied],[data-delhabit],[data-plancat],[data-delplan2],[data-errsort],[data-errprio],[data-paysort],[data-subsort],[data-healthsort],[data-healthmetric],[data-healthrange],[data-healthview],[data-moneyprivacy],[data-moneysection],[data-planit],[data-unplan],[data-mcnav],[data-slotdone],[data-urgent],[data-hub-action],[data-hub-back],#lightBtn,#hubSettings,#todayMoreToggle");
+  const t = e.target.closest("[data-delspend],[data-delincomelog],[data-payfixed],[data-gotincome],[data-benmonth],[data-delfixed],[data-delincome],[data-delacct],[data-delsub],[data-rate],[data-habit],[data-task],[data-deltask],[data-delplan],[data-gotab],[data-calnav],[data-calday],[data-calview],[data-ring],[data-flowjump],[data-err],[data-delerr],[data-applied],[data-delhabit],[data-plancat],[data-delplan2],[data-errsort],[data-errprio],[data-paysort],[data-subsort],[data-healthsort],[data-healthmetric],[data-healthrange],[data-healthview],[data-moneyprivacy],[data-moneysection],[data-planit],[data-unplan],[data-mcnav],[data-slotdone],[data-urgent],[data-hub-action],[data-hub-back],[data-addmoneyopt],#lightBtn,#hubSettings,#todayMoreToggle");
   if(!t) return;
 
   if(t.dataset.delhabit){
@@ -2609,10 +2681,20 @@ document.addEventListener("click", e => {
   if(t.dataset.hubAction){ setHubStep(t.dataset.hubAction); return; }
   if(t.hasAttribute("data-hub-back")){ setHubStep("root"); return; }
   if(t.dataset.gotab){
+    rememberHere();
     setTab(t.dataset.gotab);
     if(t.dataset.moneysection) setMoneySection(t.dataset.moneysection, false);
     if(t.dataset.focus) focusView(t.dataset.focus);
     return;
+  }
+  if(t.dataset.addmoneyopt){
+    if(!canWrite()) return;
+    const type = S.ui.entryType === "income" ? "income" : "expense";
+    const field = document.getElementById(t.dataset.addmoneyopt === "method" ? "moneyMethodNew" : "moneyCategoryNew");
+    const value = field.value.trim(); if(!value) return toast("名前を入れてください");
+    const key = type + (t.dataset.addmoneyopt === "method" ? "Methods" : "Cats");
+    if(!S[key].includes(value)) S[key].push(value);
+    field.value = ""; save(); spendView(); toast("追加しました"); return;
   }
   if(t.id === "hubSettings"){ openSettings(true); return; }
   if(t.id === "todayMoreToggle"){
@@ -2631,7 +2713,7 @@ document.addEventListener("click", e => {
   if(t.dataset.healthrange){ healthRange = t.dataset.healthrange; healthView(); return; }
   if(t.dataset.healthsort){ healthSort = t.dataset.healthsort; healthView(); return; }
   if(t.dataset.healthmetric){ healthMetricState[t.dataset.healthmetric] = !healthMetricState[t.dataset.healthmetric]; healthView(); return; }
-  if(t.dataset.calview){ document.body.dataset.calFocus = ""; calViewMode = t.dataset.calview; calView(); return; }
+  if(t.dataset.calview){ document.body.dataset.calFocus = ""; document.getElementById("calendarOverview").open = true; calViewMode = t.dataset.calview; calView(); return; }
   if(t.dataset.ring){
     if(t.dataset.ring === "habit"){
       setTab("today"); document.getElementById("habitRow")?.scrollIntoView({behavior:"smooth",block:"center"});
@@ -2652,7 +2734,8 @@ document.addEventListener("click", e => {
     return;
   }
   if(t.dataset.flowjump){
-    setTab("cal"); calViewMode = "day"; calSel = ymd(now()); calCursor = ym(new Date()); calView();
+    rememberHere(); setTab("cal"); document.body.dataset.calFocus = "day"; document.body.dataset.calDayMode = "flow";
+    calViewMode = "week"; calSel = ymd(now()); calCursor = ym(new Date()); document.getElementById("calendarOverview").open = false; calView();
     document.getElementById("calDetail")?.scrollIntoView({behavior:"smooth",block:"start"});
     return;
   }
@@ -3058,7 +3141,7 @@ for(const [id, key] of [["hSteps","steps"],["hBed","bed"],["hWake","wake"],["hFa
 
 document.getElementById("hPaste").addEventListener("click", async ()=>{
   const c = syncCfg();
-  if(!c.token || !c.gistId) return toast("先に「同期設定を開く」から設定してください");
+  if(!c.token || !c.gistId) return toast("先に設定で同期を設定してください");
   await checkBuild(false);
   if(!staleBuild){
     const result = await pullRemote(false);
@@ -3203,10 +3286,14 @@ document.getElementById("planNew").addEventListener("keydown", e => {
 document.getElementById("spAdd").addEventListener("click", ()=>{
   const el = document.getElementById("spAmt");
   const type = S.ui.entryType === "income" ? "income" : "expense";
-  const method = document.getElementById("spPay").value;
-  if(type === "income") addIncomeLog(el.value, document.getElementById("spCat").value, method);
-  else addSpend(el.value, document.getElementById("spCat").value, method);
+  const payEl = document.getElementById("spPay"), method = payEl.value, methodLabel = payEl.selectedOptions[0]?.textContent || method;
+  if(type === "income") addIncomeLog(el.value, document.getElementById("spCat").value, method, methodLabel);
+  else addSpend(el.value, document.getElementById("spCat").value, method, methodLabel);
   el.value = "";
+});
+document.getElementById("spAmt").addEventListener("input", e => {
+  const n = moneyAmount(e.target.value);
+  e.target.value = n ? `￥${n.toLocaleString("ja-JP")}` : "";
 });
 document.getElementById("spAmt").addEventListener("keydown", e => {
   if(e.key === "Enter") document.getElementById("spAdd").click();
@@ -3344,7 +3431,7 @@ function setSyncCfg(c){ localStorage.setItem(SYNC_KEY, JSON.stringify(c)); }
 const isReadOnly = () => syncCfg().role === "ro";
 function canWrite(){
   if(!isReadOnly()) return true;
-  toast("見るだけの端末です。「同期設定を開く」から切り替えてください");
+  toast("見るだけの端末です。設定の「同期・歩数連携」から切り替えてください");
   return false;
 }
 function rolePaint(){
@@ -3677,11 +3764,7 @@ function openSettings(open){
 }
 document.getElementById("settingsOpen").addEventListener("click", ()=> openSettings(true));
 document.getElementById("settingsClose").addEventListener("click", ()=> openSettings(false));
-document.getElementById("healthSyncSettings").addEventListener("click", ()=>{
-  openSettings(true);
-  document.getElementById("setSync")?.setAttribute("open", "");
-  setTimeout(()=> document.getElementById("syncCard")?.scrollIntoView({behavior:"smooth", block:"start"}), 60);
-});
+document.getElementById("navBack").addEventListener("click", goBack);
 
 function settingsView(){
   const HL = habitList();
