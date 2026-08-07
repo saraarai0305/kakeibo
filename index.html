@@ -690,7 +690,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:18px 14px 0;l
   --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:24px;--space-6:32px;
   --text-xs:12px;--text-sm:14px;--text-md:16px;--text-lg:20px;--text-xl:28px;--text-2xl:36px;
   --tap-secondary:44px;--tap-primary:52px;--icon-size:24px;--icon-bed:48px;
-  --money:#74B5E8;--expense:#D95055;--income:#34B98B;--body-color:#34B98B;--mind-color:#F27D78;--calendar:#A995E8;--deadline:#F1BE48;
+  --money:#74B5E8;--expense:#74B5E8;--income:#34B98B;--negative:#D95055;--body-color:#34B98B;--mind-color:#F27D78;--calendar:#A995E8;--deadline:#F1BE48;
   --motion-press:120ms;--motion-reveal:180ms;--motion-page:200ms;--motion-confirm:240ms;
 }
 
@@ -746,10 +746,10 @@ body[data-tab="body"][data-body-view="analysis"] #healthAnalysis{display:block!i
 #calendarDayPage>details:not(#planAdder){display:none!important}
 #calendarDayPage .day-flow-actions{clear:both;position:relative;z-index:1}
 
-/* Semantic money states: blue is neutral money, red is expense, green is income. */
-#entryTypeSeg button[data-entrytype="expense"].on,body[data-entry-type="expense"] #spAdd{background:var(--expense);color:#fff}
+/* Semantic money states: expense is blue, income is green, negative balance is red. */
+#entryTypeSeg button[data-entrytype="expense"].on,body[data-entry-type="expense"] #spAdd{background:var(--expense);color:#102033}
 #entryTypeSeg button[data-entrytype="income"].on,body[data-entry-type="income"] #spAdd{background:var(--income);color:#102219}
-.money-private-metric b.neg,.neg{color:var(--expense)!important}
+.money-private-metric b.neg,.neg{color:var(--negative)!important}
 .money-private-metric b:not(.hidden-money):not(.neg){color:var(--income)}
 body[data-tab="money"] .card[data-money-group="expense"]{border-left-color:var(--expense)}
 body[data-tab="money"] .card[data-money-group="income"]{border-left-color:var(--income)}
@@ -760,6 +760,25 @@ body[data-tab="money"] .card[data-money-group="income"]{border-left-color:var(--
 .page-enter{animation:page-enter var(--motion-page) cubic-bezier(.2,.8,.2,1) both}
 @keyframes page-enter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 details>summary{min-height:var(--tap-secondary);display:flex;align-items:center}
+
+/* P2: the checklist is a destination, not a long extension of the timetable. */
+.home-back,.hub-back,.subpage-back{display:none!important}
+body[data-tab="cal"][data-cal-page="check"] #calendarBrowse,
+body[data-tab="cal"][data-cal-page="check"] #calendarDayPage{display:none!important}
+body[data-tab="cal"]:not([data-cal-page="check"]) #checklistPage{display:none!important}
+#checklistPage{padding:8px 1px 32px}
+.checklist-head{padding:18px 0 20px;border-bottom:1px solid var(--line)}
+.checklist-head .eyebrow{margin:0 0 6px;color:var(--calendar);font-size:12px;font-weight:800;letter-spacing:.12em}
+.checklist-head h1{margin:0;font-size:clamp(28px,8vw,36px);letter-spacing:-.035em;line-height:1.14}
+.checklist-head p{margin:8px 0 0;color:var(--dim);font-size:14px}
+.checklist-section{padding:22px 0 4px;border-bottom:1px solid var(--line)}
+.checklist-section h2{display:flex;align-items:center;gap:9px;margin:0 0 12px;font-size:18px;letter-spacing:-.01em}
+.checklist-section h2 i{display:grid;place-items:center;width:28px;height:28px;border-radius:9px;background:color-mix(in srgb,var(--calendar) 16%,var(--card));color:var(--calendar);font-style:normal}
+.checklist-page-list .habits{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.checklist-page-list .pad{min-height:68px;justify-content:flex-start;text-align:left}
+.checklist-page-list .item{min-height:58px;padding:10px 2px;border-top:1px solid color-mix(in srgb,var(--line) 74%,transparent);border-radius:0;background:none}
+.checklist-page-list .item:first-of-type{border-top:0}
+.checklist-page-list .task-priority{display:block;margin-top:3px;font-size:12px;font-weight:700}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:1ms!important;animation-iteration-count:1!important;transition-duration:1ms!important}}
 </style>
 </head>
@@ -785,7 +804,6 @@ details>summary{min-height:var(--tap-secondary);display:flex;align-items:center}
     <button class="nav-back" id="navBack" type="button">戻る</button>
     <div class="mini-logo"><i></i><i></i><i></i></div>
     <div class="t">まとめて管理</div>
-    <button class="home-back" data-gotab="home" aria-label="ホームへ戻る"><span aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M3 10.8 12 3l9 7.8"/><path d="M5.5 9.5v10h13v-10"/><path d="M9.5 19.5v-6h5v6"/></svg></span><span>ホーム</span></button>
     <button class="gear" id="settingsOpen" aria-label="設定を開く" title="設定を開く"><span class="gearico" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M12 3.4v2.1M12 18.5v2.1M3.4 12h2.1M18.5 12h2.1M5.9 5.9l1.5 1.5M16.6 16.6l1.5 1.5M18.1 5.9l-1.5 1.5M7.4 16.6l-1.5 1.5"/><circle cx="12" cy="12" r="3.2"/><path d="M15 4.9a8.3 8.3 0 0 1 3.9 3.9l1.4.7v5l-1.4.7a8.3 8.3 0 0 1-3.9 3.9l-.7 1.4h-5l-.7-1.4a8.3 8.3 0 0 1-3.9-3.9l-1.4-.7v-5l1.4-.7A8.3 8.3 0 0 1 8.6 4.9L9.3 3.5h5z"/></svg></span><span class="geartxt">設定</span></button>
   </header>
 
@@ -826,7 +844,6 @@ details>summary{min-height:var(--tap-secondary);display:flex;align-items:center}
       <button class="hub-back" data-hub-back>戻る</button>
       <h2 class="hub-stage-title">何をしますか？</h2>
       <div class="hub-choices">
-        <button class="hub-choice-btn" data-gotab="cal" data-focus="calendar-check"><span class="hub-choice-icon"><svg class="ui-icon" viewBox="0 0 24 24"><path d="m6 12 3.4 3.4L18 6.8"/><path d="M20 12a8 8 0 1 1-4-6.9"/></svg></span><span><b>チェックリスト</b><small>生活と回復を優先して並べる</small></span></button>
         <button class="hub-choice-btn" data-gotab="cal" data-focus="calendar-day"><span class="hub-choice-icon"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M5 6h14M5 12h10M5 18h6"/><circle cx="18" cy="12" r="1"/><circle cx="14" cy="18" r="1"/></svg></span><span><b>一日の流れ</b><small>現在時刻と時間ごとの予定</small></span></button>
         <button class="hub-choice-btn wide" data-gotab="today" data-focus="today-theme"><span class="hub-choice-icon"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M5 4.5h14v15H5z"/><path d="M8 9h8M8 13h5"/></svg></span><span><b>テーマ設定</b><small>今日の軸をひとことで</small></span><span class="hub-arrow" aria-hidden="true">›</span></button>
       </div>
@@ -970,7 +987,6 @@ details>summary{min-height:var(--tap-secondary);display:flex;align-items:center}
 
   <!-- ===== MONEY OUTLOOK ===== -->
   <section class="focus-page" id="moneyOutlook" data-pg="money">
-    <button class="subpage-back" type="button" data-moneyview="portal">おかねに戻る</button>
     <div class="focus-page-head">
       <p class="focus-page-kicker">MONEY OUTLOOK</p>
       <div class="row between" style="align-items:center;gap:12px"><h1 class="focus-page-title">お金の見通し</h1><button class="btn ghost sm privacy-toggle" type="button" data-moneyprivacy>金額を表示</button></div>
@@ -992,7 +1008,6 @@ details>summary{min-height:var(--tap-secondary);display:flex;align-items:center}
 
   <!-- ===== SPEND ===== -->
   <div class="card" id="moneyEntry" data-pg="money" data-money-group="expense">
-    <button class="subpage-back" type="button" data-moneyview="portal">おかねに戻る</button>
     <h2 class="section-title" data-icon="¥">支出・収入を記録</h2>
     <div class="money-private-summary">
       <div class="money-private-head"><strong>お金の状況</strong><button class="btn ghost sm privacy-toggle" data-moneyprivacy aria-pressed="false">金額を表示</button></div>
@@ -1034,7 +1049,6 @@ details>summary{min-height:var(--tap-secondary);display:flex;align-items:center}
   </div>
 
   <div class="card" data-pg="money" data-money-group="analysis" id="spendAnalysisCard">
-    <button class="subpage-back" type="button" data-moneyview="portal">おかねに戻る</button>
     <h2 class="section-title" data-icon="↗">直近30日の支払い分析</h2>
     <div class="tiny" style="margin:-4px 0 9px">支払い方法とカテゴリーの傾向を見ます。</div>
     <div id="spendPulse"></div>
@@ -1042,7 +1056,6 @@ details>summary{min-height:var(--tap-secondary);display:flex;align-items:center}
 
   <!-- ===== CARD PROJECTION ===== -->
   <div class="card" id="cardCard" data-pg="money" data-money-group="expense">
-    <button class="subpage-back" type="button" data-moneyview="outlook">お金の見通しに戻る</button>
     <div class="credit-card-face">
       <div class="credit-card-top"><span class="credit-chip">CARD</span><span class="credit-label">来月のカード請求</span></div>
       <div class="credit-card-grid">
@@ -1069,7 +1082,6 @@ details>summary{min-height:var(--tap-secondary);display:flex;align-items:center}
 
   <!-- ===== UPCOMING ===== -->
   <div class="card lead" data-pg="money" data-money-group="scheduled">
-    <button class="subpage-back" type="button" data-moneyview="outlook">お金の見通しに戻る</button>
     <h2 class="section-title" data-icon="▰">今月の固定費 <span class="tiny" id="fixedTotal"></span></h2>
     <div class="sorts" id="paySorts"></div>
     <div id="fixedList"></div>
@@ -1102,7 +1114,6 @@ details>summary{min-height:var(--tap-secondary);display:flex;align-items:center}
 
   <!-- ===== INCOME / BENEFIT ===== -->
   <div class="card" id="incomeCard" data-pg="money" data-money-group="income">
-    <button class="subpage-back" type="button" data-moneyview="outlook">お金の見通しに戻る</button>
     <h2 class="section-title" data-icon="＋">入ってくるお金</h2>
     <div class="tiny" style="margin:-4px 0 9px">実際に口座へ入ったら、右の「入金を記録」を押します。予定日を過ぎた未入金は計算から外します。</div>
     <div id="incomeList"></div>
@@ -1156,7 +1167,6 @@ details>summary{min-height:var(--tap-secondary);display:flex;align-items:center}
 
   <!-- ===== HEALTH ===== -->
   <div class="card lead" id="healthEntry" data-pg="body">
-    <button class="subpage-back" type="button" data-bodyview="portal">からだとこころに戻る</button>
     <div class="health-topline">
       <div><div class="health-kicker">今日の記録</div><div class="health-title">からだとこころ</div></div>
       <div class="health-date" id="healthTodayLabel">—</div>
@@ -1237,6 +1247,15 @@ details>summary{min-height:var(--tap-secondary);display:flex;align-items:center}
       <div class="tiny" style="margin-top:7px">正本は 自動投稿フォルダの schedule.json。予定が変わったら再取り込みすれば最新になります。</div>
     </details>
   </div>
+
+  <section id="checklistPage" data-pg="cal" aria-labelledby="checklistTitle">
+    <header class="checklist-head">
+      <p class="eyebrow">TODAY</p>
+      <h1 id="checklistTitle">チェックリスト</h1>
+      <p id="checklistDate">—</p>
+    </header>
+    <div class="checklist-page-list" id="checklistItems"></div>
+  </section>
 
   <!-- ===== SYNC ===== -->
   <div class="card" data-pg="money" id="syncCard">
@@ -1394,7 +1413,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.24.0";         // version.txt と一致させること
+const BUILD = "0.24.1";         // version.txt と一致させること
 const KEY = "mainichi.v1";
 // 一日の流れを主役にし、週／月のカレンダーは必要なときだけその下に開く。
 (() => {
@@ -1616,7 +1635,7 @@ function render(){
     ["今週の本数",streakView],["使えるお金",heroView],["今日やること",todayView],
     ["通院",apptView],["支出",spendView],["カード",cardView],["支払い",fixedView],
     ["サブスク",subsView],["入金",incomeView],["手当",benefitView],["残高",acctView],
-    ["からだ",healthView],["書き出し",icsView],["こよみ",calView],["保存",paintSaved],
+    ["からだ",healthView],["書き出し",icsView],["こよみ",calView],["チェックリスト",checklistView],["保存",paintSaved],
     ["お金の見込み",moneyAtGlanceView]];
   const bad = [];
   for(const [name, fn] of parts){
@@ -1637,7 +1656,8 @@ let navHistory = [];
 function pageState(){
   return {tab:document.body.dataset.tab || "home", money:moneySection,
     moneyFocus:document.body.dataset.moneyFocus || "", bodyFocus:document.body.dataset.bodyFocus || "", bodyView:document.body.dataset.bodyView || "portal",
-    moneyView:document.body.dataset.moneyView || "portal", calFocus:document.body.dataset.calFocus || "", calSel, calViewMode};
+    moneyView:document.body.dataset.moneyView || "portal", calFocus:document.body.dataset.calFocus || "", calPage:document.body.dataset.calPage || "flow",
+    hubStep:document.body.dataset.hubStep || "root", calSel, calViewMode};
 }
 function paintBack(){ document.body.dataset.canBack = navHistory.length ? "1" : "0"; }
 function animateVisiblePages(){
@@ -1666,14 +1686,20 @@ function goBack(){
   document.body.dataset.bodyFocus = state.bodyFocus || "";
   document.body.dataset.bodyView = state.bodyView || "portal";
   document.body.dataset.calFocus = state.calFocus || "";
+  document.body.dataset.calPage = state.calPage || "flow";
   calSel = state.calSel || ymd(now()); calViewMode = state.calViewMode || "week";
+  setHubStep(state.hubStep || "root", false);
   setMoneySection(moneySection, false, true); render();
+  if(state.tab === "cal" && document.body.dataset.calPage === "check") checklistView();
   window.scrollTo({top:0,behavior:"smooth"});
 }
-function setHubStep(step){
+function setHubStep(step, remember = true){
   if(!["root","record","today","analyze"].includes(step)) step = "root";
   const hub = document.getElementById("homeHub");
   if(!hub) return;
+  const current = hub.dataset.hubStep || "root";
+  if(current === step) return;
+  if(remember && current === "root" && step !== "root") rememberHere();
   hub.dataset.hubStep = step;
   document.body.dataset.hubStep = step;
   window.scrollTo({top:0,behavior:"smooth"});
@@ -1711,6 +1737,14 @@ function setMoneyView(view, remember = true){
   if(view === "record") spendView();
   window.scrollTo({top:0,behavior:"smooth"});
 }
+function setCalendarPage(page, remember = true){
+  if(!["flow","check"].includes(page)) page = "flow";
+  if(remember && document.body.dataset.tab === "cal" && document.body.dataset.calPage !== page) rememberHere();
+  document.body.dataset.calPage = page;
+  document.body.dataset.calDayMode = page === "check" ? "check" : "flow";
+  if(page === "check") checklistView(); else calView();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
 function focusView(kind){
   if(kind === "income-entry"){
     document.body.dataset.moneyFocus = "entry"; document.body.dataset.moneyView = "record";
@@ -1722,6 +1756,7 @@ function focusView(kind){
     document.body.dataset.calFocus = "day";
     document.body.dataset.calBrowse = "0";
     document.body.dataset.calDayMode = "flow";
+    document.body.dataset.calPage = "flow";
     calViewMode = "week"; calSel = ymd(now()); calCursor = ym(new Date());
     document.getElementById("calendarOverview").open = false; calView();
   } else if(kind === "calendar-check"){
@@ -1729,7 +1764,8 @@ function focusView(kind){
     document.body.dataset.calBrowse = "0";
     calViewMode = "week"; calSel = ymd(now()); calCursor = ym(new Date());
     document.body.dataset.calDayMode = "check";
-    document.getElementById("calendarOverview").open = false; calView();
+    document.body.dataset.calPage = "check";
+    document.getElementById("calendarOverview").open = false; checklistView();
   } else if(kind === "health-entry"){
     setHealthView("record");
   } else if(kind === "health-analysis"){
@@ -1739,7 +1775,7 @@ function focusView(kind){
   }
   const target = {
     "health-entry":"healthEntry", "money-entry":"moneyEntry", "income-entry":"moneyEntry",
-    "calendar-day":"calendarDayPage", "calendar-check":"calendarDayPage", "today-theme":"todayTheme", "today-flow":"modeCard",
+    "calendar-day":"calendarDayPage", "calendar-check":"checklistPage", "today-theme":"todayTheme", "today-flow":"modeCard",
     "today-actions":"todayActions", "health-analysis":"healthEntry", "money-analysis":"spendAnalysisCard",
     "money-balance":"spendAnalysisCard"
   }[kind];
@@ -1771,7 +1807,8 @@ function setTab(t){
   if(t !== "cal") document.body.dataset.calFocus = "";
   if(t !== "cal") document.body.dataset.calBrowse = "0";
   if(t !== "cal") document.body.dataset.calDayMode = "";
-  if(t === "home") setHubStep("root");
+  if(t !== "cal") document.body.dataset.calPage = "flow";
+  if(t === "home") setHubStep("root", false);
   if(t === "today"){
     document.body.dataset.todayMore = "0";
     const more = document.getElementById("todayMoreToggle");
@@ -1930,7 +1967,7 @@ function modeView(){
   card.classList.toggle("light", m.mode === "light");
   card.classList.toggle("rest", m.mode === "rest");
 
-  const rec = dayRec(key);
+  const rec = S.daily[key] || {habits:{}};
   // 「アプリで動いているのを見た」は、その日にモーションの枠がある日だけ聞く
   const isMotion = m.mode !== "rest" &&
     flowFor(key, m.mode).some(f => f.areaId === "motion");
@@ -2332,19 +2369,36 @@ function timeline(key){
     <div class="tlblocks">${blocks}</div></div>`;
 }
 
+function checklistView(){
+  const box = document.getElementById("checklistItems");
+  const date = document.getElementById("checklistDate");
+  if(!box || !date) return;
+  const key = calSel || ymd(now());
+  const dt = new Date(key + "T00:00:00");
+  const rec = dayRec(key);
+  const habits = habitList();
+  const tasks = plannedOn(key).slice().sort((a,b) =>
+    PRIOS.findIndex(p => p.id === autoPriority(a).id) - PRIOS.findIndex(p => p.id === autoPriority(b).id));
+  date.textContent = `${dt.getMonth()+1}月${dt.getDate()}日（${"日月火水木金土"[dt.getDay()]}）`;
+  const habitRows = habits.length ? `<div class="habits">${habits.map(hb =>
+    `<button class="pad ${rec.habits[hb.id] ? "on" : ""}" data-habit="${hb.id}" data-habit-date="${key}"><i>${esc(hb.icon || "・")}</i>${esc(hb.label)}</button>`
+  ).join("")}</div>` : `<div class="tiny">設定から毎日の習慣を追加できます。</div>`;
+  const taskRows = tasks.length ? tasks.map(t => {
+    const p = autoPriority(t);
+    return `<button class="item" data-err="${t.id}" style="width:100%;text-align:left">
+      <span class="tick ${t.done ? "on" : ""}">✓</span>
+      <span class="grow"><span class="nm">${esc(t.text)}</span><span class="task-priority" style="color:${p.color}">${p.label}</span></span>
+    </button>`;
+  }).join("") : `<div class="tiny">予定を足すと、ここで完了を記録できます。</div>`;
+  box.innerHTML = `<section class="checklist-section"><h2><i>◌</i>毎日の習慣</h2>${habitRows}</section>
+    <section class="checklist-section"><h2><i>＋</i>今日やること</h2>${taskRows}</section>`;
+}
+
 function calDetail(){
   const box = document.getElementById("calDetail");
   if(!calSel){ box.innerHTML = `<div class="tiny">日付をタップすると、その日の時間割と記録が出ます。</div>`; return; }
   const key = calSel, dt = new Date(key + "T00:00:00");
   const rec = S.daily[key] || {habits:{}, tasks:[]};
-  const h = S.health[key];
-  const dues = duesOn(key);
-  const isToday = key === ymd(now());
-  const habits = habitList();
-  const tasks = plannedOn(key).slice().sort((a,b)=>PRIOS.findIndex(p=>p.id===autoPriority(a).id)-PRIOS.findIndex(p=>p.id===autoPriority(b).id));
-  const checklist = isToday ? `<div class="day-checklist"><div class="analysis-block-title"><span>今日のチェックリスト</span><span class="tiny">生活・予定・制作</span></div>
-    <div class="habits">${habits.map(hb=>`<button class="pad ${rec.habits[hb.id]?"on":""}" data-habit="${hb.id}"><i>${esc(hb.icon||"•")}</i>${esc(hb.label)}</button>`).join("")}</div>
-    ${tasks.map(t=>{const p=autoPriority(t);return `<button class="item" data-err="${t.id}" style="width:100%;text-align:left"><span class="tick ${t.done?"on":""}">✓</span><span class="grow"><span class="nm">${esc(t.text)}</span><span class="mt" style="color:${p.color}">${p.label}</span></span></button>`}).join("") || `<div class="tiny">予定に追加すると、ここでチェックできます。</div>`}</div>` : "";
 
   let html = `<div class="row between" style="margin-bottom:2px">
       <div style="font-weight:700;font-size:16px">${dt.getMonth()+1}月${dt.getDate()}日（${"日月火水木金土"[dt.getDay()]}）</div>
@@ -2356,7 +2410,6 @@ function calDetail(){
       <button class="btn ghost" type="button" data-dayaction="check">チェックリストを開く</button>
       <button class="btn ghost" type="button" data-dayaction="calendar">週／月を見る</button>
     </div>
-    ${document.body.dataset.calDayMode === "check" ? checklist : ""}
     <details id="planAdder">
       <summary aria-label="予定を足す"></summary>
       <div class="catseg" id="planCatSeg">${TCATS.map(c =>
@@ -2943,7 +2996,7 @@ document.addEventListener("click", e => {
   }
 
   if(t.dataset.hubAction){ setHubStep(t.dataset.hubAction); return; }
-  if(t.hasAttribute("data-hub-back")){ setHubStep("root"); return; }
+  if(t.hasAttribute("data-hub-back")){ goBack(); return; }
   if(t.dataset.gotab){
     rememberHere();
     setTab(t.dataset.gotab);
@@ -2955,7 +3008,7 @@ document.addEventListener("click", e => {
   if(t.dataset.bodyview){ setBodyView(t.dataset.bodyview); return; }
   if(t.dataset.dayaction){
     if(t.dataset.dayaction === "plan"){ const adder = document.getElementById("planAdder"); adder.open = !adder.open; }
-    if(t.dataset.dayaction === "check"){ document.body.dataset.calDayMode = "check"; calDetail(); }
+    if(t.dataset.dayaction === "check"){ setCalendarPage("check"); }
     if(t.dataset.dayaction === "calendar"){ document.body.dataset.calBrowse = "1"; document.getElementById("calendarOverview").open = true; }
     return;
   }
@@ -3006,7 +3059,7 @@ document.addEventListener("click", e => {
     return;
   }
   if(t.dataset.flowjump){
-    rememberHere(); setTab("cal"); document.body.dataset.calFocus = "day"; document.body.dataset.calBrowse = "0"; document.body.dataset.calDayMode = "flow";
+    rememberHere(); setTab("cal"); document.body.dataset.calFocus = "day"; document.body.dataset.calBrowse = "0"; document.body.dataset.calDayMode = "flow"; document.body.dataset.calPage = "flow";
     calViewMode = "week"; calSel = ymd(now()); calCursor = ym(new Date()); document.getElementById("calendarOverview").open = false; calView();
     document.getElementById("calDetail")?.scrollIntoView({behavior:"smooth",block:"start"});
     return;
@@ -3095,7 +3148,7 @@ document.addEventListener("click", e => {
   }
 
   if(t.dataset.habit){
-    const rec = dayRec(ymd(now()));
+    const rec = dayRec(t.dataset.habitDate || ymd(now()));
     rec.habits[t.dataset.habit] = !rec.habits[t.dataset.habit];
     save(); render(); return;
   }
