@@ -6,7 +6,8 @@
 <title>まとめて管理</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="ui-v2.css">
-<meta name="theme-color" content="#0B1017">
+<link rel="stylesheet" href="ui-analog.css">
+<meta name="theme-color" content="#F6EFDE">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="まとめて管理">
@@ -1415,7 +1416,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.25.1";         // version.txt と一致させること
+const BUILD = "0.25.2";         // version.txt と一致させること
 const KEY = "mainichi.v1";
 // 一日の流れを主役にし、週／月のカレンダーは必要なときだけその下に開く。
 (() => {
@@ -1631,6 +1632,12 @@ function applyPortalIcons(){
 }
 
 function render(){
+  // LIFE NOTE の新しい入口では、保存後も旧UIへ戻さない。
+  // データの保存ロジックは共通のまま、表示だけを新しいシェルに委ねる。
+  if(document.body.dataset.appShell === "v2" && typeof window.newAppRender === "function"){
+    window.newAppRender();
+    return;
+  }
   applyPortalIcons();
   const parts = [["今日のモード",modeView],["やること",errView],["今日のテーマ",bigGoalView],
     ["支出カレンダー",moneyCalView],

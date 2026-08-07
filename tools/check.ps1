@@ -11,6 +11,47 @@ if (-not (Test-Path $chrome)) { Write-Error "Chromeが見つかりません: $ch
 
 # 版とversion.txtの一致
 $src = Get-Content "$root\index.html" -Raw -Encoding UTF8
+$smoke = @'
+<script>
+window.addEventListener("load", () => setTimeout(() => {
+  const tap = (selector, label) => {
+    const el = document.querySelector(selector);
+    if (!el) throw new Error("UI smoke: " + label);
+    el.click();
+  };
+  try {
+    tap('[data-v2-go="record"]', "home → record");
+    tap('[data-v2-go="moneyRecord"]', "record → money");
+    if (!document.querySelector('#v2Amount')) throw new Error("UI smoke: money form");
+    tap('[data-v2-back]', "money → record");
+    tap('[data-v2-back]', "record → home");
+    tap('[data-v2-go="today"]', "home → today");
+    tap('[data-v2-go="flow"]', "today → flow");
+    if (!document.querySelector('.v2-timeline')) throw new Error("UI smoke: flow timeline");
+    tap('[data-v2-go="calendar"]', "flow → calendar");
+    tap('[data-v2-cal-mode="month"]', "calendar month mode");
+    if (!document.querySelector('.v2-month')) throw new Error("UI smoke: month calendar");
+    tap('[data-v2-back]', "calendar → flow");
+    tap('[data-v2-back]', "flow → today");
+    tap('[data-v2-back]', "today → home");
+    tap('[data-v2-go="visualize"]', "home → visualize");
+    tap('[data-v2-go="healthAnalysis"]', "visualize → health analysis");
+    if (!document.querySelector('.v2-line-chart')) throw new Error("UI smoke: health chart");
+    tap('[data-v2-back]', "health analysis → visualize");
+    tap('[data-v2-go="moneyAnalysis"]', "visualize → money analysis");
+    if (!document.querySelector('.v2-chart-block')) throw new Error("UI smoke: money analysis");
+    tap('[data-v2-back]', "money analysis → visualize");
+    tap('[data-v2-back]', "visualize → home");
+    tap('[data-v2-go="settings"]', "home → settings");
+    if (!document.querySelector('.v2-settings')) throw new Error("UI smoke: settings");
+    document.documentElement.dataset.uiSmoke = "ok";
+  } catch (error) {
+    document.documentElement.dataset.uiSmoke = "failed: " + error.message;
+  }
+}, 200));
+</script>
+'@
+$src = $src.Replace('</body>', $smoke + '</body>')
 $build = [regex]::Match($src, 'const BUILD = "([^"]+)"').Groups[1].Value
 $ver = (Get-Content "$root\version.txt" -Raw -Encoding UTF8).Trim()
 if ($build -ne $ver) { Write-Error "BUILD($build) と version.txt($ver) が違います" }
@@ -44,8 +85,14 @@ $bad = Get-Content $log -Encoding UTF8 | Select-String "CONSOLE" |
 if ($bad) { $bad | ForEach-Object { Write-Host $_ -ForegroundColor Red }; Remove-Item $test -Force; Write-Error "コンソールにエラーがあります" }
 "OK  コンソールにエラーなし"
 
-# 描画されたはずのものが本当にあるか（ソースだけの1件では不足とみなす）
 $html = Get-Content $dom -Raw -Encoding UTF8
+if ($html -notmatch 'data-ui-smoke="ok"') {
+  Remove-Item $test -Force
+  Write-Error "画面遷移のスモークテストに失敗しました"
+}
+"OK  入口から設定までの画面遷移"
+
+# 描画されたはずのものが本当にあるか（ソースだけの1件では不足とみなす）
 $need = @{ 'data-habit="' = 2; 'class="ring"' = 2; 'data-gotab="' = 5 }
 foreach ($k in $need.Keys) {
   $n = ([regex]::Matches($html, [regex]::Escape($k))).Count
