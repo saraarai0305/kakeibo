@@ -264,9 +264,6 @@ details[open] > summary::before{content:"▾ "}
 .hub-choice-icon .ui-icon{width:21px;height:21px;stroke-width:2.05}
 .hub-choice-btn b{display:block;margin-top:10px;font-size:14px;line-height:1.25}.hub-choice-btn small{display:block;margin-top:4px;color:var(--dim);font-size:11px;line-height:1.35}
 .hub-choice-btn.wide b{margin:0;font-size:15px}.hub-choice-btn.wide small{margin-top:3px}.hub-choice-btn.wide .hub-arrow{justify-self:end;align-self:center}
-/* ホームは「次にすること」だけを選ぶハブにする。 */
-.hub-shell[data-hub-step="root"] .hub-intro{padding:18px 12px 30px}.hub-shell[data-hub-step="root"] .hub-intro h1{font-size:clamp(28px,8vw,38px)}
-.hub-shell[data-hub-step="root"] .hub-primary{gap:12px}.hub-shell[data-hub-step="root"] .hub-primary-btn{grid-template-columns:1fr;justify-items:center;min-height:132px;padding:18px 14px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(145deg,#1B2836,#121A23);text-align:center}.hub-shell[data-hub-step="root"] .hub-primary-btn:first-child{border-top:1px solid var(--line)}.hub-shell[data-hub-step="root"] .hub-primary-btn small,.hub-shell[data-hub-step="root"] .hub-primary-btn .hub-arrow{display:none}.hub-shell[data-hub-step="root"] .hub-primary-btn strong{font-size:21px}.hub-shell[data-hub-step="root"] .hub-primary-icon{width:54px;height:54px}
 .cal-modes{display:flex;gap:6px;flex-wrap:wrap;margin:-2px 0 11px}
 .cal-modes button{padding:6px 12px;border:1px solid var(--line);border-radius:99px;background:var(--card2);color:var(--dim);font-size:11px}
 .cal-modes button.on{background:var(--accent);border-color:var(--accent);color:#0D1015;font-weight:800}
@@ -280,6 +277,7 @@ details[open] > summary::before{content:"▾ "}
 .tl .nowline{position:absolute;left:42px;right:0;z-index:3;border-top:2px solid var(--bad);pointer-events:none;height:0}
 .tl .nowline b{position:absolute;right:0;top:-18px;color:var(--bad);font-size:10.5px;line-height:1.4;background:var(--card);padding:1px 4px;border-radius:4px;white-space:nowrap}
 .day-flow-actions{display:grid;grid-template-columns:1fr;gap:8px;margin:16px 0}.day-flow-actions .btn{min-height:52px;font-size:16px;text-align:left;display:flex;align-items:center;justify-content:space-between}.day-flow-actions .btn::after{content:"›";font-size:22px;color:var(--dim)}
+#calendarDayPage #planAdder>summary,#calendarDayPage>details:not(#planAdder){display:none}
 .money-insights{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:12px 0}
 .money-insight{padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--card2);min-width:0}
 .money-insight span{display:block;color:var(--dim);font-size:10px}.money-insight b{display:block;margin-top:4px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -369,10 +367,14 @@ body[data-tab="pay"]   [data-pg="pay"]{display:block}
 .money-private-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
 .money-private-metric{min-width:0;padding:14px 12px;border-radius:12px;background:color-mix(in srgb,var(--bg) 35%,transparent);border:1px solid color-mix(in srgb,var(--line) 80%,transparent)}
 .money-private-metric:first-child{grid-column:1 / -1;border-color:color-mix(in srgb,var(--ok) 45%,var(--line));background:color-mix(in srgb,var(--ok) 10%,var(--card2))}
+.money-private-metric:nth-child(2){grid-column:1 / -1}
+.money-private-metric b{white-space:normal!important;overflow:visible!important;text-overflow:clip!important}.money-private-metric b:not(.hidden-money){color:var(--ok)}.money-private-metric b.neg{color:var(--bad)!important}
 .money-private-metric span{display:block;color:var(--dim);font-size:11px;font-weight:700}.money-private-metric b{display:block;margin-top:5px;font-size:clamp(24px,7.8vw,36px);line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}.money-private-metric b.hidden-money{letter-spacing:.12em;color:var(--dim)}
 [data-moneysection]{transition:background .15s,color .15s,border-color .15s}
 #moneyEntry .money-private-summary .bar,#moneyEntry #heroFoot{display:none}
 #entryTypeSeg button{min-height:56px;font-size:17px}
+#entryTypeSeg button[data-entrytype="expense"].on,body[data-entry-type="expense"] #spAdd{background:var(--coral);color:#241719;box-shadow:0 5px 14px color-mix(in srgb,var(--coral) 18%,transparent)}
+#entryTypeSeg button[data-entrytype="income"].on,body[data-entry-type="income"] #spAdd{background:var(--green2);color:#11241b;box-shadow:0 5px 14px color-mix(in srgb,var(--green2) 18%,transparent)}
 #moneySectionSeg button[data-moneysection="expense"].on{background:var(--coral);color:#241719;box-shadow:0 4px 14px rgba(240,154,155,.16)}
 #moneySectionSeg button[data-moneysection="income"].on{background:var(--green2);color:#11241b;box-shadow:0 4px 14px rgba(111,218,169,.14)}
 #moneySectionSeg button[data-moneysection="scheduled"].on{background:var(--yellow);color:#2A2110;box-shadow:0 4px 14px rgba(243,199,93,.14)}
@@ -1315,7 +1317,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.22.0";         // version.txt と一致させること
+const BUILD = "0.23.0";         // version.txt と一致させること
 const KEY = "mainichi.v1";
 // 一日の流れを主役にし、週／月のカレンダーは必要なときだけその下に開く。
 (() => {
@@ -2206,7 +2208,7 @@ function timeline(key){
   const rows = [];
   for(let m = TL_START; m < TL_END; m += 60)
     rows.push(`<div class="tlrow"><b>${String(Math.floor(m/60)%24).padStart(2,"0")}:00</b><span></span></div>`);
-  const span = TL_END - TL_START, H = 26 * (span / 60);
+  const span = TL_END - TL_START, H = 28 * (span / 60);
   const blocks = allBlocks(key).map(b => {
     const a = Math.max(b.a, TL_START), z = Math.min(b.b, TL_END);
     if(z <= a) return "";
@@ -2249,7 +2251,7 @@ function calDetail(){
     </div>
     ${document.body.dataset.calDayMode === "check" ? checklist : ""}
     <details id="planAdder">
-      <summary>予定を足す</summary>
+      <summary aria-label="予定を足す"></summary>
       <div class="catseg" id="planCatSeg">${TCATS.map(c =>
         `<button data-planCat="${c.id}" style="${planCat===c.id?`background:${c.color};color:#0D1015;font-weight:700;border-color:transparent`:""}">${c.label}</button>`).join("")}</div>
       <div class="addrow">
@@ -2259,7 +2261,7 @@ function calDetail(){
       </div>
       <div class="tiny" style="margin-top:8px">薄い帯は記録から自動で出ています。自分で足した予定はタップで消せます。</div>
     </details>
-    ${isToday && document.body.dataset.calDayMode !== "check" ? `<details class="day-check-fold"><summary>今日のチェックリストを開く</summary>${checklist}</details>` : ""}`;
+    `;
   // 詳細はこの1行にまとめる。時間割が主役なので、記録は要約だけ
   const habitsDone = habitList().filter(h => rec.habits[h.id]).length;
   const sum = [];
@@ -2480,6 +2482,7 @@ function moneyOptions(type){
 function spendView(){
   document.getElementById("spendPulse").innerHTML = spendPulse();
   const type = S.ui.entryType === "income" ? "income" : "expense";
+  document.body.dataset.entryType = type;
   document.querySelectorAll("#entryTypeSeg button").forEach(b => b.classList.toggle("on", b.dataset.entrytype === type));
   const sel = document.getElementById("spCat");
   const {cats, methods} = moneyOptions(type);
@@ -2822,7 +2825,7 @@ document.addEventListener("click", e => {
   if(t.dataset.moneyview){ setMoneyView(t.dataset.moneyview); return; }
   if(t.dataset.bodyview){ setBodyView(t.dataset.bodyview); return; }
   if(t.dataset.dayaction){
-    if(t.dataset.dayaction === "plan") document.getElementById("planAdder").open = true;
+    if(t.dataset.dayaction === "plan"){ const adder = document.getElementById("planAdder"); adder.open = !adder.open; }
     if(t.dataset.dayaction === "check"){ document.body.dataset.calDayMode = "check"; calDetail(); }
     if(t.dataset.dayaction === "calendar"){ document.body.dataset.calBrowse = "1"; document.getElementById("calendarOverview").open = true; }
     return;
