@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>LIFE NOTE</title>
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="ui-v2.css?v=0.27.0">
+<link rel="stylesheet" href="ui-v2.css?v=0.27.1">
 <meta name="theme-color" content="#F6EFDE">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -783,7 +783,8 @@ body[data-tab="cal"]:not([data-cal-page="check"]) #checklistPage{display:none!im
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:1ms!important;animation-iteration-count:1!important;transition-duration:1ms!important}}
 </style>
 <!-- 旧画面のインラインCSSより後に読み込み、紙面UIを最終スタイルとして適用する。 -->
-<link rel="stylesheet" href="ui-analog.css?v=0.27.0">
+<link rel="stylesheet" href="ui-analog.css?v=0.27.1">
+<link rel="stylesheet" href="ui-paper-baseline.css?v=0.27.1">
 </head>
 <body data-tab="home">
 <div class="rotate">
@@ -1417,7 +1418,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.27.0";         // version.txt と一致させること
+const BUILD = "0.27.1";         // version.txt と一致させること
 const KEY = "mainichi.v1";
 // 一日の流れを主役にし、週／月のカレンダーは必要なときだけその下に開く。
 (() => {
@@ -1464,6 +1465,7 @@ function seed(){
     spends: [],
     incomeLogs: [],      // 実際に受け取った収入の記録
     plan: {},           // "2026-08-05" -> [{id, from:"13:30", to:"16:30", cat, text}]
+    dailyTimeline: [],  // 毎日表示する時間指定の習慣 [{id, from, to, cat, lane, text}]
     subs: [],           // {id, name, amt, cycle:"m"|"y", day}
     appt: { date:"", time:"", place:"", alias:"", memo:"" },
     icsAmount: false,   // カレンダーに金額を入れるか
@@ -1506,7 +1508,7 @@ function seed(){
 function normalize(o){
   const b = seed();
   const s = Object.assign(b, o || {});
-  for(const k of ["accounts","fixed","incomes","spends","incomeLogs","subs","errands"])
+  for(const k of ["accounts","fixed","incomes","spends","incomeLogs","subs","errands","dailyTimeline"])
     if(!Array.isArray(s[k])) s[k] = b[k];
   if(!s.ui || typeof s.ui !== "object") s.ui = b.ui;
   if(!["expense","income"].includes(s.ui.entryType)) s.ui.entryType = "expense";
@@ -2234,8 +2236,9 @@ function errandsOn(key){
 
 const planOf = key => (S.plan && S.plan[key]) ? S.plan[key] : [];
 function allBlocks(key){
-  return autoBlocks(key).concat(planOf(key).map(p => Object.assign({}, p,
-    {a:onTl(toMin(p.from)), b:onTl(toMin(p.to))})))
+  const daily = Array.isArray(S.dailyTimeline) ? S.dailyTimeline : [];
+  return autoBlocks(key).concat(planOf(key), daily).map(p => Object.assign({}, p,
+    {a:p.a != null ? p.a : onTl(toMin(p.from)), b:p.b != null ? p.b : onTl(toMin(p.to))}))
     .filter(x => x.a != null && x.b != null && x.b > x.a)
     .sort((x,y) => x.a - y.a);
 }
@@ -4248,6 +4251,6 @@ if("serviceWorker" in navigator &&
   navigator.serviceWorker.register("sw.js?v=" + BUILD, {updateViaCache:"none"}).catch(()=>{});
 }
 </script>
-<script defer src="ui-v2.js?v=0.27.0"></script>
+<script defer src="ui-v2.js?v=0.27.1"></script>
 </body>
 </html>

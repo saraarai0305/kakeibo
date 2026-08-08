@@ -1,0 +1,170 @@
+/* Shared paper baseline. This file intentionally loads after ui-analog.css. */
+:root{--paper-base:#f6efe1;--paper-dot:rgba(96,76,49,.17)}
+
+html,body,body[data-app-shell="v2"]{
+  background-color:var(--paper-base)!important;
+  background-image:radial-gradient(var(--paper-dot) .7px,transparent .8px)!important;
+  background-size:7px 7px!important;
+  background-attachment:fixed!important;
+  overscroll-behavior-y:none!important;
+}
+body[data-app-shell="v2"]:before,body[data-app-shell="v2"]:after{display:none!important}
+body[data-app-shell="v2"] .wrap,#lifeNoteV2,.v2-page,.an-page,.v2-money-record.mr-approval-page{
+  background-color:transparent!important;
+  background-image:none!important;
+  box-shadow:none!important;
+}
+.v2-page:before,.v2-page:after{display:none!important}
+
+/* Shared navigation grid: controls, logo and issue line share fixed baselines. */
+.an-header,.mr-record-header{padding:18px 22px 0!important}
+.an-nav,.mr-record-nav{min-height:72px!important;align-items:center!important;border-bottom:1px solid rgba(108,85,52,.46)!important}
+.an-brand,.mr-record-brand{align-self:center!important}
+.an-brand .v2-app-brand,.mr-record-brand .v2-app-brand{display:inline-flex!important;align-items:center!important;transform:none!important}
+.an-brand .v2-app-brand svg,.mr-record-brand .v2-app-brand svg{position:relative!important;top:1px!important}
+.an-brand .v2-app-brand>span,.mr-record-brand .v2-app-brand>span{position:relative!important;top:-1px!important}
+.an-issue,.mr-record-issue{min-height:30px!important;margin:7px 0 0!important;padding:0!important;align-items:center!important}
+
+/* Shared section label: a 26px icon, 5px gap and a compact label-to-title rhythm. */
+.an-content,.mr-record-content{padding-top:21px!important}
+.an-mark,.mr-record-mark{margin-bottom:13px!important}
+.an-mark p,.mr-record-mark{gap:5px!important}
+.an-mark p span,.mr-record-mark-icon{width:31px!important;height:26px!important}
+.an-mark .v2-icon,.mr-record-mark .v2-icon{width:26px!important;height:26px!important}
+.an-mark h1{margin-top:6px!important}
+.mr-record-mark{align-items:center!important}
+.v2-money-record.mr-approval-page .mr-record-mark:after{margin-top:6px!important}
+
+/* Home is a hub: no duplicate HOME or archive title. */
+.an-home-content{padding-top:38px!important}
+.an-home-brand{margin:10px 0 14px!important}
+.an-home-date{margin:0 0 28px!important}
+.an-home:after{display:none!important}
+
+/* Calm ledger rhythm: the category/amount row sits lower than its separator. */
+.mr-activity{margin-top:28px!important}
+.mr-activity-row{min-height:48px!important;padding:8px 0 7px!important}
+
+/* 2026-08-09: health ratings are five horizontal rubber-stamp choices. */
+.an-health-sheet{grid-template-columns:1fr 1fr!important;gap:10px!important}
+.an-health-rating{min-width:0!important;min-height:116px!important;padding:13px 11px!important}
+.an-health-rating .v2-rating{display:flex!important;flex-flow:row nowrap!important;align-items:center!important;justify-content:space-between!important;gap:0!important;width:100%!important;margin:12px 0 0!important}
+.an-health-rating .v2-rating button{display:grid!important;place-items:center!important;flex:0 0 21px!important;width:21px!important;height:21px!important;min-width:21px!important;margin:0!important;padding:0!important;border:1.5px solid #294653!important;border-radius:50%!important;background:#fffaf0!important;color:transparent!important;font-size:0!important;line-height:1!important;box-shadow:inset 0 0 0 2px #fffaf0!important}
+.an-health-rating .v2-rating button:before{display:none!important}
+.an-health-rating .v2-rating button.on.body{border-color:#287c5b!important;background:#5baf86!important;box-shadow:inset 0 0 0 2px #dff1e6!important}
+.an-health-rating .v2-rating button.on.mind{border-color:#bf6e5e!important;background:#df8a78!important;box-shadow:inset 0 0 0 2px #fde4dd!important}
+
+/* 2026-08-09: final shared alignment pass. Home and inner-page brands use separate optical baselines. */
+.an-nav,.mr-record-nav{min-height:76px!important}
+.an-brand .v2-app-brand>span,.mr-record-brand .v2-app-brand>span{top:1px!important}
+.an-home-brand .v2-app-brand{display:inline-flex!important;align-items:center!important}
+.an-home-brand .v2-app-brand svg{position:relative!important;top:1px!important}
+.an-home-brand .v2-app-brand>span{position:relative!important;top:-2px!important}
+.an-issue,.mr-record-issue{margin-top:4px!important}
+.an-mark{padding-left:6px!important}
+
+/* Keep the health labels, icons and values on shared row baselines. */
+.an-health-rating.mind>div span{color:#bf6e5e!important}
+.an-health-data{grid-template-rows:22px 20px 28px minmax(0,1fr)!important;gap:5px!important}
+.an-health-data>span{height:22px!important;line-height:22px!important}
+.an-health-data>span .v2-icon{flex:0 0 20px!important}
+
+/* Calendar dates occupy a fixed anchor; event dots never move the date. */
+.an-calendar .v2-month button{position:relative!important;display:flex!important;align-items:flex-start!important;justify-content:flex-start!important;padding:7px 6px!important;line-height:1!important}
+.an-calendar .v2-month button.has:after{position:absolute!important;top:28px!important;left:50%!important;margin:0!important;transform:translateX(-50%)!important}
+.an-calendar .v2-week-day{display:grid!important;grid-template-rows:14px 17px 1fr!important;align-content:start!important;padding:7px 4px!important}
+.an-calendar .v2-week-day span{height:14px!important;margin:0!important;line-height:14px!important}
+.an-calendar .v2-week-day b{height:17px!important;margin:4px 0 6px!important;line-height:17px!important}
+.an-calendar .an-empty{margin-top:25px!important}
+
+/* Idea notebook: a separate paper page for monthly goals and freeform notes. */
+.an-idea-panel{display:grid!important;gap:9px!important;margin:0 0 14px!important;padding:16px!important;border:1.5px solid #c8b99f!important;border-radius:17px!important;background:#fffaf0!important;box-shadow:3px 3px 0 rgba(103,82,49,.1)!important}
+.an-idea-panel label{color:#68726a!important;font-size:12px!important;font-weight:800!important}
+.an-idea-panel textarea{width:100%!important;min-height:104px!important;resize:vertical!important;padding:12px!important;border:1px solid #af9f87!important;border-radius:10px!important;background:#fffaf0!important;color:#21312d!important;font:inherit!important;font-size:15px!important;line-height:1.55!important}
+.an-idea-panel .an-small-action{min-height:46px!important;text-align:center!important}
+.an-idea-list{display:grid!important;gap:9px!important}
+.an-idea-list article{padding:13px 14px!important;border-top:1px solid #d3c6b0!important}
+.an-idea-list article small{color:#85755e!important;font-size:11px!important;font-weight:750!important}
+.an-idea-list article p{margin:5px 0 0!important;color:#21312d!important;font-size:14px!important;line-height:1.5!important;white-space:pre-wrap!important}
+
+/* 2026-08-09: the home masthead is optically lower/left; the health page does not repeat its date. */
+.an-home-brand{transform:translate(-5px,3px)!important}
+.an-home-brand .v2-app-brand>span{top:2px!important}
+.an-health-record .an-date-note{display:none!important}
+
+/* DAILY FLOW: one shared timeline with a light work / life guide. */
+.an-flow-lane-guide{display:grid!important;grid-template-columns:1fr 1fr!important;margin:0 0 7px 45px!important;border-bottom:1px dashed #c8b99f!important;color:#85755e!important;font-size:11px!important;font-weight:800!important;letter-spacing:.05em!important}
+.an-flow-lane-guide span{min-height:28px!important;display:flex!important;align-items:center!important;justify-content:center!important}
+.an-flow-lane-guide span:first-child{border-right:1px dashed #c8b99f!important}
+.an-flow .v2-timeline:after{content:"";position:absolute;z-index:0;top:0;bottom:0;left:50%;border-left:1px dashed rgba(133,117,94,.45);pointer-events:none}
+.an-flow .v2-event{z-index:1!important}
+.an-flow .v2-now{z-index:3!important}
+.an-flow .v2-event.an-lane-work{left:0!important;right:calc(50% + 5px)!important}
+.an-flow .v2-event.an-lane-life{left:calc(50% + 5px)!important;right:0!important}
+.an-flow-planner{display:grid!important;gap:11px!important;margin:0 0 18px!important;padding:15px!important;border:1.5px solid #c8b99f!important;border-radius:14px!important;background:#fffaf0!important;box-shadow:3px 3px 0 rgba(103,82,49,.1)!important}
+.an-planner-head{display:flex!important;align-items:center!important;justify-content:space-between!important;color:#21312d!important}
+.an-planner-head strong{font-size:16px!important}
+.an-planner-head button{display:grid!important;place-items:center!important;width:32px!important;height:32px!important;border:1px solid #c8b99f!important;border-radius:50%!important;background:#f6efe1!important;color:#315674!important;font-size:22px!important;line-height:1!important}
+.an-flow-planner label{display:grid!important;gap:6px!important;color:#68726a!important;font-size:12px!important;font-weight:800!important}
+.an-flow-planner input,.an-flow-planner select{width:100%!important;min-height:44px!important;padding:0 11px!important;border:1px solid #c8b99f!important;border-radius:9px!important;background:#fffaf0!important;color:#21312d!important;font:inherit!important;font-size:14px!important}
+.an-planner-times{display:grid!important;grid-template-columns:1fr 1fr!important;gap:9px!important}
+.an-flow-planner .an-save{margin:2px 0 0!important;min-height:48px!important;font-size:15px!important}
+
+/* Shared optical-centering rules: controls use a real center grid, never text baseline nudges. */
+.an-mark p span,.mr-record-mark-icon{width:32px!important;height:29px!important}
+.an-mark .v2-icon,.mr-record-mark .v2-icon{width:28px!important;height:28px!important}
+.an-flow-timeline-shell{position:relative!important;padding-left:45px!important}
+.an-flow-lane-guide{width:100%!important;margin-left:0!important}
+.an-flow .v2-timeline{padding-left:0!important;border-left:0!important}
+.an-flow .v2-timeline:after{left:50%!important}
+.an-planner-head button{font-size:0!important}
+.an-planner-head button:before{content:"×";display:block!important;font-family:Arial,sans-serif!important;font-size:23px!important;font-weight:400!important;line-height:1!important;transform:translateY(-1px)!important}
+.an-flow-planner .an-save{display:flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;line-height:1!important}
+.an-flow-planner .an-save .v2-icon{width:20px!important;height:20px!important;flex:none!important}
+
+/* 2026-08-09: component-centering contract. Every framed control uses the same real
+   grid center; no page is allowed to "fix" copy with one-off positional nudges. */
+html,body,body[data-app-shell="v2"],#lifeNoteV2{min-height:100%!important;background-color:var(--paper-base)!important;background-image:radial-gradient(var(--paper-dot) .7px,transparent .8px)!important;background-size:7px 7px!important;background-attachment:fixed!important}
+body[data-app-shell="v2"]{min-height:100dvh!important}
+.an-nav-button,.an-home-return,.an-flow-planner .an-save,.an-home-shortcut,.an-calendar-filter button{display:grid!important;place-items:center!important;align-content:center!important}
+.an-flow-timeline-shell{--an-time-rail:45px!important;padding-left:var(--an-time-rail)!important;box-sizing:border-box!important}
+.an-flow-timeline-shell>.an-flow-lane-guide,.an-flow-timeline-shell>.v2-timeline{width:100%!important;box-sizing:border-box!important}
+.an-flow-lane-guide{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
+.an-flow-lane-guide span{gap:5px!important}
+.an-flow-lane-guide .v2-icon{width:16px!important;height:16px!important;flex:none!important;color:#796aa8!important}
+.an-flow-lane-guide span:last-child .v2-icon{color:#4f986f!important}
+.an-flow .v2-timeline:after{left:50%!important;transform:translateX(-.5px)!important}
+.an-flow .v2-event.an-lane-work{left:0!important;right:50%!important}
+.an-flow .v2-event.an-lane-life{left:50%!important;right:0!important}
+
+/* Week/month: period and lane are separate choices.  A legend makes every colored mark explicit. */
+.an-calendar-filter{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important;margin:-7px 0 18px!important}
+.an-calendar-filter button{min-height:38px!important;padding:0 7px!important;border:1px solid #c8b99f!important;border-radius:12px!important;background:#fffaf0!important;color:#68726a!important;font-family:inherit!important;font-size:12px!important;font-weight:800!important;line-height:1!important}
+.an-calendar-filter button.on{border-color:#796aa8!important;background:#e7e1f0!important;color:#3f3465!important}
+.an-calendar-filter .v2-icon{width:16px!important;height:16px!important;vertical-align:middle!important;margin-right:3px!important}
+.an-calendar-legend{margin:22px 0 0!important;padding:14px!important;border-top:1px solid #c8b99f!important;border-bottom:1px solid #c8b99f!important}
+.an-calendar-legend h2{margin:0 0 10px!important;color:#68726a!important;font-size:12px!important;font-weight:800!important}
+.an-calendar-legend>div{display:flex!important;flex-wrap:wrap!important;gap:8px 12px!important}
+.an-calendar-legend span{display:inline-flex!important;align-items:center!important;gap:5px!important;color:#21312d!important;font-size:12px!important;font-weight:750!important}
+.an-calendar-legend i{width:17px!important;height:4px!important;border-radius:3px!important}
+.an-calendar-legend p{margin:0!important;color:#85755e!important;font-size:12px!important}
+
+/* Home: date/time and personal shortcuts add a useful editorial mast without competing with the three main choices. */
+.an-home{overflow:auto!important}
+.an-home-content{padding-bottom:34px!important}
+.an-home-meta{display:grid!important;grid-template-columns:1fr auto!important;align-items:end!important;gap:4px 12px!important;margin:0 0 24px!important;padding:10px 0 12px!important;border-top:1px solid rgba(108,85,52,.45)!important;border-bottom:1px dashed rgba(108,85,52,.42)!important;color:#85755e!important}
+.an-home-meta time{font-size:12px!important;font-weight:800!important;letter-spacing:.04em!important}
+.an-home-meta strong{grid-column:2!important;grid-row:1 / span 2!important;color:#21312d!important;font-size:28px!important;font-weight:780!important;font-variant-numeric:tabular-nums!important;line-height:.95!important}
+.an-home-meta small{font-size:10px!important;font-weight:800!important;letter-spacing:.12em!important}
+.an-home-shortcuts{margin:18px 0 0!important;padding-top:14px!important;border-top:1px dashed rgba(108,85,52,.48)!important}
+.an-home-shortcuts>div:first-child{display:flex!important;align-items:center!important;justify-content:space-between!important;margin-bottom:9px!important}
+.an-home-shortcuts h2{margin:0!important;color:#68726a!important;font-size:12px!important;font-weight:800!important;letter-spacing:.08em!important}
+.an-home-shortcuts>div:first-child button{min-height:28px!important;padding:0 7px!important;border:1px solid #c8b99f!important;border-radius:9px!important;background:#fffaf0!important;color:#315674!important;font-family:inherit!important;font-size:11px!important;font-weight:800!important}
+.an-home-shortcut-grid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:8px!important}
+.an-home-shortcut{min-height:76px!important;padding:7px 4px!important;border:1px solid #c8b99f!important;border-radius:14px!important;background:#fffaf0!important;color:#315674!important;font-family:inherit!important;box-shadow:2px 2px 0 rgba(103,82,49,.09)!important}
+.an-home-shortcut .v2-icon{width:24px!important;height:24px!important;margin:0 0 5px!important}
+.an-home-shortcut span{display:block!important;color:#21312d!important;font-size:10px!important;font-weight:800!important;line-height:1.2!important;text-align:center!important}
+.an-shortcut-editor{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important;margin-top:10px!important;padding:10px!important;border:1px solid #c8b99f!important;border-radius:12px!important;background:#fffaf0!important}
+.an-shortcut-editor label{display:grid!important;gap:4px!important;color:#85755e!important;font-size:10px!important;font-weight:800!important}
+.an-shortcut-editor select{width:100%!important;min-width:0!important;height:34px!important;padding:0 4px!important;border:1px solid #c8b99f!important;border-radius:7px!important;background:#fffaf0!important;color:#21312d!important;font:inherit!important;font-size:10px!important}
+.an-shortcut-editor button{grid-column:1 / -1!important;min-height:36px!important;border:0!important;border-radius:8px!important;background:#4d80ad!important;color:#fff!important;font-family:inherit!important;font-size:12px!important;font-weight:800!important}
