@@ -1417,7 +1417,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.26.1";         // version.txt と一致させること
+const BUILD = "0.26.2";         // version.txt と一致させること
 const KEY = "mainichi.v1";
 // 一日の流れを主役にし、週／月のカレンダーは必要なときだけその下に開く。
 (() => {
@@ -3918,10 +3918,17 @@ async function pullRemote(silent, force){
 
 /* 開きっぱなしの古い版が同期を壊した実績があるので、版ずれを検出したら同期を止める。
    iOSのPWAは開き直しても古いページを掴んだままのことがあるので、自力で作り直す。 */
-async function hardReload(){
-  const tries = +(sessionStorage.getItem("mainichi.reloads") || 0);
-  if(tries >= 2) return false;                    // 無限ループ防止
-  sessionStorage.setItem("mainichi.reloads", tries + 1);
+async function hardReload(targetBuild = ""){
+  // iOSのホーム画面PWAでは sessionStorage が次回起動まで残ることがある。
+  // 回数だけで止めると、次の公開版も古い画面のままになるため、更新先ごとに回数を管理する。
+  const key = "mainichi.reload-state";
+  let state = {};
+  try{ state = JSON.parse(sessionStorage.getItem(key) || "{}"); }catch(e){}
+  const updateId = `${BUILD}->${targetBuild}`;
+  const tries = state.id === updateId ? (+state.tries || 0) : 0;
+  if(tries >= 2) return false;                    // 同じ更新先だけ無限ループを防ぐ
+  sessionStorage.setItem(key, JSON.stringify({id:updateId, tries:tries + 1}));
+  sessionStorage.removeItem("mainichi.reloads");
   try{
     if(window.caches){
       const keys = await caches.keys();
@@ -3945,9 +3952,10 @@ async function checkBuild(auto){
       staleBuild = true;
       clearInterval(pullTimer);
       syncPaint("err", "新しい版があります。作り直しています…");
-      if(auto !== false) await hardReload();
+      if(auto !== false) await hardReload(latest);
     }else{
       sessionStorage.removeItem("mainichi.reloads");
+      sessionStorage.removeItem("mainichi.reload-state");
     }
   }catch(e){ /* オフラインなら何もしない */ }
 }
