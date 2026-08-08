@@ -14,6 +14,23 @@
   let calendarDate = ymd(now());
   let flowDate = ymd(now());
   const metricOn = {sleep:true, steps:true, body:true, mind:true};
+  // ホームの3枠に登録できる遷移先。ホーム自身以外の全画面を対象にする。
+  const HOME_SHORTCUT_CATALOG = Object.freeze({
+    record:["edit","記録する"],
+    today:["sun","今日を整える"],
+    visualize:["chart","見える化する"],
+    moneyRecord:["money","支出・収入を記録"],
+    moneyOutlook:["wallet","お金の見通し"],
+    moneyAnalysis:["chart","お金の分析"],
+    healthRecord:["heart","こころとからだ"],
+    healthAnalysis:["body","体調の分析"],
+    flow:["calendar","一日の流れ"],
+    checklist:["list","今日のやること"],
+    theme:["sun","テーマ設定"],
+    ideas:["edit","アイデアと目標"],
+    calendar:["calendar","こよみ"],
+    settings:["settings","設定"]
+  });
 
   const icon = (name, cls = "") => {
     const approved = {
@@ -216,7 +233,7 @@
     return `<button class="an-choice ${tone}" data-v2-go="${to}"><span class="an-choice-icon">${icon(i)}</span><span class="an-choice-copy"><strong>${esc2(label)}</strong>${sub ? `<small>${esc2(sub)}</small>` : ""}</span><b>›</b></button>`;
   }
   function homeV2(){
-    const catalog={moneyAnalysis:["money","お金の分析"],healthAnalysis:["body","体調の分析"],calendar:["calendar","こよみ"],flow:["calendar","一日の流れ"],ideas:["edit","アイデアと目標"]};
+    const catalog=HOME_SHORTCUT_CATALOG;
     const fallback=["moneyAnalysis","healthAnalysis","calendar"];
     const shortcuts=Array.isArray(S.homeShortcuts)&&S.homeShortcuts.length===3&&S.homeShortcuts.every(x=>catalog[x])?S.homeShortcuts:fallback;
     const d=now(),time=toHHMM(d.getHours()*60+d.getMinutes());
@@ -438,9 +455,9 @@
     const box=document.getElementById("v2ShortcutArea");
     if(!box) return;
     if(box.dataset.open==="1"){box.innerHTML="";delete box.dataset.open;return;}
-    const catalog=[["moneyAnalysis","お金の分析"],["healthAnalysis","体調の分析"],["calendar","こよみ"],["flow","一日の流れ"],["ideas","アイデアと目標"]];
+    const catalog=Object.entries(HOME_SHORTCUT_CATALOG);
     const current=Array.isArray(S.homeShortcuts)&&S.homeShortcuts.length===3?S.homeShortcuts:["moneyAnalysis","healthAnalysis","calendar"];
-    const select=n=>`<label>${n+1}<select data-v2-shortcut-select>${catalog.map(([id,label])=>`<option value="${id}" ${current[n]===id?"selected":""}>${label}</option>`).join("")}</select></label>`;
+    const select=n=>`<label>${n+1}<select data-v2-shortcut-select>${catalog.map(([id,[,label]])=>`<option value="${id}" ${current[n]===id?"selected":""}>${label}</option>`).join("")}</select></label>`;
     box.dataset.open="1";
     box.innerHTML=`<div class="an-shortcut-editor">${[0,1,2].map(select).join("")}<button type="button" data-v2-shortcuts-save>保存</button></div>`;
   },true);

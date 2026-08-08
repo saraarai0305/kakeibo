@@ -126,7 +126,10 @@ body[data-app-shell="v2"] .wrap,#lifeNoteV2,.v2-page,.an-page,.v2-money-record.m
    grid center; no page is allowed to "fix" copy with one-off positional nudges. */
 html,body,body[data-app-shell="v2"],#lifeNoteV2{min-height:100%!important;background-color:var(--paper-base)!important;background-image:radial-gradient(var(--paper-dot) .7px,transparent .8px)!important;background-size:7px 7px!important;background-attachment:fixed!important}
 body[data-app-shell="v2"]{min-height:100dvh!important}
-.an-nav-button,.an-home-return,.an-flow-planner .an-save,.an-home-shortcut,.an-calendar-filter button{display:grid!important;place-items:center!important;align-content:center!important}
+.an-nav-button,.an-home-return,.mr-home-return,.an-flow-planner .an-save,.an-home-shortcut,.an-calendar-filter button{display:grid!important;place-items:center!important;align-content:center!important}
+.an-home-return .v2-icon,.mr-home-return .v2-icon{display:block!important}
+.an-home-return span{position:relative!important;top:-1px!important}
+.mr-home-return span{position:relative!important;top:-1px!important}
 .an-flow-timeline-shell{--an-time-rail:45px!important;padding-left:var(--an-time-rail)!important;box-sizing:border-box!important}
 .an-flow-timeline-shell>.an-flow-lane-guide,.an-flow-timeline-shell>.v2-timeline{width:100%!important;box-sizing:border-box!important}
 .an-flow-lane-guide{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
