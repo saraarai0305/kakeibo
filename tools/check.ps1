@@ -41,8 +41,7 @@ window.addEventListener("load", () => setTimeout(() => {
     tap('[data-v2-go="moneyAnalysis"]', "visualize → money analysis");
     if (!document.querySelector('.v2-chart-block')) throw new Error("UI smoke: money analysis");
     tap('[data-v2-back]', "money analysis → visualize");
-    tap('[data-v2-back]', "visualize → home");
-    tap('[data-v2-go="settings"]', "home → settings");
+    tap('[data-v2-go="settings"]', "visualize → settings");
     if (!document.querySelector('.v2-settings')) throw new Error("UI smoke: settings");
     document.documentElement.dataset.uiSmoke = "ok";
   } catch (error) {
