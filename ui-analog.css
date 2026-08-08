@@ -136,3 +136,10 @@ body[data-app-shell="v2"] .wrap{max-width:560px;padding:0!important;background:#
 .v2-home .v2-home-seal{margin-top:13px}
 .v2-page:not(.v2-home){padding-bottom:132px}.v2-page:not(.v2-home):after{display:none}
 .v2-home-return{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:flex-start;gap:9px;width:100%;height:62px;padding:0 22px;border:0;border-top:1px solid #c6b9a2;background:rgba(247,240,227,.96);color:#315674;font-size:13px;font-weight:850;letter-spacing:.03em;cursor:pointer}.v2-home-return .v2-icon{width:20px;height:20px}.v2-home-return:active{background:#eee4d3}
+
+/* Fixed paper-system rules: portrait first, exact header centre, and one type scale. */
+body[data-app-shell="v2"]{font-family:"Hiragino Sans","Yu Gothic",system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.v2-top{grid-template-columns:48px minmax(0,1fr) 48px}.v2-top h1{justify-self:center;text-align:center}.v2-top-spacer{display:block;width:44px;height:44px;justify-self:center}.v2-back,.v2-top-action{justify-self:center;width:44px;height:44px}.v2-back .v2-icon,.v2-top-action .v2-icon{width:23px;height:23px}
+.v2-icon-bed .v2-icon{width:30px;height:30px}.v2-home .v2-icon-bed .v2-icon{width:31px;height:31px}.v2-kicker .v2-icon,.v2-sub-action .v2-icon{width:24px;height:24px}
+.v2-settings summary>i{position:relative;display:grid;place-items:center;width:31px;height:27px;border:0;border-radius:0;background:transparent;color:#315674}.v2-settings summary>i:before{display:none}.v2-settings summary>i .v2-icon{display:block!important;width:29px;height:29px;stroke-width:1.85}
+body[data-v2-scroll="locked"],body[data-v2-scroll="locked"] .wrap,body[data-v2-scroll="locked"] #lifeNoteV2{height:100dvh;overflow:hidden;overscroll-behavior:none}body[data-v2-scroll="locked"] .v2-page{height:100dvh;min-height:100dvh;overflow:hidden}
