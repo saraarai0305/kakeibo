@@ -235,8 +235,15 @@ body[data-app-shell="v2"]{background:#f6efe1!important;overscroll-behavior-y:non
 body[data-app-shell="v2"]:before{background:#f6efe1!important;background-image:radial-gradient(rgba(96,76,49,.17) .7px,transparent .8px)!important;background-size:7px 7px!important;opacity:1!important}
 body[data-app-shell="v2"] .wrap,#lifeNoteV2{min-height:100dvh!important;height:auto!important;background-color:#f6efe1!important;background-image:radial-gradient(rgba(96,76,49,.17) .7px,transparent .8px)!important;background-size:7px 7px!important}
 .v2-money-record .v2-issue{min-height:28px!important;margin-bottom:20px!important;font-size:11px!important;font-weight:650!important;letter-spacing:.055em!important}
-.v2-money-record .v2-money-value{font-size:28px!important;font-weight:680!important}
-.v2-money-record .v2-balance-row:last-child .v2-money-value{font-size:21px!important;font-weight:700!important}
+.v2-money-record .v2-balance{margin:0 0 17px!important;padding:17px 18px!important;border:1.5px solid #c8b99f!important;border-radius:19px!important;background:rgba(255,252,244,.84)!important;box-shadow:3px 4px 0 rgba(103,82,49,.10)!important}
+.v2-money-record .v2-balance-row.primary{gap:12px!important;padding:0 0 14px!important}
+.v2-money-record .v2-balance-row:last-child{gap:12px!important;padding:14px 0 0!important}
+.v2-money-record .v2-balance-row span,.v2-money-record .v2-balance-row.primary span{font-size:12px!important;font-weight:800!important}
+.v2-money-record .v2-privacy{font-size:12px!important;font-weight:800!important}
+.v2-money-record .v2-money-value{margin:7px 0 0!important;color:#4f986f!important;font-size:32px!important;font-weight:760!important}
+.v2-money-record .v2-money-value.v2-negative{color:#d76a5f!important}
+.v2-money-record .v2-money-yen,.v2-money-record .v2-money-digits{font:inherit!important;color:inherit!important}
+.v2-money-record .v2-balance-row:last-child .v2-money-value{margin:0!important;color:#d76a5f!important;font-size:22px!important;font-weight:800!important}
 .v2-money-record .v2-money-sign{top:-1px!important}
 .v2-money-record .v2-activity{margin-top:24px!important}
 .v2-money-record .v2-activity-row{align-items:center!important;min-height:42px!important;padding:0 0 6px!important}

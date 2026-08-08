@@ -78,7 +78,7 @@
     const negative = amount < 0;
     // 表示は円単位で丸める。元の金額は状態データのまま保持する。
     const displayed = Math.round(Math.abs(amount)).toLocaleString("ja-JP");
-    return `<b class="v2-money-value ${negative ? "v2-negative" : ""}"><span class="v2-money-sign">${negative ? "−" : ""}</span><span class="v2-money-yen">￥</span><span class="v2-money-digits">${displayed}</span></b>`;
+    return `<b class="v2-money-value ${negative ? "v2-negative" : ""}"><span class="v2-money-sign">${negative ? "-" : ""}</span><span class="v2-money-yen">¥</span><span class="v2-money-digits">${displayed}</span></b>`;
   };
   const privateRecordMoney = value => S.ui.moneyVisible ? recordMoney(value) : `<b class="v2-muted v2-money-value">---</b>`;
   const privateMoney = (value, cls = "") => S.ui.moneyVisible ? `<b class="${(+value < 0 ? "v2-negative " : "") + cls}">${money(value)}</b>` : `<b class="v2-muted">---</b>`;
