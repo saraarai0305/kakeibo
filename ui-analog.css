@@ -161,3 +161,15 @@ body[data-app-shell="v2"] .wrap,#lifeNoteV2{min-height:100dvh;background-color:#
 .v2-money-record>.v2-kicker,.v2-outlook-page>.v2-kicker,.v2-money-analysis>.v2-kicker,.v2-health-analysis>.v2-kicker,.v2-calendar-page>.v2-kicker,.v2-settings-page>.v2-kicker,.v2-page>.v2-heading{display:none}
 .v2-outlook-page>.v2-page-lead,.v2-money-analysis>.v2-page-lead,.v2-health-record>.v2-page-lead,.v2-health-analysis>.v2-page-lead,.v2-calendar-page>.v2-page-lead,.v2-settings-page>.v2-page-lead{display:none}
 .v2-health-paper-item{position:relative}.v2-health-paper-item .v2-sleep-edit{margin:10px 0 0;border-top:1px solid #c6b9a2;border-bottom:0}.v2-health-paper-item .v2-sleep-edit summary{min-height:34px;justify-content:flex-start;gap:5px;font-size:11px;line-height:1.2}.v2-health-paper-item .v2-sleep-edit summary .v2-icon{width:16px;height:16px}.v2-health-paper-item .v2-sleep-edit .v2-form-row{margin:7px 0}.v2-health-paper-item .v2-sleep-edit input{width:100%;min-height:38px;font-size:13px}
+
+/* 2026-08-08: masthead rhythm. The page must begin at the paper's top edge. */
+body[data-app-shell="v2"]{padding-top:env(safe-area-inset-top)!important}
+body[data-app-shell="v2"] .wrap{display:block!important;min-height:100dvh!important;margin:0 auto!important;padding-top:0!important;vertical-align:top!important}
+#lifeNoteV2{display:block!important;min-height:100dvh!important;margin:0!important;padding:0!important}
+.v2-page{display:block!important;margin:0!important;padding-top:16px!important;align-content:start!important;justify-content:flex-start!important}
+.v2-top{margin-top:0!important}
+.v2-masthead{margin:0 0 18px!important}
+.v2-masthead>p{gap:10px!important;margin:0 0 6px!important;font-size:15px!important;line-height:1.05!important}
+.v2-masthead-icon{width:44px!important;height:36px!important}
+.v2-masthead-icon .v2-icon{width:34px!important;height:34px!important}
+.v2-masthead h2{font-size:clamp(28px,7.5vw,35px)!important;line-height:1.12!important;letter-spacing:.006em!important}
