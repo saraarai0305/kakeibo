@@ -195,9 +195,9 @@ body[data-app-shell="v2"]{min-height:100dvh!important}
 
 /* 2026-08-09: shared control-centering contract (visual, not font-baseline, center). */
 #ptr{z-index:9999!important;filter:drop-shadow(0 2px 2px rgba(57,43,27,.2))!important}
-.an-home-return,.mr-home-return{grid-template-rows:21px 13px!important;row-gap:3px!important;place-content:center!important}
+.an-home-return,.mr-home-return{grid-template-rows:21px 12px!important;row-gap:3px!important;place-content:center!important}
 .an-home-return .v2-icon,.mr-home-return .v2-icon{width:21px!important;height:21px!important;margin:0!important}
-.an-home-return span,.mr-home-return span{top:-1px!important;margin:0!important;line-height:1!important}
+.an-home-return span,.mr-home-return span{top:1px!important;margin:0!important;line-height:1!important;font-size:12px!important}
 .an-planner-head button{padding:0!important;font-size:0!important;line-height:0!important}
 .an-planner-head button:before{display:none!important;content:none!important}
 .an-planner-head button .v2-icon{display:block!important;width:16px!important;height:16px!important;margin:0!important;stroke-width:2.25!important}
