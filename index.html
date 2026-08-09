@@ -784,7 +784,7 @@ body[data-tab="cal"]:not([data-cal-page="check"]) #checklistPage{display:none!im
 </style>
 <!-- 旧画面のインラインCSSより後に読み込み、紙面UIを最終スタイルとして適用する。 -->
 <link rel="stylesheet" href="ui-analog.css?v=0.27.2">
-<link rel="stylesheet" href="ui-paper-baseline.css?v=0.28.1">
+<link rel="stylesheet" href="ui-paper-baseline.css?v=0.28.2">
 </head>
 <body data-tab="home">
 <div class="rotate">
@@ -1418,7 +1418,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.28.1";         // version.txt と一致させること
+const BUILD = "0.28.2";         // version.txt と一致させること
 const KEY = "mainichi.v1";
 // 一日の流れを主役にし、週／月のカレンダーは必要なときだけその下に開く。
 (() => {
@@ -3857,6 +3857,9 @@ async function pullHealthInbox(silent){
           method:"PATCH",
           body:JSON.stringify({files:{[HEALTH_INBOX_FILE]:{content:"-"}}})
         });
+        // An open health form may still hold an older draft.  Do not let that
+        // transient draft mask values that have just arrived from Health.
+        healthDraft = null;
         save(); render();
         c.lastImport = new Date().toISOString();
         if(!silent) toast(`歩数・睡眠を ${imported} 件取り込みました`);
@@ -4331,6 +4334,6 @@ if("serviceWorker" in navigator &&
   navigator.serviceWorker.register("sw.js?v=" + BUILD, {updateViaCache:"none"}).catch(()=>{});
 }
 </script>
-<script defer src="ui-v2.js?v=0.28.1"></script>
+<script defer src="ui-v2.js?v=0.28.2"></script>
 </body>
 </html>

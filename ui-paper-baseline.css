@@ -222,6 +222,14 @@ body[data-app-shell="v2"]{min-height:100dvh!important}
 .an-sync-settings .an-sync-actions{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important;margin-top:10px!important}
 .an-sync-settings .an-sync-code{display:block!important;margin:5px 0 12px!important;padding:9px 10px!important;border:1px dashed #b6a88d!important;border-radius:9px!important;background:#fffaf0!important;color:#315674!important;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace!important;word-break:break-all!important;white-space:pre-wrap!important}
 @media(max-width:390px){.an-sync-settings .an-sync-actions{grid-template-columns:1fr!important}}
+/* Settings folder rows: icon and title share one visual row; the description is a
+   secondary line kept close to the title.  This is a common component contract. */
+.an-sync-settings details>summary{grid-template-columns:28px minmax(0,1fr) auto!important;column-gap:10px!important;align-items:center!important}
+.an-sync-settings details>summary>i{display:grid!important;place-items:center!important;width:28px!important;height:28px!important;align-self:center!important}
+.an-sync-settings details>summary>i .v2-icon{width:23px!important;height:23px!important}
+.an-sync-settings details>summary>span{min-height:34px!important;align-content:center!important;gap:1px!important}
+.an-sync-settings details>summary strong{line-height:1.15!important}
+.an-sync-settings details>summary small{position:relative!important;top:-1px!important;line-height:1.15!important}
 .an-board-upload input{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important}
 .an-board-composer>small{color:#85755e!important;font-size:11px!important;line-height:1.4!important}
 .an-free-board{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;align-items:start!important}
