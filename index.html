@@ -1418,7 +1418,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.27.3";         // version.txt と一致させること
+const BUILD = "0.28.0";         // version.txt と一致させること
 const KEY = "mainichi.v1";
 // 一日の流れを主役にし、週／月のカレンダーは必要なときだけその下に開く。
 (() => {
@@ -3299,12 +3299,11 @@ function healthView(){
   if(todayLabel){ const d = new Date(t + "T00:00:00"); todayLabel.textContent = `${d.getMonth()+1}/${d.getDate()}（${"日月火水木金土"[d.getDay()]}）`; }
   const auto = document.getElementById("healthAutoState");
   if(auto){
-    const c = syncCfg();
-    if(!(c.token && c.gistId)) auto.textContent = "設定 → 同期・歩数連携を設定すると自動になります";
-    else if(c.lastSyncError) auto.textContent = `同期エラー：${c.lastSyncError}`;
-    else if(c.role === "ro") auto.textContent = "見るだけでは歩数を取り込みません。「記録する」に変更してください";
-    else if(c.healthLastImport) auto.textContent = `同期オン・最終取り込み ${new Date(c.healthLastImport).toLocaleTimeString("ja-JP", {hour:"2-digit", minute:"2-digit"})}`;
-    else auto.textContent = "同期オン・45秒ごとに確認中";
+    const c = healthSyncCfg();
+    if(!(c.token && c.gistId)) auto.textContent = "設定 → ヘルスケア自動取り込みを設定すると自動になります";
+    else if(c.lastError) auto.textContent = `受信エラー：${c.lastError}`;
+    else if(c.lastImport) auto.textContent = `自動取り込みオン・最終受信 ${new Date(c.lastImport).toLocaleTimeString("ja-JP", {hour:"2-digit", minute:"2-digit"})}`;
+    else auto.textContent = "自動取り込みオン・45秒ごとに確認中";
   }
 
   document.querySelectorAll("[data-rate]").forEach(b =>
@@ -3481,11 +3480,11 @@ for(const [id, key] of [["hSteps","steps"],["hBed","bed"],["hWake","wake"],["hFa
 }
 
 document.getElementById("hPaste").addEventListener("click", async ()=>{
-  const c = syncCfg();
-  if(!c.token || !c.gistId) return toast("先に設定で同期を設定してください");
+  const c = healthSyncCfg();
+  if(!c.token || !c.gistId) return toast("先に設定でヘルスケア自動取り込みを設定してください");
   await checkBuild(false);
   if(!staleBuild){
-    const result = await pullRemote(false);
+    const result = await pullHealthInbox(false);
     if(result && !result.imported) toast("新しい歩数はありません。iPhoneのショートカット実行後にもう一度確認してください");
   }
 });
@@ -3746,8 +3745,15 @@ document.getElementById("moPaste").addEventListener("click", async ()=>{
    トークンは S とは別のキーに置く。だから書き出しにも同期データにも含まれない。 */
 const SYNC_KEY = "mainichi.sync";
 const GIST_FILE = "mainichi-data.json";
-const INBOX_FILE = "inbox.txt";   // ショートカットがここへ書き、アプリが取り込んで空にする
-let syncTimer = null, pullTimer = null, syncing = false;
+/*
+  端末データ同期とヘルスケア受信は必ず分離する。
+  - mainichi.sync: PC / iPhone 間のアプリ全データ
+  - mainichi.health-sync: iPhone ショートカットの歩数・睡眠受信箱
+  同じ Gist を両方に使うと、ショートカットが端末データの同期先を壊し得るため禁止。
+*/
+const HEALTH_SYNC_KEY = "mainichi.health-sync";
+const HEALTH_INBOX_FILE = "inbox.txt";
+let syncTimer = null, pullTimer = null, healthPullTimer = null, syncing = false, healthSyncing = false;
 
 // 中身の量。時刻だけで勝敗を決めると、開きっぱなしの空の端末が勝ててしまう
 function richness(o){
@@ -3767,6 +3773,10 @@ function syncCfg(){
   try{ return JSON.parse(localStorage.getItem(SYNC_KEY)) || {}; }catch(e){ return {}; }
 }
 function setSyncCfg(c){ localStorage.setItem(SYNC_KEY, JSON.stringify(c)); }
+function healthSyncCfg(){
+  try{ return JSON.parse(localStorage.getItem(HEALTH_SYNC_KEY)) || {}; }catch(e){ return {}; }
+}
+function setHealthSyncCfg(c){ localStorage.setItem(HEALTH_SYNC_KEY, JSON.stringify(c)); }
 
 /* 読み取り専用: この端末では記録させない。相手を上書きもしない */
 const isReadOnly = () => syncCfg().role === "ro";
@@ -3817,6 +3827,62 @@ async function gistFetch(path, opts){
   }, opts || {}));
   if(!r.ok) throw new Error(`GitHub ${r.status}`);
   return r.json();
+}
+
+async function healthGistFetch(path, opts){
+  const c = healthSyncCfg();
+  const baseHeaders = {
+    "Authorization": "Bearer " + c.token,
+    "Accept": "application/vnd.github+json"
+  };
+  const options = Object.assign({}, opts || {});
+  options.headers = Object.assign({}, baseHeaders, options.headers || {});
+  const r = await fetch("https://api.github.com" + path, options);
+  if(!r.ok) throw new Error(`GitHub ${r.status}`);
+  return r.json();
+}
+
+async function pullHealthInbox(silent){
+  const c = healthSyncCfg();
+  if(!c.token || !c.gistId || healthSyncing || staleBuild) return {skipped:true};
+  healthSyncing = true;
+  let imported = 0;
+  try{
+    const g = await healthGistFetch(`/gists/${c.gistId}`);
+    const box = g.files && g.files[HEALTH_INBOX_FILE];
+    if(box && box.content && box.content.trim() !== "-"){
+      for(const line of box.content.split(/\r?\n/)) if(applyHealthLine(line)) imported++;
+      if(imported){
+        await healthGistFetch(`/gists/${c.gistId}`, {
+          method:"PATCH",
+          body:JSON.stringify({files:{[HEALTH_INBOX_FILE]:{content:"-"}}})
+        });
+        save(); render();
+        c.lastImport = new Date().toISOString();
+        if(!silent) toast(`歩数・睡眠を ${imported} 件取り込みました`);
+      }
+    }
+    c.lastCheck = new Date().toISOString();
+    delete c.lastError;
+    setHealthSyncCfg(c);
+    healthView();
+    return {imported};
+  }catch(e){
+    c.lastCheck = new Date().toISOString();
+    c.lastError = e.message || "受信先を確認できませんでした";
+    setHealthSyncCfg(c);
+    healthView();
+    if(!silent) toast(`歩数・睡眠を取り込めませんでした: ${c.lastError}`);
+    return {imported,error:e};
+  }finally{ healthSyncing=false; }
+}
+
+function startHealthSyncLoop(){
+  clearInterval(healthPullTimer);
+  const c=healthSyncCfg();
+  if(!c.token || !c.gistId || staleBuild) return;
+  pullHealthInbox(true);
+  healthPullTimer=setInterval(()=>{ if(!document.hidden) pullHealthInbox(true); },45000);
 }
 
 // 保存データ本体（トークンは S に入っていないので自然に除外される）
@@ -3879,10 +3945,10 @@ async function pullRemote(silent, force){
       }
     }
     // 受信箱: ショートカットが置いていった行を取り込んで、空にする
-    const box = g.files && g.files[INBOX_FILE];
+    const box = null; // 旧受信箱は参照しない。ヘルスケアは専用Gistだけから読む。
     // 古い同期先には受信箱がないことがある。先に空の受信箱を作り、
     // iPhoneのショートカットが確実に同じ場所へ書けるようにする。
-    if(!box && c.role !== "ro"){
+    if(false && !box && c.role !== "ro"){
       try{
         await gistFetch(`/gists/${c.gistId}`, {
           method: "PATCH",
@@ -3890,7 +3956,7 @@ async function pullRemote(silent, force){
         });
       }catch(e){ /* 読み取り専用権限なら受信だけ続ける */ }
     }
-    if(box && box.content && c.role !== "ro"){
+    if(false && box && box.content && c.role !== "ro"){
       let n = 0;
       for(const line of box.content.split(/\r?\n/)) if(applyHealthLine(line)) n++;
       if(n){
@@ -3973,7 +4039,10 @@ async function manualRefresh(){
   el.classList.add("spin");
   try{
     await checkBuild();
-    if(!staleBuild){ await pullRemote(false); toast("最新の状態にしました"); }
+    if(!staleBuild){
+      await Promise.all([pullRemote(false), pullHealthInbox(false)]);
+      toast("最新の状態にしました");
+    }
   }finally{
     el.classList.remove("spin");
     setTimeout(()=>{ el.style.opacity = 0; el.style.transform = ""; },220);
@@ -4044,8 +4113,7 @@ document.getElementById("syncStart").addEventListener("click", async ()=>{
         body: JSON.stringify({
           description: "mainichi sync (private)", public: false,
           files: {
-            [GIST_FILE]: { content: payload() },
-            [INBOX_FILE]: { content: "-" }
+            [GIST_FILE]: { content: payload() }
           }
         })
       });
@@ -4247,7 +4315,7 @@ document.getElementById("impFile").addEventListener("change", async e => {
 
 // re-render when the day may have changed / 戻ってきたら相手側の変更も取りに行く
 document.addEventListener("visibilitychange", ()=>{
-  if(!document.hidden){ render(); checkBuild(); pullRemote(true); }
+  if(!document.hidden){ render(); checkBuild(); pullRemote(true); pullHealthInbox(true); }
 });
 setInterval(checkBuild, 10 * 60 * 1000);
 
@@ -4256,13 +4324,13 @@ importFromHash();
 render();
 syncPaint(syncCfg().token ? "ok" : "", syncCfg().token
   ? "自動でそろえています" : "PCとiPhoneを自動でそろえます。");
-checkBuild().then(startSyncLoop);   // 版を確かめてから同期を始める
+checkBuild().then(()=>{ startSyncLoop(); startHealthSyncLoop(); });   // 版を確かめてから同期を始める
 
 if("serviceWorker" in navigator &&
    (location.protocol === "https:" || location.hostname === "localhost")){
   navigator.serviceWorker.register("sw.js?v=" + BUILD, {updateViaCache:"none"}).catch(()=>{});
 }
 </script>
-<script defer src="ui-v2.js?v=0.27.2"></script>
+<script defer src="ui-v2.js?v=0.28.0"></script>
 </body>
 </html>

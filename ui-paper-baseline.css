@@ -217,6 +217,11 @@ body[data-app-shell="v2"]{min-height:100dvh!important}
 .an-board-composer>div{display:grid!important;grid-template-columns:1fr 1fr!important;gap:9px!important}
 .an-board-upload{min-height:44px!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;border:1px dashed #8b9cab!important;border-radius:10px!important;background:#eef4f5!important;color:#315674!important;font-size:13px!important;font-weight:800!important;cursor:pointer!important}
 .an-board-upload .v2-icon{width:18px!important;height:18px!important}
+
+/* 端末同期とヘルスケア受信は別の設定として表示する */
+.an-sync-settings .an-sync-actions{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important;margin-top:10px!important}
+.an-sync-settings .an-sync-code{display:block!important;margin:5px 0 12px!important;padding:9px 10px!important;border:1px dashed #b6a88d!important;border-radius:9px!important;background:#fffaf0!important;color:#315674!important;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace!important;word-break:break-all!important;white-space:pre-wrap!important}
+@media(max-width:390px){.an-sync-settings .an-sync-actions{grid-template-columns:1fr!important}}
 .an-board-upload input{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important}
 .an-board-composer>small{color:#85755e!important;font-size:11px!important;line-height:1.4!important}
 .an-free-board{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;align-items:start!important}

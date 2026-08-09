@@ -563,5 +563,84 @@
     S.homeShortcuts=Array.from(document.querySelectorAll("[data-v2-shortcut-select]")).map(x=>x.value);
     save(); newAppRender(); toast("ショートカットを更新しました");
   },true);
+  /*
+    Sync settings are intentionally split.
+    Device sync moves the complete application data between PC and iPhone.
+    Health sync only receives inbox.txt from an iPhone Shortcut. Never share
+    their Gist IDs: this prevents a shortcut write from touching app records.
+  */
+  function deviceSyncStatus(c){
+    if(!(c.token&&c.gistId)) return "未設定";
+    if(c.lastSyncError) return "接続エラー（確認が必要）";
+    if(c.lastSync) return "接続確認済み";
+    return "設定済み（通信未確認）";
+  }
+  function healthSyncStatus(c){
+    if(!(c.token&&c.gistId)) return "未設定";
+    if(c.lastError) return "接続エラー（確認が必要）";
+    if(c.lastCheck) return c.lastImport ? "接続確認済み・受信あり" : "接続確認済み";
+    return "受信先を作成済み（通信未確認）";
+  }
+  function healthSyncGuide(c){
+    if(!c.gistId) return `<p>「受信先を新規作成」を押すと、歩数・睡眠専用の非公開Gistを作ります。</p>`;
+    const url=`https://api.github.com/gists/${esc2(c.gistId)}`;
+    return `<p>ショートカットのURLを下記に変更してください。端末データ同期のGist IDは使いません。</p><label>ショートカットの送信先 URL</label><code class="an-sync-code">${url}</code><label>本文（JSON）</label><code class="an-sync-code">{"files":{"inbox.txt":{"content":"kenko|YYYY-MM-DD|歩数|就寝時刻|起床時刻"}}}</code>`;
+  }
+  function settingsV2(){
+    const device=syncCfg(), health=healthSyncCfg();
+    const sections=[
+      ["refresh","端末データ同期",deviceSyncStatus(device),`<p>PC・iPhone間で、予定・お金・記録などアプリ全体のデータを同期します。歩数・睡眠のショートカットは使いません。</p><label>GitHubトークン</label><input id="v2DeviceSyncToken" type="password" autocomplete="off" placeholder="この端末で入力"><label>端末データ用Gist ID</label><input id="v2DeviceSyncGist" value="${esc2(device.gistId||"")}" placeholder="空欄なら新規作成"><div class="an-sync-actions"><button class="an-small-action" data-v2-device-sync-start>端末同期を設定</button><button class="an-small-action" data-v2-device-sync-pull>今すぐ端末同期</button></div>`],
+      ["health","ヘルスケア自動取り込み",healthSyncStatus(health),`<p>iPhoneショートカットから歩数・睡眠だけを受信します。端末データ同期とは別の専用Gistです。</p><label>GitHubトークン</label><input id="v2HealthSyncToken" type="password" autocomplete="off" placeholder="この端末で入力"><label>ヘルスケア受信用Gist ID</label><input id="v2HealthSyncGist" value="${esc2(health.gistId||"")}" placeholder="空欄なら新規作成"><div class="an-sync-actions"><button class="an-small-action" data-v2-health-sync-create>受信先を新規作成</button><button class="an-small-action" data-v2-health-sync-check>受信を確認</button></div>${healthSyncGuide(health)}`],
+      ["list","毎日の習慣","今日の流れに表示する項目",`<div class="an-habits">${habitList().map(h=>`<span class="an-habit">${habitIcon(h)}<span>${esc2(h.label)}</span></span>`).join("")}</div><label>習慣の名前</label><input id="v2HabitLabel" placeholder="例：ストレッチ"><button class="an-small-action" data-v2-habit-add>習慣を追加</button>`],
+      ["wallet","お金の初期設定","カード上限・方法・カテゴリー",`<label>カードの上限</label><input id="v2CardCap" type="text" inputmode="numeric" value="${(+S.cardCap||0).toLocaleString("ja-JP")}"><button class="an-small-action" data-v2-card-cap>上限を保存</button>`],
+      ["calendar","カレンダー連携","予定の読み込みと表示",`<p>予定は「一日の流れ」とカレンダーから確認できます。</p>`],
+      ["download","バックアップ","この端末の記録を書き出す",`<button class="an-small-action" data-v2-export>データを書き出す</button>`]
+    ];
+    return analogPage("an-settings","settings","SETTINGS","暮らしの設定",`<div class="an-settings v2-settings an-sync-settings">${sections.map(([i,t,s,b])=>`<details ${i==="refresh"||i==="health"?"open":""}><summary><i>${icon(i)}</i><span><strong>${t}</strong><small data-v2-sync-status="${i}">${s}</small></span><b>›</b></summary><div class="an-settings-body">${b}</div></details>`).join("")}</div>`,{settings:false});
+  }
+  const renderWithSeparatedSync=window.newAppRender;
+  window.newAppRender=function(){
+    renderWithSeparatedSync();
+    if(page==="settings"){
+      root.querySelector('[data-v2-sync-status="refresh"]')?.replaceChildren(deviceSyncStatus(syncCfg()));
+      root.querySelector('[data-v2-sync-status="health"]')?.replaceChildren(healthSyncStatus(healthSyncCfg()));
+    }
+  };
+  root.addEventListener("click",async event=>{
+    const button=event.target.closest("[data-v2-device-sync-start],[data-v2-device-sync-pull],[data-v2-health-sync-create],[data-v2-health-sync-check]");
+    if(!button) return;
+    event.stopImmediatePropagation();
+    if(button.hasAttribute("data-v2-device-sync-start")){
+      const token=document.getElementById("v2DeviceSyncToken")?.value.trim(), gistId=document.getElementById("v2DeviceSyncGist")?.value.trim();
+      if(!token) return toast("端末データ同期用のGitHubトークンを入力してください");
+      const oldToken=document.getElementById("syncToken"),oldGist=document.getElementById("syncGist");
+      if(oldToken&&oldGist){oldToken.value=token;oldGist.value=gistId;document.getElementById("syncStart")?.click();}
+      return;
+    }
+    if(button.hasAttribute("data-v2-device-sync-pull")){ await pullRemote(false); newAppRender(); return; }
+    const token=document.getElementById("v2HealthSyncToken")?.value.trim() || healthSyncCfg().token;
+    let gistId=document.getElementById("v2HealthSyncGist")?.value.trim() || healthSyncCfg().gistId;
+    if(!token) return toast("ヘルスケア受信用のGitHubトークンを入力してください");
+    try{
+      if(button.hasAttribute("data-v2-health-sync-create") && !gistId){
+        const r=await fetch("https://api.github.com/gists",{method:"POST",headers:{"Authorization":"Bearer "+token,"Accept":"application/vnd.github+json","Content-Type":"application/json"},body:JSON.stringify({description:"kurashi no shirushi health inbox (private)",public:false,files:{"inbox.txt":{content:"-"}}})});
+        if(!r.ok) throw new Error(`GitHub ${r.status}`);
+        gistId=(await r.json()).id;
+      }
+      if(!gistId) return toast("受信用Gist IDを入力するか、新規作成してください");
+      setHealthSyncCfg({token,gistId});
+      const c=healthSyncCfg();
+      const g=await healthGistFetch(`/gists/${gistId}`);
+      if(!g.files?.[HEALTH_INBOX_FILE]) await healthGistFetch(`/gists/${gistId}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({files:{[HEALTH_INBOX_FILE]:{content:"-"}}})});
+      c.lastCheck=new Date().toISOString(); delete c.lastError; setHealthSyncCfg(c);
+      startHealthSyncLoop();
+      if(button.hasAttribute("data-v2-health-sync-check")) await pullHealthInbox(false);
+      toast("ヘルスケア専用の受信先を確認しました");
+      newAppRender();
+    }catch(e){
+      const c=healthSyncCfg(); c.lastError=e.message||"受信先を確認できませんでした"; setHealthSyncCfg(c);
+      toast(`ヘルスケア受信を設定できませんでした: ${c.lastError}`); newAppRender();
+    }
+  },true);
   newAppRender();
 })();
