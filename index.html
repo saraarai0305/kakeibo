@@ -784,7 +784,7 @@ body[data-tab="cal"]:not([data-cal-page="check"]) #checklistPage{display:none!im
 </style>
 <!-- 旧画面のインラインCSSより後に読み込み、紙面UIを最終スタイルとして適用する。 -->
 <link rel="stylesheet" href="ui-analog.css?v=0.27.2">
-<link rel="stylesheet" href="ui-paper-baseline.css?v=0.28.3">
+<link rel="stylesheet" href="ui-paper-baseline.css?v=0.28.4">
 </head>
 <body data-tab="home">
 <div class="rotate">
@@ -1418,7 +1418,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.28.3";         // version.txt と一致させること
+const BUILD = "0.28.4";         // version.txt と一致させること
 const KEY = "mainichi.v1";
 // 一日の流れを主役にし、週／月のカレンダーは必要なときだけその下に開く。
 (() => {
@@ -3232,10 +3232,17 @@ document.getElementById("spPay").addEventListener("change", e => {
   save();
 });
 /* ---------- からだの記録 ---------- */
+function healthClock(value){
+  const m = String(value ?? "").trim().replace(/：/g, ":").match(/^(\d{1,2}):(\d{2})$/);
+  if(!m) return "";
+  const h = Number(m[1]), min = Number(m[2]);
+  if(h > 23 || min > 59) return "";
+  return `${String(h).padStart(2,"0")}:${String(min).padStart(2,"0")}`;
+}
 function sleepMin(bed, wake){
-  if(!bed || !wake) return null;
-  const [bh,bm] = bed.split(":").map(Number), [wh,wm] = wake.split(":").map(Number);
-  if([bh,bm,wh,wm].some(isNaN)) return null;
+  const normalizedBed = healthClock(bed), normalizedWake = healthClock(wake);
+  if(!normalizedBed || !normalizedWake) return null;
+  const [bh,bm] = normalizedBed.split(":").map(Number), [wh,wm] = normalizedWake.split(":").map(Number);
   const b = bh*60+bm, w = wh*60+wm;
   return b <= w ? w - b : 1440 - b + w;   // 就寝が起床より遅い時刻なら前日夜とみなす
 }
@@ -3289,11 +3296,17 @@ function applyHealthLine(line){
   let changed = false;
   if(steps !== undefined && steps !== ""){
     const n = Number(String(steps).replace(/[ ,歩]/g, ""));
-    if(Number.isFinite(n) && n >= 0){ h.steps = Math.round(n); changed = true; }
+    if(Number.isFinite(n) && n >= 0 && h.steps !== Math.round(n)){ h.steps = Math.round(n); changed = true; }
   }
-  if(bed){ h.bed = String(bed); changed = true; }
-  if(wake){ h.wake = String(wake); changed = true; }
-  return changed;
+  const normalizedBed = healthClock(bed), normalizedWake = healthClock(wake);
+  // 睡眠は片方だけでは保存しない。ショートカットの値が崩れていた場合に
+  // 既存の睡眠時刻を壊さず、次回の受信で修復できるようにする。
+  if(normalizedBed && normalizedWake && (h.bed !== normalizedBed || h.wake !== normalizedWake)){
+    h.bed = normalizedBed;
+    h.wake = normalizedWake;
+    changed = true;
+  }
+  return changed ? {day, steps:h.steps ?? null, bed:h.bed || "", wake:h.wake || "", sleep:sleepMin(h.bed,h.wake)} : null;
 }
 
 function healthView(){
@@ -3311,6 +3324,7 @@ function healthView(){
     const c = healthSyncCfg();
     if(!(c.token && c.gistId)) auto.textContent = "設定 → ヘルスケア自動取り込みを設定すると自動になります";
     else if(c.lastError) auto.textContent = `受信エラー：${c.lastError}`;
+    else if(c.lastReceipt) auto.textContent = `自動取り込みオン・${c.lastReceipt.day} ${c.lastReceipt.steps ?? "—"}歩 / ${fmtSleep(c.lastReceipt.sleep)}`;
     else if(c.lastImport) auto.textContent = `自動取り込みオン・最終受信 ${new Date(c.lastImport).toLocaleTimeString("ja-JP", {hour:"2-digit", minute:"2-digit"})}`;
     else auto.textContent = "自動取り込みオン・45秒ごとに確認中";
   }
@@ -3862,19 +3876,21 @@ async function pullHealthInbox(silent){
     const g = await healthGistFetch(`/gists/${c.gistId}`);
     const box = g.files && g.files[HEALTH_INBOX_FILE];
     if(box && box.content && box.content.trim() !== "-"){
-      for(const line of box.content.split(/\r?\n/)) if(applyHealthLine(line)) imported++;
+      let receipt = null;
+      for(const line of box.content.split(/\r?\n/)){
+        const applied = applyHealthLine(line);
+        if(applied){ imported++; receipt = applied; }
+      }
       if(imported){
-        await healthGistFetch(`/gists/${c.gistId}`, {
-          method:"PATCH",
-          body:JSON.stringify({files:{[HEALTH_INBOX_FILE]:{content:"-"}}})
-        });
+        // inbox.txt は「最新のヘルスケア記録」のスナップショットとして残す。
+        // 消してしまうと、睡眠の表示に失敗したときに再受信・確認できない。
         // An open health form may still hold an older draft.  Do not let that
         // transient draft mask values that have just arrived from Health.
         healthDraft = null;
-        // Gist の受信箱を空にした後は、端末内にも即時保存する。
-        // 遅延保存ではアプリ終了や同期に負ける可能性がある。
-        saveNow(); render();
-        c.lastImport = new Date().toISOString();
+        // 外部受信は端末内へ即時保存する。遅延保存ではアプリ終了や同期に負ける可能性がある。
+          c.lastImport = new Date().toISOString();
+          c.lastReceipt = Object.assign({at:c.lastImport}, receipt);
+          saveNow(); render();
         if(!silent) toast(`歩数・睡眠を ${imported} 件取り込みました`);
       }
     }
@@ -4357,6 +4373,6 @@ if("serviceWorker" in navigator &&
   navigator.serviceWorker.register("sw.js?v=" + BUILD, {updateViaCache:"none"}).catch(()=>{});
 }
 </script>
-<script defer src="ui-v2.js?v=0.28.3"></script>
+<script defer src="ui-v2.js?v=0.28.4"></script>
 </body>
 </html>

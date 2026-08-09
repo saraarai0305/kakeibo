@@ -578,13 +578,14 @@
   function healthSyncStatus(c){
     if(!(c.token&&c.gistId)) return "未設定";
     if(c.lastError) return "接続エラー（確認が必要）";
-    if(c.lastCheck) return c.lastImport ? "接続確認済み・受信あり" : "接続確認済み";
+    if(c.lastCheck) return c.lastReceipt?.sleep != null ? "受信済み・睡眠まで確認" : c.lastImport ? "受信済み・歩数を確認" : "接続確認済み";
     return "受信先を作成済み（通信未確認）";
   }
   function healthSyncGuide(c){
     if(!c.gistId) return `<p>「受信先を新規作成」を押すと、歩数・睡眠専用の非公開Gistを作ります。</p>`;
     const url=`https://api.github.com/gists/${esc2(c.gistId)}`;
-    return `<p>ショートカットのURLを下記に変更してください。端末データ同期のGist IDは使いません。</p><label>ショートカットの送信先 URL</label><code class="an-sync-code">${url}</code><label>本文（JSON）</label><code class="an-sync-code">{"files":{"inbox.txt":{"content":"kenko|YYYY-MM-DD|歩数|就寝時刻|起床時刻"}}}</code>`;
+    const last=c.lastReceipt ? `<p>最終受信：${esc2(c.lastReceipt.day)} ／ ${c.lastReceipt.steps ?? "—"}歩 ／ ${fmtSleep(c.lastReceipt.sleep)}</p>` : "";
+    return `<p>ショートカットのURLを下記に変更してください。端末データ同期のGist IDは使いません。受信箱には最新の記録を残すため、再確認もできます。</p>${last}<label>ショートカットの送信先 URL</label><code class="an-sync-code">${url}</code><label>本文（JSON）</label><code class="an-sync-code">{"files":{"inbox.txt":{"content":"kenko|YYYY-MM-DD|歩数|就寝時刻|起床時刻"}}}</code>`;
   }
   function settingsV2(){
     const device=syncCfg(), health=healthSyncCfg();
