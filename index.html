@@ -1418,7 +1418,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.27.2";         // version.txt と一致させること
+const BUILD = "0.27.3";         // version.txt と一致させること
 const KEY = "mainichi.v1";
 // 一日の流れを主役にし、週／月のカレンダーは必要なときだけその下に開く。
 (() => {
@@ -1515,6 +1515,8 @@ function normalize(o){
   if(typeof s.ui.pay !== "string" || !s.ui.pay) s.ui.pay = "cash";
   if(typeof s.ui.incomeMethod !== "string" || !s.ui.incomeMethod) s.ui.incomeMethod = "bank";
   if(typeof s.ui.moneyVisible !== "boolean") s.ui.moneyVisible = false;
+  // 記録画面とは別に、お金の見通しだけを隠せるようにする。
+  if(typeof s.ui.moneyOutlookVisible !== "boolean") s.ui.moneyOutlookVisible = true;
   for(const k of ["expenseCats","incomeCats","expenseMethods","incomeMethods"])
     if(!Array.isArray(s[k])) s[k] = [];
   for(const k of ["health","daily","doneFixed","doneIncome","benefitMonths","plan"])
@@ -3789,8 +3791,8 @@ function syncPaint(state, msg){
   const dot = document.getElementById("syncDot");
   dot.className = "syncdot" + (state ? " " + state : "");
   document.getElementById("syncMsg").textContent = msg;
-  const c = syncCfg(), on = !!c.token;
-  document.getElementById("syncState").textContent = on ? "オン" : "オフ";
+  const c = syncCfg(), on = !!(c.token && c.gistId);
+  document.getElementById("syncState").textContent = !on ? "未接続" : c.lastSyncError ? "接続エラー" : c.lastSync ? "接続確認済み" : "同期設定済み";
   document.getElementById("syncOff").hidden = !on;
 
   // Gist ID は常に見える場所に出す。設定パネルは畳むだけで hidden にしない
@@ -3966,10 +3968,16 @@ async function checkBuild(auto){
 /* ---------- 引っぱって更新 ---------- */
 async function manualRefresh(){
   const el = document.getElementById("ptr");
+  el.style.opacity = 1;
+  el.style.transform = "translateY(14px)";
   el.classList.add("spin");
-  await checkBuild();
-  if(!staleBuild){ await pullRemote(false); toast("最新の状態にしました"); }
-  el.classList.remove("spin");
+  try{
+    await checkBuild();
+    if(!staleBuild){ await pullRemote(false); toast("最新の状態にしました"); }
+  }finally{
+    el.classList.remove("spin");
+    setTimeout(()=>{ el.style.opacity = 0; el.style.transform = ""; },220);
+  }
 }
 
 (function setupPTR(){
@@ -3992,8 +4000,12 @@ async function manualRefresh(){
   addEventListener("touchend", async ()=>{
     if(!active) return;
     active = false;
+    if(ready){
+      el.classList.remove("ready");
+      await manualRefresh();
+      return;
+    }
     el.style.opacity = 0; el.style.transform = ""; el.classList.remove("ready");
-    if(ready) await manualRefresh();
   }, {passive:true});
 })();
 

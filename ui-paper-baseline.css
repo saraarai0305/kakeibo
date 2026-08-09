@@ -6,8 +6,15 @@ html,body,body[data-app-shell="v2"]{
   background-image:radial-gradient(var(--paper-dot) .7px,transparent .8px)!important;
   background-size:7px 7px!important;
   background-attachment:fixed!important;
-  overscroll-behavior-y:none!important;
+  overscroll-behavior-y:auto!important;
 }
+/* Scroll contract: the document is the only vertical scroller. This preserves
+   the calm native iPhone feel of Home on every long screen, while a page with
+   no overflow simply stays still. Never make an individual page a second
+   scroll container. */
+html{min-height:100%!important}
+body[data-app-shell="v2"]{min-height:100dvh!important;overflow-x:hidden!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important}
+#lifeNoteV2,.v2-page,.an-page{overflow:visible!important}
 body[data-app-shell="v2"]:before,body[data-app-shell="v2"]:after{display:none!important}
 body[data-app-shell="v2"] .wrap,#lifeNoteV2,.v2-page,.an-page,.v2-money-record.mr-approval-page{
   background-color:transparent!important;
@@ -153,7 +160,21 @@ body[data-app-shell="v2"]{min-height:100dvh!important}
 .an-calendar-legend p{margin:0!important;color:#85755e!important;font-size:12px!important}
 
 /* Home: date/time and personal shortcuts add a useful editorial mast without competing with the three main choices. */
-.an-home{overflow:auto!important}
+/* Home uses the document scroller too.  Do not cap the home shell at the
+   viewport: otherwise its shortcut area can overflow visually without adding
+   to the document height, which makes the page feel locked on iPhone. */
+.an-home{height:auto!important;min-height:0!important;overflow:visible!important}
+.an-home-content{height:auto!important;min-height:100dvh!important}
+
+/* Settings is a folder list, not a card inside another card.  Keep the
+   individual setting rows, but remove the two page-sized rounded containers. */
+.v2-page.an-settings,
+.an-settings.v2-settings{
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
 .an-home-content{padding-bottom:34px!important}
 .an-home-meta{display:grid!important;grid-template-columns:1fr auto!important;align-items:end!important;gap:4px 12px!important;margin:0 0 24px!important;padding:10px 0 12px!important;border-top:1px solid rgba(108,85,52,.45)!important;border-bottom:1px dashed rgba(108,85,52,.42)!important;color:#85755e!important}
 .an-home-meta time{font-size:12px!important;font-weight:800!important;letter-spacing:.04em!important}
@@ -171,3 +192,39 @@ body[data-app-shell="v2"]{min-height:100dvh!important}
 .an-shortcut-editor label{display:grid!important;gap:4px!important;color:#85755e!important;font-size:10px!important;font-weight:800!important}
 .an-shortcut-editor select{width:100%!important;min-width:0!important;height:34px!important;padding:0 4px!important;border:1px solid #c8b99f!important;border-radius:7px!important;background:#fffaf0!important;color:#21312d!important;font:inherit!important;font-size:10px!important}
 .an-shortcut-editor button{grid-column:1 / -1!important;min-height:36px!important;border:0!important;border-radius:8px!important;background:#4d80ad!important;color:#fff!important;font-family:inherit!important;font-size:12px!important;font-weight:800!important}
+
+/* 2026-08-09: shared control-centering contract (visual, not font-baseline, center). */
+#ptr{z-index:9999!important;filter:drop-shadow(0 2px 2px rgba(57,43,27,.2))!important}
+.an-home-return,.mr-home-return{grid-template-rows:21px 13px!important;row-gap:3px!important;place-content:center!important}
+.an-home-return .v2-icon,.mr-home-return .v2-icon{width:21px!important;height:21px!important;margin:0!important}
+.an-home-return span,.mr-home-return span{top:-1px!important;margin:0!important;line-height:1!important}
+.an-planner-head button{padding:0!important;font-size:0!important;line-height:0!important}
+.an-planner-head button:before{display:none!important;content:none!important}
+.an-planner-head button .v2-icon{display:block!important;width:16px!important;height:16px!important;margin:0!important;stroke-width:2.25!important}
+.an-flow-planner .an-save{gap:4px!important}
+.an-flow-planner .an-save .v2-icon{margin:0!important}
+.an-planner-habit[hidden]{display:none!important}
+.an-timeline-section h2{color:#21312d!important}
+.an-outlook-privacy{display:flex!important;align-items:center!important;justify-content:space-between!important;margin:0 0 8px!important;color:#68726a!important;font-size:12px!important;font-weight:800!important}
+.an-outlook-privacy button{min-height:34px!important;padding:0 11px!important;border:1px solid #c8b99f!important;border-radius:9px!important;background:#fffaf0!important;color:#315674!important;font:inherit!important;font-size:12px!important;font-weight:800!important}
+
+/* IDEA NOTE: a local-first freeform sheet for goals, notes and reference images. */
+.an-board-goal,.an-board-composer{display:grid!important;gap:10px!important;margin:0 0 14px!important;padding:15px!important;border:1.5px solid #c8b99f!important;border-radius:17px!important;background:#fffaf0!important;box-shadow:3px 3px 0 rgba(103,82,49,.1)!important}
+.an-board-goal>div{display:grid!important;gap:7px!important}
+.an-board-goal span,.an-board-composer>label{color:#68726a!important;font-size:12px!important;font-weight:800!important;letter-spacing:.05em!important}
+.an-board-goal textarea,.an-board-composer textarea{width:100%!important;min-height:86px!important;resize:vertical!important;padding:11px!important;border:1px solid #af9f87!important;border-radius:10px!important;background:#fffaf0!important;color:#21312d!important;font:inherit!important;font-size:15px!important;line-height:1.55!important}
+.an-board-goal .an-small-action,.an-board-composer .an-small-action{min-height:44px!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:5px!important}
+.an-board-composer>div{display:grid!important;grid-template-columns:1fr 1fr!important;gap:9px!important}
+.an-board-upload{min-height:44px!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;border:1px dashed #8b9cab!important;border-radius:10px!important;background:#eef4f5!important;color:#315674!important;font-size:13px!important;font-weight:800!important;cursor:pointer!important}
+.an-board-upload .v2-icon{width:18px!important;height:18px!important}
+.an-board-upload input{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important}
+.an-board-composer>small{color:#85755e!important;font-size:11px!important;line-height:1.4!important}
+.an-free-board{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;align-items:start!important}
+.an-board-note,.an-board-image{position:relative!important;min-width:0!important;margin:0!important;padding:12px!important;border:1px solid #c8b99f!important;border-radius:14px!important;background:#fffaf0!important;box-shadow:3px 3px 0 rgba(103,82,49,.1)!important}
+.an-board-note:nth-child(3n){background:#f1ead8!important}.an-board-note:nth-child(3n + 1){background:#edf2eb!important}
+.an-board-note small{display:block!important;color:#85755e!important;font-size:10px!important;font-weight:800!important}
+.an-board-note p{margin:5px 0 0!important;color:#21312d!important;font-size:14px!important;line-height:1.5!important;white-space:pre-wrap!important;overflow-wrap:anywhere!important}
+.an-board-image{padding:6px!important}.an-board-image img{display:block!important;width:100%!important;aspect-ratio:1/1!important;object-fit:cover!important;border-radius:9px!important;background:#e7dfcf!important}
+.an-board-image figcaption{overflow:hidden!important;margin:6px 3px 1px!important;color:#68726a!important;font-size:10px!important;font-weight:800!important;white-space:nowrap!important;text-overflow:ellipsis!important}
+.an-board-image button{position:absolute!important;top:10px!important;right:10px!important;display:grid!important;place-items:center!important;width:28px!important;height:28px!important;margin:0!important;padding:0!important;border:1px solid rgba(255,255,255,.8)!important;border-radius:50%!important;background:rgba(35,49,45,.75)!important;color:#fff!important}.an-board-image button .v2-icon{width:14px!important;height:14px!important}
+.an-free-board>.an-empty{grid-column:1 / -1!important;margin:0!important}

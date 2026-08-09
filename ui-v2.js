@@ -44,6 +44,7 @@
       heart:'<path d="M20.5 8.4c0 5-8.5 10-8.5 10s-8.5-5-8.5-10A4.5 4.5 0 0 1 12 6a4.5 4.5 0 0 1 8.5 2.4z"/>',
       calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18M7 14h2M12 14h2M17 14h2M7 18h2M12 18h2"/>',
       plus:'<path d="M12 4v16M4 12h16"/>',
+      close:'<path d="M6 6l12 12M18 6 6 18"/>',
       expense:'<path d="M5 4h14v16H5zM12 7v7m-3-3 3 3 3-3"/>',
       income:'<path d="M5 4h14v16H5zM12 17v-7m-3 3 3-3 3 3"/>',
       pay:'<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5M10 10h4v4h-4z"/>',
@@ -102,6 +103,8 @@
     return `<b class="v2-money-value ${extraClass} ${negative ? "v2-negative" : ""}"><span class="v2-money-sign">${negative ? "-" : ""}</span><span class="v2-money-yen">¥</span><span class="v2-money-digits">${displayed}</span></b>`;
   };
   const privateRecordMoney = (value, extraClass = "") => S.ui.moneyVisible ? recordMoney(value, extraClass) : `<b class="v2-muted v2-money-value ${extraClass}">---</b>`;
+  // 記録画面と見通し画面は、見せる／隠すを別々に扱う。
+  const privateOutlookMoney = (value, extraClass = "") => S.ui.moneyOutlookVisible !== false ? recordMoney(value, extraClass) : `<b class="v2-muted v2-money-value ${extraClass}">---</b>`;
   const privateMoney = (value, cls = "") => S.ui.moneyVisible ? `<b class="${(+value < 0 ? "v2-negative " : "") + cls}">${money(value)}</b>` : `<b class="v2-muted">---</b>`;
   const titleFor = p => ({home:"LIFE NOTE",record:"記録する",moneyRecord:"支出・収入を記録",moneyOutlook:"お金の見通し",moneyAnalysis:"お金の分析",healthRecord:"こころとからだ",healthAnalysis:"体調の分析",today:"今日を整える",flow:"一日の流れ",checklist:"チェックリスト",theme:"今日のテーマ",ideas:"アイデアと目標",calendar:"週・月を見る",settings:"設定"}[p] || "LIFE NOTE");
   function top(title, settings = page !== "settings"){
@@ -141,7 +144,7 @@
     const entries = [...S.spends.filter(x=>x.d===ymd(now())).map(x=>({type:"expense",...x})), ...(S.incomeLogs||[]).filter(x=>x.d===ymd(now())).map(x=>({type:"income",...x}))].sort((a,b)=>(b.t||"").localeCompare(a.t||""));
     const recordTitle = moneyType === "income" ? "収入を記録" : "支出を記録";
     const categoryTone = cat => ({"食費":"food","日用品":"daily","医療費":"medical","家賃":"home","交通費":"travel","趣味":"fun"}[cat] || "other");
-    return `<section class="v2-page v2-money-record mr-approval-page">${moneyRecordHeader()}<main class="mr-record-content"><div class="mr-record-mark"><span class="mr-record-mark-icon">${icon("money")}</span><span>MONEY LOG</span></div><section class="mr-balance"><div class="mr-balance-top"><span>今日使えるお金</span><button class="mr-privacy" data-v2-private>${S.ui.moneyVisible ? "隠す" : "表示"}</button></div>${privateRecordMoney(c.left,"mr-primary-money")}<div class="mr-balance-rule"></div><div class="mr-balance-bottom"><span>今残っているお金</span>${privateRecordMoney(remaining,"mr-secondary-money")}</div></section><div class="mr-tabs"><button class="${moneyType === "expense" ? "on expense" : ""}" data-v2-moneytype="expense">支出</button><button class="${moneyType === "income" ? "on income" : ""}" data-v2-moneytype="income">収入</button></div><div class="mr-form-row"><label for="v2Amount">金額</label><input id="v2Amount" type="text" inputmode="numeric" placeholder="￥0"></div><div class="mr-form-row"><label for="v2Method">${moneyType === "income" ? "受け取り方法" : "支払い方法"}</label><select id="v2Method">${options.methods.map(([v,l])=>`<option value="${esc2(v)}" ${v===currentMethod?"selected":""}>${esc2(l)}</option>`).join("")}</select></div><div class="mr-form-row"><label for="v2Category">${moneyType === "income" ? "収入のカテゴリー" : "支出のカテゴリー"}</label><select id="v2Category">${options.cats.map(x=>`<option>${esc2(x)}</option>`).join("")}</select></div><button class="mr-save ${moneyType === "income" ? "income" : ""}" data-v2-money-save>${recordTitle}</button><button class="mr-forecast" data-v2-go="moneyOutlook">${icon("wallet")}<span>お金の見通しを見る</span><b>›</b></button><section class="mr-activity">${entries.length ? entries.map(x=>`<div class="mr-activity-row ${x.type}"><span><i class="mr-category-dot ${categoryTone(x.cat)}"></i>${esc2(x.cat)}</span><b>${x.type === "income" ? "+" : ""}${money(x.amt)}</b></div>`).join("") : `<p class="v2-empty">今日はまだ記録がありません</p>`}</section><button class="mr-home-return" data-v2-home>${icon("home")}<span>ホームへ戻る</span></button></main></section>`;
+    return `<section class="v2-page v2-money-record mr-approval-page">${moneyRecordHeader()}<main class="mr-record-content"><div class="mr-record-mark"><span class="mr-record-mark-icon">${icon("money")}</span><span>MONEY LOG</span></div><section class="mr-balance"><div class="mr-balance-top"><span>今日使えるお金</span><button class="mr-privacy" data-v2-private="record">${S.ui.moneyVisible ? "隠す" : "表示"}</button></div>${privateRecordMoney(c.left,"mr-primary-money")}<div class="mr-balance-rule"></div><div class="mr-balance-bottom"><span>今残っているお金</span>${privateRecordMoney(remaining,"mr-secondary-money")}</div></section><div class="mr-tabs"><button class="${moneyType === "expense" ? "on expense" : ""}" data-v2-moneytype="expense">支出</button><button class="${moneyType === "income" ? "on income" : ""}" data-v2-moneytype="income">収入</button></div><div class="mr-form-row"><label for="v2Amount">金額</label><input id="v2Amount" type="text" inputmode="numeric" placeholder="￥0"></div><div class="mr-form-row"><label for="v2Method">${moneyType === "income" ? "受け取り方法" : "支払い方法"}</label><select id="v2Method">${options.methods.map(([v,l])=>`<option value="${esc2(v)}" ${v===currentMethod?"selected":""}>${esc2(l)}</option>`).join("")}</select></div><div class="mr-form-row"><label for="v2Category">${moneyType === "income" ? "収入のカテゴリー" : "支出のカテゴリー"}</label><select id="v2Category">${options.cats.map(x=>`<option>${esc2(x)}</option>`).join("")}</select></div><button class="mr-save ${moneyType === "income" ? "income" : ""}" data-v2-money-save>${recordTitle}</button><button class="mr-forecast" data-v2-go="moneyOutlook">${icon("wallet")}<span>お金の見通しを見る</span><b>›</b></button><section class="mr-activity">${entries.length ? entries.map(x=>`<div class="mr-activity-row ${x.type}"><span><i class="mr-category-dot ${categoryTone(x.cat)}"></i>${esc2(x.cat)}</span><b>${x.type === "income" ? "+" : ""}${money(x.amt)}</b></div>`).join("") : `<p class="v2-empty">今日はまだ記録がありません</p>`}</section><button class="mr-home-return" data-v2-home>${icon("home")}<span>ホームへ戻る</span></button></main></section>`;
   }
   function moneyOutlook(){ const c=calc(), rest=c.balance-c.unpaid-c.cardNow; const benefit=(S.incomes||[]).find(x=>x.benefit||x.id==="benefit"); return `<section class="v2-page v2-outlook-page">${top(titleFor(page))}<p class="v2-kicker">${icon("money")}MONEY OUTLOOK</p><h2 class="v2-page-lead">お金の見通し</h2><div class="v2-balance"><div class="v2-balance-row primary"><span>今日使えるお金</span><button class="v2-privacy" data-v2-private>${S.ui.moneyVisible ? icon("eyeoff") + "隠す" : icon("eye") + "表示"}</button>${privateMoney(c.left)}</div></div><div class="v2-outline-row"><i>${icon("bank")}</i><span>今残っているお金<small>予定されている支払いを引いた残高</small></span>${privateMoney(rest)}</div><div class="v2-outline-row"><i>${icon("coin")}</i><span>生活を支える収入<small>傷病手当などの大切な収入</small></span>${privateMoney(benefit ? +benefit.amt||0 : 0,"v2-green")}</div><div class="v2-outline-row"><i>${icon("card")}</i><span>今後のカード・固定費<small>カード請求と未払いの固定費</small></span>${privateMoney(c.unpaid+c.cardNow)}</div><button class="v2-sub-action" data-v2-go="moneyAnalysis">${icon("chart")}お金の分析を見る</button></section>`; }
   function moneyAnalysis(){ const cut=new Date();cut.setDate(cut.getDate()-29);const from=ymd(cut), rec=S.spends.filter(x=>x.d>=from), byPay={cash:0,paypay:0,card:0},byCat={};rec.forEach(x=>{const n=+x.amt||0;byPay[x.pay==="card"?"card":x.pay==="paypay"?"paypay":"cash"]+=n;byCat[x.cat]=(byCat[x.cat]||0)+n});const max=Math.max(1,...Object.values(byPay));const cats=Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,4),sum=cats.reduce((a,[,v])=>a+v,0), cols=["#376b91","#39785d","#7263a8","#d2a73e"];let p=0;const stops=cats.map(([,v],i)=>{const a=p;p+=sum?v/sum*100:0;return `${cols[i]} ${a}% ${p}%`}).join(",");const income=(S.incomeLogs||[]).filter(x=>x.d>=from).reduce((a,x)=>a+(+x.amt||0),0); const bar=(lab,n,color)=>`<div class="v2-bar-row"><span>${lab}</span><span class="v2-bar-track"><i class="v2-bar-fill" style="width:${n/max*100}%;--bar:${color}"></i></span><strong>${money(n)}</strong></div>`; return `<section class="v2-page v2-money-analysis">${top(titleFor(page))}<p class="v2-kicker">${icon("chart")}MONEY ANALYSIS</p><h2 class="v2-page-lead">直近30日の動き</h2><div class="v2-chart-block"><h2>収入と支出のバランス</h2>${bar("収入",income,"#39785d")}${bar("支出",rec.reduce((a,x)=>a+(+x.amt||0),0),"#376b91")}</div><div class="v2-chart-block"><h2>支払い方法</h2>${bar("カード",byPay.card,"#7263a8")}${bar("現金・引落",byPay.cash,"#376b91")}${bar("PayPay",byPay.paypay,"#d2a73e")}</div><div class="v2-chart-block"><h2>お金を使ったカテゴリー</h2>${cats.length?`<div class="v2-donut-wrap"><div class="v2-donut" style="background:conic-gradient(${stops})"></div><div>${cats.map(([k,v],i)=>`<div class="v2-legend-row"><i style="background:${cols[i]}"></i><span>${esc2(k)}</span><b>${sum?Math.round(v/sum*100):0}%</b></div>`).join("")}</div></div>`:`<p class="v2-empty">支出を記録すると、カテゴリーの比率を円グラフで表示します。</p>`}</div></section>`; }
@@ -238,7 +241,7 @@
     const shortcuts=Array.isArray(S.homeShortcuts)&&S.homeShortcuts.length===3&&S.homeShortcuts.every(x=>catalog[x])?S.homeShortcuts:fallback;
     const d=now(),time=toHHMM(d.getHours()*60+d.getMinutes());
     const tile=id=>`<button class="an-home-shortcut" data-v2-go="${id}">${icon(catalog[id][0])}<span>${catalog[id][1]}</span></button>`;
-    return `<section class="v2-page an-page an-home"><main class="an-home-content"><div class="an-home-brand">${appBrand()}</div><div class="an-home-meta"><time>${dateLabel(ymd(d))}</time><strong>${time}</strong><small>VERSION ${typeof BUILD!=="undefined"?BUILD:"0.27.0"}</small></div><div class="an-home-list">${analogChoice("record","blue","edit","記録する","支出・収入／こころとからだ")}${analogChoice("today","yellow","sun","今日を整える","一日の流れ／テーマ")}${analogChoice("visualize","purple","chart","見える化する","お金／こころとからだ")}</div><section class="an-home-shortcuts" aria-label="ショートカット"><div><h2>ショートカット</h2><button type="button" data-v2-shortcuts-open>編集</button></div><div class="an-home-shortcut-grid">${shortcuts.map(tile).join("")}</div><div id="v2ShortcutArea"></div></section></main></section>`;
+    return `<section class="v2-page an-page an-home"><main class="an-home-content"><div class="an-home-brand">${appBrand()}</div><div class="an-home-meta"><time data-v2-live-date>${dateLabel(ymd(d))}</time><strong data-v2-live-time>${time}</strong><small>${versionLabel()}</small></div><div class="an-home-list">${analogChoice("record","blue","edit","記録する","支出・収入／こころとからだ")}${analogChoice("today","yellow","sun","今日を整える","一日の流れ／テーマ")}${analogChoice("visualize","purple","chart","見える化する","お金／こころとからだ")}</div><section class="an-home-shortcuts" aria-label="ショートカット"><div><h2>ショートカット</h2><button type="button" data-v2-shortcuts-open>編集</button></div><div class="an-home-shortcut-grid">${shortcuts.map(tile).join("")}</div><div id="v2ShortcutArea"></div></section></main></section>`;
   }
   function branch(kind){
     const record = kind === "record";
@@ -249,8 +252,9 @@
   }
   function moneyOutlook(){
     const c=calc(), rest=c.balance-c.unpaid-c.cardNow, benefit=(S.incomes||[]).find(x=>x.benefit||x.id==="benefit");
-    const row=(i,label,sub,val,cls="")=>`<div class="an-summary-row ${cls}"><i>${icon(i)}</i><span><strong>${label}</strong><small>${sub}</small></span>${privateRecordMoney(val,"an-summary-value")}</div>`;
-    return analogPage("an-outlook","coin","MONEY OUTLOOK","お金の見通し",`<section class="an-summary-sheet">${row("money","今日使えるお金","今日の目安",c.left,"primary")}${row("bank","今残っているお金","予定の支払いを反映",rest)}${row("coin","生活を支える収入","傷病手当など",benefit ? +benefit.amt||0 : 0,"income")}${row("card","今後のカード・固定費","カード請求と未払い",c.unpaid+c.cardNow)}</section><button class="an-wide-action blue" data-v2-go="moneyAnalysis">${icon("chart")}<span>お金の分析を見る</span><b>›</b></button>`);
+    const visible=S.ui.moneyOutlookVisible!==false;
+    const row=(i,label,sub,val,cls="")=>`<div class="an-summary-row ${cls}"><i>${icon(i)}</i><span><strong>${label}</strong><small>${sub}</small></span>${privateOutlookMoney(val,"an-summary-value")}</div>`;
+    return analogPage("an-outlook","coin","MONEY OUTLOOK","お金の見通し",`<div class="an-outlook-privacy"><span>金額</span><button data-v2-private="outlook">${visible ? "隠す" : "表示"}</button></div><section class="an-summary-sheet">${row("money","今日使えるお金","今日の目安",c.left,"primary")}${row("bank","今残っているお金","予定の支払いを反映",rest)}${row("coin","生活を支える収入","傷病手当など",benefit ? +benefit.amt||0 : 0,"income")}${row("card","今後のカード・固定費","カード請求と未払い",c.unpaid+c.cardNow)}</section><button class="an-wide-action blue" data-v2-go="moneyAnalysis">${icon("chart")}<span>お金の分析を見る</span><b>›</b></button>`);
   }
   function moneyAnalysis(){
     const cut=new Date();cut.setDate(cut.getDate()-29);const from=ymd(cut),rec=S.spends.filter(x=>x.d>=from),byPay={cash:0,paypay:0,card:0},byCat={};rec.forEach(x=>{const n=+x.amt||0;byPay[x.pay==="card"?"card":x.pay==="paypay"?"paypay":"cash"]+=n;byCat[x.cat]=(byCat[x.cat]||0)+n});const expense=rec.reduce((a,x)=>a+(+x.amt||0),0),income=(S.incomeLogs||[]).filter(x=>x.d>=from).reduce((a,x)=>a+(+x.amt||0),0);const max=Math.max(1,income,expense,...Object.values(byPay));const chart=(label,n,color)=>`<div class="an-bar"><span>${label}</span><i><b style="width:${Math.max(0,n/max*100)}%;background:${color}"></b></i><strong>${money(n)}</strong></div>`;const cats=Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,4),sum=cats.reduce((a,[,v])=>a+v,0),cols=["#4d80ad","#4f986f","#796aa8","#ca796b"];let p=0;const stops=cats.map(([,v],i)=>{const a=p;p+=sum?v/sum*100:0;return `${cols[i]} ${a}% ${p}%`}).join(",");
@@ -272,16 +276,28 @@
   function checklistV2(){const key=flowDate,rec=S.daily[key]||{habits:{}},tasks=plannedOn(key).slice().sort((a,b)=>PRIOS.findIndex(p=>p.id===autoPriority(a).id)-PRIOS.findIndex(p=>p.id===autoPriority(b).id));const habits=habitList().map(h=>`<button class="an-habit ${rec.habits&&rec.habits[h.id]?"on":""}" data-v2-habit="${esc2(h.id)}">${habitIcon(h)}<span>${esc2(h.label)}</span></button>`).join("");const list=tasks.length?tasks.map(t=>`<button class="an-task ${t.done?"done":""}" data-v2-task="${esc2(t.id)}"><i>✓</i><span>${esc2(t.text)}</span><b>${esc2(autoPriority(t).label)}</b></button>`).join(""):`<p class="an-empty">予定を足すと、ここに表示します。</p>`;return analogPage("an-checklist","list","CHECKLIST","今日のやること",`<p class="an-date-note">${dateLabel(key)}</p><section class="an-chart-section"><h2>毎日の習慣</h2><div class="an-habits">${habits}</div></section><section class="an-chart-section"><h2>やること</h2><div class="an-tasks">${list}</div></section>`);}
   function theme(){const key=ymd(now()),value=(S.daily[key]||{}).theme||"";return analogPage("an-theme","sun","TODAY'S THEME","今日のテーマ",`<div class="an-theme-editor"><label for="v2Theme">ひとことで書く</label><input id="v2Theme" value="${esc2(value)}" maxlength="40" placeholder="今日のテーマ"></div><button class="an-save yellow" data-v2-theme-save>テーマを保存</button>`);}
   function ideaNote(){
-    const board=S.ideaBoard||{},ideas=Array.isArray(board.ideas)?board.ideas:[];
-    return analogPage("an-idea-note","edit","IDEA NOTE","アイデアと目標",`<section class="an-idea-panel"><label for="v2MonthlyGoal">今月の目標</label><textarea id="v2MonthlyGoal" maxlength="240" placeholder="今月かなえたいことを書く">${esc2(board.monthlyGoal||"")}</textarea><button class="an-small-action" data-v2-month-goal-save>今月の目標を保存</button></section><section class="an-idea-panel"><label for="v2IdeaText">アイデアを残す</label><textarea id="v2IdeaText" maxlength="500" placeholder="プラグイン、映像、暮らしのアイデアなど"></textarea><button class="an-small-action" data-v2-idea-add>アイデアを追加</button></section><section class="an-idea-list">${ideas.length?ideas.slice().reverse().map(x=>`<article><small>${esc2(x.date||"")}</small><p>${esc2(x.text||"")}</p></article>`).join(""):`<p class="an-empty">まだアイデアはありません。</p>`}</section>`);
+    const board=Object.assign({monthlyGoal:"",ideas:[],images:[]},S.ideaBoard||{}),ideas=Array.isArray(board.ideas)?board.ideas:[],images=Array.isArray(board.images)?board.images:[];
+    const notes=ideas.slice().reverse().map(x=>`<article class="an-board-note"><small>${esc2(x.date||"")}</small><p>${esc2(x.text||"")}</p></article>`).join("");
+    const photos=images.slice().reverse().map(x=>`<figure class="an-board-image"><img src="${esc2(x.src||"")}" alt="追加したアイデア画像"><button type="button" data-v2-board-image-delete="${esc2(x.id)}" aria-label="画像を削除">${icon("close")}</button><figcaption>${esc2(x.name||"画像")}</figcaption></figure>`).join("");
+    return analogPage("an-idea-note","edit","IDEA NOTE","アイデアと目標",`<section class="an-board-goal"><div><span>今月の目標</span><textarea id="v2MonthlyGoal" maxlength="240" placeholder="今月かなえたいことを書く">${esc2(board.monthlyGoal||"")}</textarea></div><button class="an-small-action" data-v2-month-goal-save>目標を保存</button></section><section class="an-board-composer"><label for="v2IdeaText">シートにメモを置く</label><textarea id="v2IdeaText" maxlength="500" placeholder="プラグイン、映像、暮らしのアイデアなど"></textarea><div><label class="an-board-upload">${icon("upload")}画像を追加<input id="v2IdeaImage" type="file" accept="image/*" multiple></label><button class="an-small-action" data-v2-idea-add>${icon("plus")}メモを追加</button></div><small>画像とメモはこの端末に保存されます。</small></section><section class="an-free-board" aria-label="アイデアボード">${photos}${notes||(!photos?`<p class="an-empty">画像やメモを置くと、ここに並びます。</p>`:"")}</section>`);
   }
   function calendar(){const base=new Date(calendarDate+"T00:00:00"),mon=new Date(base);mon.setDate(base.getDate()-((base.getDay()+6)%7));let content="";if(calendarMode==="week"){content=`<div class="v2-week">${Array.from({length:7},(_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);const key=ymd(d),bs=allBlocks(key);return `<button class="v2-week-day ${key===ymd(now())?"today":""}" data-v2-cal-date="${key}"><span>${"月火水木金土日"[i]}</span><b>${d.getDate()}</b>${bs.slice(0,3).map(b=>`<i class="v2-cal-dot" style="background:${esc2(b.color||catOf(b.cat).color)}"></i>`).join("")}</button>`}).join("")}</div>`;}else{const y=base.getFullYear(),m=base.getMonth(),days=new Date(y,m+1,0).getDate(),off=(new Date(y,m,1).getDay()+6)%7;content=`<div class="v2-month">${Array.from({length:off},()=>"<span></span>").join("")}${Array.from({length:days},(_,i)=>{const d=i+1,key=`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`,has=allBlocks(key).length;return `<button class="${key===ymd(now())?"today ":""}${has?"has":""}" data-v2-cal-date="${key}">${d}</button>`}).join("")}</div>`;}const period=calendarMode==="week"?`${mon.getMonth()+1}月${mon.getDate()}日からの1週間`:`${base.getFullYear()}年${base.getMonth()+1}月`;return analogPage("an-calendar","calendar","CALENDAR",period,`<div class="an-calendar-switch"><button class="${calendarMode==="week"?"on":""}" data-v2-cal-mode="week">1週間</button><button class="${calendarMode==="month"?"on":""}" data-v2-cal-mode="month">1か月</button></div>${content}<p class="an-empty">日付をタップすると、その日の時間割を開きます。</p>`);}
   function settingsV2(){const cfg=syncCfg();return analogPage("an-settings","settings","SETTINGS","暮らしの設定",`<div class="an-settings v2-settings">${[["refresh","同期・歩数／睡眠",cfg.token&&cfg.gistId?"同期済み・アプリを開くと更新します":"未接続",`<p>歩数と睡眠は、設定済みのiPhoneショートカット／同期から読み込みます。</p><label>GitHubトークン</label><input id="v2SyncToken" type="password" autocomplete="off" placeholder="初回設定時のみ入力"><label>Gist ID</label><input id="v2SyncGist" value="${esc2(cfg.gistId||"")}" placeholder="2台目のみ入力"><button class="an-small-action" data-v2-sync-start>同期を設定・開始</button><button class="an-small-action" data-v2-sync>今すぐ同期する</button><button class="an-small-action" data-v2-role>${cfg.role==="ro"?"記録する端末にする":"見るだけの端末にする"}</button>`],["list","毎日の習慣","今日の流れに表示する項目",`<div class="an-habits">${habitList().map(h=>`<span class="an-habit">${habitIcon(h)}<span>${esc2(h.label)}</span></span>`).join("")}</div><label>習慣の名前</label><input id="v2HabitLabel" placeholder="例：ストレッチ"><button class="an-small-action" data-v2-habit-add>習慣を追加</button>`],["wallet","お金の初期設定","カード上限・方法・カテゴリー",`<label>カードの上限</label><input id="v2CardCap" type="text" inputmode="numeric" value="${(+S.cardCap||0).toLocaleString("ja-JP")}"><button class="an-small-action" data-v2-card-cap>上限を保存</button><label>支出の方法</label><input id="v2MethodAdd" placeholder="例：交通系IC"><button class="an-small-action" data-v2-method-add>方法を追加</button><label>支出のカテゴリー</label><input id="v2CategoryAdd" placeholder="例：医療費"><button class="an-small-action" data-v2-category-add>カテゴリーを追加</button><label>収入の受け取り方法</label><input id="v2IncomeMethodAdd" placeholder="例：PayPay"><button class="an-small-action" data-v2-income-method-add>方法を追加</button><label>収入のカテゴリー</label><input id="v2IncomeCategoryAdd" placeholder="例：傷病手当"><button class="an-small-action" data-v2-income-category-add>カテゴリーを追加</button>`],["calendar","カレンダー連携","予定の取り込みと表示",`<p>予定は「一日の流れ」から確認・追加できます。</p>`],["download","バックアップ","この端末のデータを保存",`<p>端末の記録を書き出して保管できます。</p><button class="an-small-action" data-v2-export>データを書き出す</button>`]].map(([i,t,s,b])=>`<details><summary><i>${icon(i)}</i><span><strong>${t}</strong><small>${s}</small></span><b>›</b></summary><div class="an-settings-body">${b}</div></details>`).join("")}</div>`,{settings:false});}
   function homeReturn(){ return analogReturn(); }
   window.newAppRender = function(){const view={home:homeV2,record:()=>branch("record"),today:()=>branch("today"),visualize:()=>branch("visualize"),moneyRecord,moneyOutlook,moneyAnalysis,healthRecord,healthAnalysis,flow,checklist:checklistV2,theme,ideas:ideaNote,calendar,settings:settingsV2}[page]||homeV2;root.innerHTML=view();document.body.dataset.v2Scroll=["home","record","today","visualize"].includes(page)?"locked":"auto";};
+  function syncStatusLabel(cfg){
+    if(!(cfg.token&&cfg.gistId)) return "未接続";
+    if(cfg.lastSyncError) return "接続エラー（確認が必要）";
+    if(cfg.lastSync) return "接続確認済み";
+    return "同期設定済み（通信未確認）";
+  }
   const baseNewAppRender = window.newAppRender;
   window.newAppRender = function(){
     baseNewAppRender();
+    if(page === "settings"){
+      const status=root.querySelector(".an-settings details:first-child summary small");
+      if(status) status.textContent=syncStatusLabel(syncCfg());
+    }
     if(page === "healthRecord"){
       const sleepCard=root.querySelector(".v2-health-paper-item:nth-child(3)"), sleepEdit=root.querySelector(".v2-sleep-edit");
       if(sleepCard && sleepEdit) sleepCard.appendChild(sleepEdit);
@@ -289,7 +305,32 @@
     resetViewport();
     requestAnimationFrame(resetViewport);
   };
+  // 画面遷移を待たず、ホームの時計と時間割の現在線を毎秒更新する。
+  function paintLiveClock(){
+    const d=now(), raw=d.getHours()*60+d.getMinutes(), text=toHHMM(raw);
+    root.querySelectorAll("[data-v2-live-time]").forEach(node=>{node.textContent=text;});
+    root.querySelectorAll("[data-v2-live-date]").forEach(node=>{node.textContent=dateLabel(ymd(d));});
+    const line=root.querySelector("[data-v2-now-line]");
+    if(!line) return;
+    const start=Number(line.dataset.v2Start), end=Number(line.dataset.v2End);
+    const minute=raw<start?raw+1440:raw;
+    if(flowDate!==ymd(d)||minute<start||minute>end){ line.remove(); return; }
+    line.style.top=`${(minute-start)/(end-start)*Math.round(((end-start)/60)*28)}px`;
+    const label=line.querySelector("[data-v2-now-label]");
+    if(label) label.textContent=`いま ${text}`;
+  }
+  window.setInterval(paintLiveClock,1000);
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden) paintLiveClock();});
   root.addEventListener("click",e=>{const t=e.target.closest("[data-v2-go],[data-v2-back],[data-v2-moneytype],[data-v2-money-save],[data-v2-private],[data-v2-rate],[data-v2-health-save],[data-v2-metric],[data-v2-plan-open],[data-v2-habit],[data-v2-task],[data-v2-theme-save],[data-v2-cal-mode],[data-v2-cal-date],[data-v2-sync],[data-v2-role],[data-v2-habit-add],[data-v2-card-cap],[data-v2-export]");if(!t)return;if(t.hasAttribute("data-v2-back")){back();return;}if(t.dataset.v2Go){go(t.dataset.v2Go);return;}if(t.dataset.v2Moneytype){moneyType=t.dataset.v2Moneytype;newAppRender();return;}if(t.hasAttribute("data-v2-private")){S.ui.moneyVisible=!S.ui.moneyVisible;save();newAppRender();return;}if(t.hasAttribute("data-v2-money-save")){const amt=document.getElementById("v2Amount").value,method=document.getElementById("v2Method"),cat=document.getElementById("v2Category").value;if(moneyType==="income")addIncomeLog(amt,cat,method.value,method.selectedOptions[0]?.textContent);else addSpend(amt,cat,method.value,method.selectedOptions[0]?.textContent);return;}if(t.dataset.v2Rate){healthDraft=Object.assign({},healthDraft||{}, {[t.dataset.v2Rate]:+t.dataset.v2Value});newAppRender();return;}if(t.hasAttribute("data-v2-health-save")){if(!canWrite())return;const key=ymd(now());S.health[key]=Object.assign({},S.health[key]||{},healthDraft||{});healthDraft=null;save();render();toast("この日の記録を保存しました");return;}if(t.dataset.v2Metric){metricOn[t.dataset.v2Metric]=!metricOn[t.dataset.v2Metric];newAppRender();return;}if(t.hasAttribute("data-v2-plan-open")){const box=document.getElementById("v2PlanArea");box.innerHTML=`<div class="v2-form-row"><label>予定</label><input id="v2PlanText" placeholder="予定の名前"></div><div class="v2-form-row"><label>開始時刻</label><input id="v2PlanFrom" type="time"></div><div class="v2-form-row"><label>終了時刻</label><input id="v2PlanTo" type="time"></div><button class="v2-primary" data-v2-plan-save>${icon("plus")}予定を保存</button>`;return;}if(t.hasAttribute("data-v2-plan-save")){if(!canWrite())return;const text=document.getElementById("v2PlanText").value.trim(),from=document.getElementById("v2PlanFrom").value,to=document.getElementById("v2PlanTo").value;if(!text||!from||!to)return toast("予定・開始時刻・終了時刻を入れてください");const key=ymd(now());(S.plan[key]||(S.plan[key]=[])).push({id:uid(),text,from,to,cat:"custom"});save();render();return;}if(t.dataset.v2Habit){if(!canWrite())return;const d=dayRec(ymd(now()));d.habits[t.dataset.v2Habit]=!d.habits[t.dataset.v2Habit];save();render();return;}if(t.dataset.v2Task){if(!canWrite())return;const task=S.errands.find(x=>x.id===t.dataset.v2Task);if(task){task.done=!task.done;task.doneAt=task.done?ymd(now()):null;save();render();}return;}if(t.hasAttribute("data-v2-theme-save")){if(!canWrite())return;dayRec(ymd(now())).theme=document.getElementById("v2Theme").value.trim();save();render();toast("テーマを保存しました");return;}if(t.dataset.v2CalMode){calendarMode=t.dataset.v2CalMode;newAppRender();return;}if(t.dataset.v2CalDate){calendarDate=t.dataset.v2CalDate;go("flow");return;}if(t.hasAttribute("data-v2-sync")){pullRemote(false);return;}if(t.hasAttribute("data-v2-role")){const c=syncCfg();c.role=c.role==="ro"?"rw":"ro";setSyncCfg(c);rolePaint();newAppRender();return;}if(t.hasAttribute("data-v2-habit-add")){if(!canWrite())return;const label=document.getElementById("v2HabitLabel").value.trim();if(!label)return toast("項目名を入れてください");S.habits=habitList().slice();S.habits.push({id:uid(),icon:"・",label});save();render();return;}if(t.hasAttribute("data-v2-card-cap")){if(!canWrite())return;S.cardCap=Math.max(0,moneyAmount(document.getElementById("v2CardCap").value));save();render();toast("カードの上限を保存しました");return;}if(t.hasAttribute("data-v2-export")){document.getElementById("expBtn")?.click();return;}});
+  // 表示／非表示は金額領域ごとに独立。capture で旧一括ハンドラより先に処理する。
+  root.addEventListener("click", event => {
+    const toggle=event.target.closest("[data-v2-private]");
+    if(!toggle) return;
+    event.stopImmediatePropagation();
+    const privacyKey=toggle.dataset.v2Private==="outlook"?"moneyOutlookVisible":"moneyVisible";
+    S.ui[privacyKey]=!(S.ui[privacyKey]!==false);
+    save(); newAppRender();
+  },true);
   root.addEventListener("input",e=>{if(e.target.id==="v2Amount"){const n=moneyAmount(e.target.value);e.target.value=n?`￥${n.toLocaleString("ja-JP")}`:"";}if(e.target.dataset.v2Health){healthDraft=Object.assign({},healthDraft||{},{[e.target.dataset.v2Health]:e.target.value});}});
   root.addEventListener("click", event => { if(event.target.closest("[data-v2-home]")){ goHome(); } });
   root.addEventListener("click", event => {
@@ -364,7 +405,7 @@
     const action = event.target.closest("[data-v2-month-goal-save],[data-v2-idea-add]");
     if(!action) return;
     if(!canWrite()) return;
-    S.ideaBoard=Object.assign({monthlyGoal:"",ideas:[]},S.ideaBoard||{});
+    S.ideaBoard=Object.assign({monthlyGoal:"",ideas:[],images:[]},S.ideaBoard||{});
     if(action.hasAttribute("data-v2-month-goal-save")){
       S.ideaBoard.monthlyGoal=document.getElementById("v2MonthlyGoal")?.value.trim()||"";
       save(); toast("今月の目標を保存しました"); return;
@@ -374,6 +415,46 @@
     S.ideaBoard.ideas=Array.isArray(S.ideaBoard.ideas)?S.ideaBoard.ideas:[];
     S.ideaBoard.ideas.push({id:uid(),text,date:issueDate()});
     save(); render(); toast("アイデアを追加しました");
+  });
+  // Freeform のように画像を置けるが、端末内データが肥大化しないよう長辺を圧縮する。
+  const boardImageData = file => new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onerror=()=>reject(new Error("画像を読み込めませんでした"));
+    reader.onload=()=>{
+      const image=new Image();
+      image.onerror=()=>reject(new Error("画像を開けませんでした"));
+      image.onload=()=>{
+        const limit=1280, scale=Math.min(1,limit/Math.max(image.naturalWidth,image.naturalHeight));
+        const canvas=document.createElement("canvas");
+        canvas.width=Math.max(1,Math.round(image.naturalWidth*scale));
+        canvas.height=Math.max(1,Math.round(image.naturalHeight*scale));
+        const ctx=canvas.getContext("2d"); ctx.drawImage(image,0,0,canvas.width,canvas.height);
+        resolve(canvas.toDataURL("image/jpeg",.78));
+      };
+      image.src=reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  root.addEventListener("change", async event => {
+    const input=event.target;
+    if(input.id!=="v2IdeaImage" || !input.files?.length) return;
+    if(!canWrite()) return;
+    const files=Array.from(input.files).slice(0,4);
+    try{
+      const data=await Promise.all(files.map(boardImageData));
+      S.ideaBoard=Object.assign({monthlyGoal:"",ideas:[],images:[]},S.ideaBoard||{});
+      S.ideaBoard.images=Array.isArray(S.ideaBoard.images)?S.ideaBoard.images:[];
+      S.ideaBoard.images.push(...data.map((src,i)=>({id:uid(),src,name:files[i].name,date:issueDate()})));
+      save(); render(); toast(`${data.length}枚の画像を追加しました`);
+    }catch(error){ toast(error.message||"画像を追加できませんでした"); }
+  });
+  root.addEventListener("click", event => {
+    const remove=event.target.closest("[data-v2-board-image-delete]");
+    if(!remove) return;
+    if(!canWrite()) return;
+    S.ideaBoard=Object.assign({monthlyGoal:"",ideas:[],images:[]},S.ideaBoard||{});
+    S.ideaBoard.images=(S.ideaBoard.images||[]).filter(x=>x.id!==remove.dataset.v2BoardImageDelete);
+    save(); render(); toast("画像を削除しました");
   });
   /* DAILY FLOW: a single shared time axis with a light dotted work/life guide. */
   const flowLane = block => block.lane || ((block.cat === "sleep" || block.cat === "life" || block.cat === "out" || block.errand) ? "life" : "work");
@@ -399,7 +480,7 @@
     const key=flowDate,rec=S.daily[key]||{},blocks=allBlocks(key),start=typeof TL_START==="number"?TL_START:4*60,end=typeof TL_END==="number"?TL_END:27*60,h=Math.round(((end-start)/60)*28),slots=[];
     for(let m=start;m<end;m+=60)slots.push(`<span class="v2-time" style="top:${(m-start)/(end-start)*h}px">${toHHMM(m%1440)}</span>`);
     const events=blocks.map(b=>{const a=Math.max(start,b.a),z=Math.min(end,b.b);return z<=a?"":`<div class="v2-event an-flow-event an-lane-${flowLane(b)}" style="--event:${esc2(b.color||catOf(b.cat).color)};top:${(a-start)/(end-start)*h}px;height:${Math.max(42,(z-a)/(end-start)*h-3)}px"><strong>${esc2(b.text)}</strong><span>${toHHMM(a%1440)} - ${toHHMM(z%1440)}${b.repeat?" ・ 毎日":""}</span></div>`}).join("");
-    const n=now(),nowM=n.getHours()*60+n.getMinutes(),isToday=key===ymd(n),nowline=isToday&&nowM>=start&&nowM<=end?`<div class="v2-now" style="top:${(nowM-start)/(end-start)*h}px"><b>いま ${toHHMM(nowM)}</b></div>`:"";
+    const n=now(),rawNowM=n.getHours()*60+n.getMinutes(),nowM=rawNowM<start?rawNowM+1440:rawNowM,isToday=key===ymd(n),nowline=isToday&&nowM>=start&&nowM<=end?`<div class="v2-now" data-v2-now-line data-v2-start="${start}" data-v2-end="${end}" style="top:${(nowM-start)/(end-start)*h}px"><b data-v2-now-label>いま ${toHHMM(rawNowM)}</b></div>`:"";
     return analogPage("an-flow","calendar","DAILY FLOW","一日の流れ",`<section class="an-theme-strip"><small>${dateLabel(key)}</small><strong>${esc2(rec.theme||"今日のテーマを設定")}</strong></section><section class="an-timeline-section"><h2>${icon("clock")}時間割</h2><div class="an-flow-timeline-shell"><div class="an-flow-lane-guide"><span>${icon("work")}仕事</span><span>${icon("life")}生活</span></div><div class="v2-timeline" style="min-height:${h}px">${slots.join("")}${events}${nowline}</div></div></section><div class="an-flow-actions"><button data-v2-plan-open aria-expanded="false">${icon("plus")}予定を足す</button><button data-v2-go="checklist">${icon("list")}チェックリスト</button><button data-v2-go="calendar">${icon("calendar")}週／月を見る</button></div><div id="v2PlanArea" aria-live="polite"></div>`);
   }
   root.addEventListener("click", event => {
@@ -411,9 +492,22 @@
     if(box.dataset.open==="1"){
       box.innerHTML=""; delete box.dataset.open; opener.setAttribute("aria-expanded","false"); return;
     }
+    const habits=habitList();
     box.dataset.open="1"; opener.setAttribute("aria-expanded","true");
-    box.innerHTML=`<section class="an-flow-planner"><div class="an-planner-head"><strong>時間を決めて追加</strong><button type="button" data-v2-plan-close aria-label="閉じる">×</button></div><label>種類<select id="v2TimelineKind"><option value="plan">この日の予定</option><option value="daily">毎日やること</option></select></label><label>内容<input id="v2PlanText" placeholder="例：散歩、薬、集中作業"></label><div class="an-planner-times"><label>開始<input id="v2PlanFrom" type="time"></label><label>終了<input id="v2PlanTo" type="time"></label></div><label>置く場所<select id="v2PlanLane"><option value="work">仕事</option><option value="life">生活</option></select></label><button class="an-save" data-v2-timeline-save>${icon("plus")}時間割に追加</button></section>`;
+    box.innerHTML=`<section class="an-flow-planner"><div class="an-planner-head"><strong>時間を決めて追加</strong><button type="button" data-v2-plan-close aria-label="閉じる">${icon("close")}</button></div><label>種類<select id="v2TimelineKind"><option value="plan">この日の予定</option><option value="daily">毎日やること</option></select></label><label class="an-planner-habit" id="v2TimelineHabitRow" hidden>毎日の習慣から選ぶ<select id="v2TimelineHabit"><option value="">自由入力</option>${habits.map(h=>`<option value="${esc2(h.id)}">${esc2(h.label)}</option>`).join("")}</select></label><label>内容<input id="v2PlanText" placeholder="例：散歩、薬、集中作業"></label><div class="an-planner-times"><label>開始<input id="v2PlanFrom" type="time"></label><label>終了<input id="v2PlanTo" type="time"></label></div><label>置く場所<select id="v2PlanLane"><option value="work">仕事</option><option value="life">生活</option></select></label><button class="an-save" data-v2-timeline-save>${icon("plus")}時間割に追加</button></section>`;
   },true);
+  root.addEventListener("change", event => {
+    const target=event.target;
+    if(target.id==="v2TimelineKind"){
+      document.getElementById("v2TimelineHabitRow")?.toggleAttribute("hidden",target.value!=="daily");
+      return;
+    }
+    if(target.id==="v2TimelineHabit"){
+      const habit=habitList().find(x=>x.id===target.value);
+      const text=document.getElementById("v2PlanText");
+      if(habit && text) text.value=habit.label;
+    }
+  });
   root.addEventListener("click", event => {
     const closer=event.target.closest("[data-v2-plan-close]");
     if(!closer) return;
@@ -427,10 +521,10 @@
     if(!saver) return;
     event.stopImmediatePropagation();
     if(!canWrite()) return;
-    const text=document.getElementById("v2PlanText")?.value.trim()||"",from=document.getElementById("v2PlanFrom")?.value||"",to=document.getElementById("v2PlanTo")?.value||"",kind=document.getElementById("v2TimelineKind")?.value||"plan",lane=document.getElementById("v2PlanLane")?.value||"life";
+    const habitId=document.getElementById("v2TimelineHabit")?.value||"",habit=habitList().find(x=>x.id===habitId),text=habit?.label||document.getElementById("v2PlanText")?.value.trim()||"",from=document.getElementById("v2PlanFrom")?.value||"",to=document.getElementById("v2PlanTo")?.value||"",kind=document.getElementById("v2TimelineKind")?.value||"plan",lane=document.getElementById("v2PlanLane")?.value||"life";
     if(!text||!from||!to) return toast("内容・開始・終了を入れてください");
     if(toMin(to)<=toMin(from)) return toast("終了時刻は開始時刻より後にしてください");
-    const item={id:uid(),text,from,to,lane,cat:lane==="work"?"make":"life",repeat:kind==="daily"};
+    const item={id:uid(),text,from,to,lane,cat:lane==="work"?"make":"life",repeat:kind==="daily",habitId:habit?.id||""};
     if(kind==="daily"){
       S.dailyTimeline=Array.isArray(S.dailyTimeline)?S.dailyTimeline:[];
       S.dailyTimeline.push(item);
