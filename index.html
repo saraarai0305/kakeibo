@@ -784,7 +784,7 @@ body[data-tab="cal"]:not([data-cal-page="check"]) #checklistPage{display:none!im
 </style>
 <!-- 旧画面のインラインCSSより後に読み込み、紙面UIを最終スタイルとして適用する。 -->
 <link rel="stylesheet" href="ui-analog.css?v=0.27.2">
-<link rel="stylesheet" href="ui-paper-baseline.css?v=0.28.2">
+<link rel="stylesheet" href="ui-paper-baseline.css?v=0.28.3">
 </head>
 <body data-tab="home">
 <div class="rotate">
@@ -1418,7 +1418,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.28.2";         // version.txt と一致させること
+const BUILD = "0.28.3";         // version.txt と一致させること
 const KEY = "mainichi.v1";
 // 一日の流れを主役にし、週／月のカレンダーは必要なときだけその下に開く。
 (() => {
@@ -1567,15 +1567,24 @@ function load(){
 
 let S = load();
 let saveTimer = null;
+function persistNow(){
+  S.savedAt = new Date().toISOString();
+  try{ localStorage.setItem(KEY, JSON.stringify(S)); }
+  catch(e){ toast("保存できませんでした"); console.error(e); }
+  paintSaved();
+  schedulePush();
+}
 function save(){
   clearTimeout(saveTimer);
   saveTimer = setTimeout(()=>{
-    S.savedAt = new Date().toISOString();
-    try{ localStorage.setItem(KEY, JSON.stringify(S)); }
-    catch(e){ toast("保存できませんでした"); console.error(e); }
-    paintSaved();
-    schedulePush();
+    persistNow();
   }, 150);
+}
+// 外部から届いた記録は、次の同期やアプリ終了より先に必ず確定保存する。
+function saveNow(){
+  clearTimeout(saveTimer);
+  saveTimer = null;
+  persistNow();
 }
 
 /* ---------- core math ---------- */
@@ -3844,7 +3853,9 @@ async function healthGistFetch(path, opts){
 
 async function pullHealthInbox(silent){
   const c = healthSyncCfg();
-  if(!c.token || !c.gistId || healthSyncing || staleBuild) return {skipped:true};
+  // 端末データ同期が S を丸ごと置き換えるため、同時実行すると
+  // 取り込んだ歩数・睡眠が直後に消える。必ず直列で扱う。
+  if(!c.token || !c.gistId || healthSyncing || syncing || staleBuild) return {skipped:true};
   healthSyncing = true;
   let imported = 0;
   try{
@@ -3860,7 +3871,9 @@ async function pullHealthInbox(silent){
         // An open health form may still hold an older draft.  Do not let that
         // transient draft mask values that have just arrived from Health.
         healthDraft = null;
-        save(); render();
+        // Gist の受信箱を空にした後は、端末内にも即時保存する。
+        // 遅延保存ではアプリ終了や同期に負ける可能性がある。
+        saveNow(); render();
         c.lastImport = new Date().toISOString();
         if(!silent) toast(`歩数・睡眠を ${imported} 件取り込みました`);
       }
@@ -3893,7 +3906,7 @@ const payload = () => JSON.stringify(S, null, 2);
 
 async function pushRemote(){
   const c = syncCfg();
-  if(!c.token || !c.gistId || syncing || staleBuild) return;
+  if(!c.token || !c.gistId || syncing || healthSyncing || staleBuild) return;
   if(c.role === "ro"){ syncPaint("ok", "読み取り専用（送信しません）"); return; }
   syncing = true; syncPaint("busy", "送信中…");
   try{
@@ -3923,7 +3936,7 @@ async function pushRemote(){
 
 async function pullRemote(silent, force){
   const c = syncCfg();
-  if(!c.token || !c.gistId || syncing) return;
+  if(!c.token || !c.gistId || syncing || healthSyncing) return;
   syncing = true;
   let imported = 0;
   if(!silent) syncPaint("busy", "受信中…");
@@ -4043,7 +4056,10 @@ async function manualRefresh(){
   try{
     await checkBuild();
     if(!staleBuild){
-      await Promise.all([pullRemote(false), pullHealthInbox(false)]);
+      // 端末同期が完了してからヘルスケア受信を行う。
+      // 並列にすると、端末同期が受信済みの睡眠を上書きしてしまう。
+      await pullRemote(false);
+      await pullHealthInbox(false);
       toast("最新の状態にしました");
     }
   }finally{
@@ -4318,7 +4334,14 @@ document.getElementById("impFile").addEventListener("change", async e => {
 
 // re-render when the day may have changed / 戻ってきたら相手側の変更も取りに行く
 document.addEventListener("visibilitychange", ()=>{
-  if(!document.hidden){ render(); checkBuild(); pullRemote(true); pullHealthInbox(true); }
+  if(!document.hidden){
+    render();
+    checkBuild().then(async()=>{
+      if(staleBuild) return;
+      await pullRemote(true);
+      await pullHealthInbox(true);
+    });
+  }
 });
 setInterval(checkBuild, 10 * 60 * 1000);
 
@@ -4334,6 +4357,6 @@ if("serviceWorker" in navigator &&
   navigator.serviceWorker.register("sw.js?v=" + BUILD, {updateViaCache:"none"}).catch(()=>{});
 }
 </script>
-<script defer src="ui-v2.js?v=0.28.2"></script>
+<script defer src="ui-v2.js?v=0.28.3"></script>
 </body>
 </html>
