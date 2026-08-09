@@ -56,6 +56,20 @@ $ver = (Get-Content "$root\version.txt" -Raw -Encoding UTF8).Trim()
 if ($build -ne $ver) { Write-Error "BUILD($build) と version.txt($ver) が違います" }
 "OK  版 $build"
 
+# PWAが古いCSS/JSをキャッシュすると、公開URLとホーム画面アプリの表示が食い違う。
+# 画面側とService Worker側の主要資産は、BUILDと同じクエリ版を必ず持たせる。
+$sw = Get-Content "$root\sw.js" -Raw -Encoding UTF8
+$assets = @("ui-v2.css", "ui-analog.css", "ui-paper-baseline.css", "ui-v2.js")
+foreach ($asset in $assets) {
+  $expected = $asset + '?v=' + $build
+  if ($src -notmatch [regex]::Escape($expected)) { Write-Error "index.html の資産版が違います: $expected" }
+  if ($sw -notmatch [regex]::Escape($expected)) { Write-Error "sw.js の資産版が違います: $expected" }
+}
+if ($sw -notmatch [regex]::Escape('const CACHE = "mainichi-v' + $build + '"')) {
+  Write-Error "sw.js のキャッシュ版がBUILDと違います: mainichi-v$build"
+}
+"OK  PWA資産とキャッシュ版が一致"
+
 # 実データがあればそれを流し込んで試す（無ければ空データ）
 $test = "$root\_check_tmp.html"
 $dataFile = "$root\private\mainichi-data.json"

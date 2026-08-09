@@ -13,7 +13,7 @@
   let calendarLane = "all";
   let calendarDate = ymd(now());
   let flowDate = ymd(now());
-  const metricOn = {sleep:true, steps:true, body:true, mind:true};
+  const metricOn = {sleep:true, steps:true, body:true, mind:true, checklist:true};
   // ホームの3枠に登録できる遷移先。ホーム自身以外の全画面を対象にする。
   const HOME_SHORTCUT_CATALOG = Object.freeze({
     record:["edit","記録する"],
@@ -155,13 +155,22 @@
     const steps = h.steps != null ? `${(+h.steps).toLocaleString("ja-JP")}歩` : "—";
     return `<section class="v2-page v2-health-record">${top(titleFor(page))}<div class="v2-date-tag">${dateLabel(ymd(now()))}</div><h2 class="v2-page-lead">今日の調子を残す</h2><div class="v2-health-paper-grid"><section class="v2-health-paper-item"><h3>${icon("body")}からだ</h3><small>体の調子</small>${dots("body",h.body)}<b>${h.body ? `${h.body} / 5` : "未記録"}</b></section><section class="v2-health-paper-item mind"><h3>${icon("heart")}こころ</h3><small>心の調子</small>${dots("mind",h.mind)}<b>${h.mind ? `${h.mind} / 5` : "未記録"}</b></section><section class="v2-health-paper-item"><h3>${icon("moon")}睡眠</h3><strong>${fmtSleep(sm)}</strong><small>設定から自動取り込み</small></section><section class="v2-health-paper-item"><h3>${icon("foot")}歩数</h3><strong>${steps}</strong><small>設定から自動取り込み</small></section></div><details class="v2-sleep-edit"><summary>${icon("clock")}睡眠時間を編集</summary><div class="v2-form-row"><label for="v2Bed">${icon("moon")}就寝時刻</label><input id="v2Bed" type="time" value="${esc2(h.bed||"")}" data-v2-health="bed"></div><div class="v2-form-row"><label for="v2Wake">${icon("sun")}起床時刻</label><input id="v2Wake" type="time" value="${esc2(h.wake||"")}" data-v2-health="wake"></div></details><button class="v2-primary income" data-v2-health-save>${icon("download")}この日の記録を保存</button><button class="v2-sub-action" data-v2-go="healthAnalysis">${icon("chart")}体調の変化を見る</button></section>`;
   }
+  function checklistProgress(key){
+    const rec=S.daily[key]||{}, habits=habitList(), tasks=plannedOn(key);
+    const total=habits.length+tasks.length;
+    if(!total) return null;
+    const habitDone=habits.filter(h=>rec.habits&&rec.habits[h.id]).length;
+    const taskDone=tasks.filter(t=>t.done).length;
+    return Math.round((habitDone+taskDone)/total*100);
+  }
   function healthChart(){
     const ds=healthDays();
     const metrics=[
       {id:"sleep",label:"睡眠",range:"3–10時間",min:180,max:600,c:"#376b91",kind:"bar",vals:ds.map(d=>{const h=S.health[d]||{},v=sleepMin(h.bed,h.wake);return v||null;})},
       {id:"steps",label:"歩数",range:"0–12,000歩",min:0,max:12000,c:"#39785d",kind:"bar",vals:ds.map(d=>{const v=(S.health[d]||{}).steps;return v==null?null:+v;})},
       {id:"body",label:"からだ",range:"1–5",min:1,max:5,c:"#7263a8",kind:"line",vals:ds.map(d=>{const v=+(S.health[d]||{}).body||0;return v||null;})},
-      {id:"mind",label:"こころ",range:"1–5",min:1,max:5,c:"#c86655",kind:"line",vals:ds.map(d=>{const v=+(S.health[d]||{}).mind||0;return v||null;})}
+      {id:"mind",label:"こころ",range:"1–5",min:1,max:5,c:"#c86655",kind:"line",vals:ds.map(d=>{const v=+(S.health[d]||{}).mind||0;return v||null;})},
+      {id:"checklist",label:"達成度",range:"0–100%",min:0,max:100,c:"#d2a449",kind:"bar",vals:ds.map(checklistProgress)}
     ].filter(m=>metricOn[m.id]);
     const gx=90, gw=254, rowH=46, top=11, footer=22, height=Math.max(1,metrics.length)*rowH+top+footer;
     const x=i=>gx+(ds.length<2?gw/2:i*gw/(ds.length-1));
@@ -241,7 +250,7 @@
     const shortcuts=Array.isArray(S.homeShortcuts)&&S.homeShortcuts.length===3&&S.homeShortcuts.every(x=>catalog[x])?S.homeShortcuts:fallback;
     const d=now(),time=toHHMM(d.getHours()*60+d.getMinutes());
     const tile=id=>`<button class="an-home-shortcut" data-v2-go="${id}">${icon(catalog[id][0])}<span>${catalog[id][1]}</span></button>`;
-    return `<section class="v2-page an-page an-home"><main class="an-home-content"><div class="an-home-brand">${appBrand()}</div><div class="an-home-meta"><time data-v2-live-date>${dateLabel(ymd(d))}</time><strong data-v2-live-time>${time}</strong><small>${versionLabel()}</small></div><div class="an-home-list">${analogChoice("record","blue","edit","記録する","支出・収入／こころとからだ")}${analogChoice("today","yellow","sun","今日を整える","一日の流れ／テーマ")}${analogChoice("visualize","purple","chart","見える化する","お金／こころとからだ")}</div><section class="an-home-shortcuts" aria-label="ショートカット"><div><h2>ショートカット</h2><button type="button" data-v2-shortcuts-open>編集</button></div><div class="an-home-shortcut-grid">${shortcuts.map(tile).join("")}</div><div id="v2ShortcutArea"></div></section></main></section>`;
+    return `<section class="v2-page an-page an-home"><main class="an-home-content"><div class="an-home-brand">${appBrand()}</div><div class="an-home-meta"><time data-v2-live-date>${dateLabel(ymd(d))}</time><strong data-v2-live-time>${time}</strong><small>${versionLabel()}</small></div><div class="an-home-list">${analogChoice("record","blue","edit","記録する","支出・収入／こころとからだ")}${analogChoice("today","yellow","sun","今日を整える","一日の流れ／テーマ")}${analogChoice("visualize","purple","chart","見える化する","お金／こころとからだ")}</div><section class="an-home-shortcuts" aria-label="ショートカット"><div><h2>ショートカット</h2><button type="button" data-v2-shortcuts-open>編集</button></div><div class="an-home-shortcut-grid">${shortcuts.map(tile).join("")}</div><div id="v2ShortcutArea"></div></section><button type="button" class="an-home-settings" data-v2-go="settings">${icon("settings")}<span>設定</span></button></main></section>`;
   }
   function branch(kind){
     const record = kind === "record";
@@ -266,14 +275,22 @@
     return analogPage("an-health-record","heart","HEALTH LOG","今日の調子を残す",`<p class="an-date-note">${dateLabel(ymd(now()))}</p><section class="an-health-sheet">${rating("body","からだ","体の調子")}${rating("mind","こころ","心の調子")}<div class="an-health-data"><span>${icon("moon")}睡眠</span><strong>${fmtSleep(sm)}</strong><small>設定から自動取り込み</small><details><summary>睡眠時間を編集</summary><div class="an-time-fields"><input id="v2Bed" type="time" value="${esc2(h.bed||"")}" data-v2-health="bed"><input id="v2Wake" type="time" value="${esc2(h.wake||"")}" data-v2-health="wake"></div></details></div><div class="an-health-data"><span>${icon("foot")}歩数</span><strong>${steps}</strong><small>設定から自動取り込み</small></div></section><button class="an-save green" data-v2-health-save>この日の記録を保存</button><button class="an-wide-action green" data-v2-go="healthAnalysis">${icon("chart")}<span>体調の変化を見る</span><b>›</b></button>`);
   }
   function healthAnalysis(){
-    const labels=[["sleep","睡眠","#4d80ad"],["steps","歩数","#4f986f"],["body","からだ","#796aa8"],["mind","こころ","#ca796b"]];
+    const labels=[["sleep","睡眠","#4d80ad"],["steps","歩数","#4f986f"],["body","からだ","#796aa8"],["mind","こころ","#ca796b"],["checklist","達成度","#d2a449"]];
     return analogPage("an-health-analysis","body","HEALTH ANALYSIS","体調の分析",`<section class="an-chart-section"><h2>睡眠・歩数・調子の変化</h2><div class="an-metric-toggle">${labels.map(([id,l,c])=>`<button class="${metricOn[id]?"":"off"}" data-v2-metric="${id}"><i style="background:${c}"></i>${l}</button>`).join("")}</div>${healthChart()}</section><section class="an-chart-section"><h2>振り返り</h2><div class="an-insight"><span>${icon("moon")}睡眠が短い日</span><b>${healthDays().filter(d=>(sleepMin((S.health[d]||{}).bed,(S.health[d]||{}).wake)||0)<360).length}日</b></div><div class="an-insight"><span>${icon("foot")}よく歩いた日</span><b>${healthDays().filter(d=>+(S.health[d]||{}).steps>=8000).length}日</b></div></section>`);
   }
   function flow(){
     const key=flowDate,rec=S.daily[key]||{},blocks=allBlocks(key),start=typeof TL_START==="number"?TL_START:4*60,end=typeof TL_END==="number"?TL_END:27*60,h=Math.round(((end-start)/60)*28),slots=[];for(let m=start;m<=end;m+=60)slots.push(`<span class="v2-time" style="top:${(m-start)/(end-start)*h}px">${toHHMM(m%1440)}</span>`);const events=blocks.map(b=>{const a=Math.max(start,b.a),z=Math.min(end,b.b);return z<=a?"":`<div class="v2-event" style="--event:${esc2(b.color||catOf(b.cat).color)};top:${(a-start)/(end-start)*h}px;height:${Math.max(42,(z-a)/(end-start)*h-3)}px"><strong>${esc2(b.text)}</strong><span>${toHHMM(a%1440)} - ${toHHMM(z%1440)}</span></div>`}).join("");const n=now(),nowM=n.getHours()*60+n.getMinutes(),isToday=key===ymd(n),nowline=isToday&&nowM>=start&&nowM<=end?`<div class="v2-now" style="top:${(nowM-start)/(end-start)*h}px"><b>いま ${toHHMM(nowM)}</b></div>`:"";
     return analogPage("an-flow","calendar","DAILY FLOW","一日の流れ",`<section class="an-theme-strip"><small>${dateLabel(key)}</small><strong>${esc2(rec.theme||"今日のテーマを設定")}</strong></section><section class="an-timeline-section"><h2>${icon("clock")}時間割</h2><div class="v2-timeline" style="min-height:${h}px">${slots.join("")}${events}${nowline}</div></section><div class="an-flow-actions"><button data-v2-plan-open>${icon("plus")}予定を足す</button><button data-v2-go="checklist">${icon("list")}チェックリスト</button><button data-v2-go="calendar">${icon("calendar")}週／月を見る</button></div><div id="v2PlanArea"></div>`);
   }
-  function checklistV2(){const key=flowDate,rec=S.daily[key]||{habits:{}},tasks=plannedOn(key).slice().sort((a,b)=>PRIOS.findIndex(p=>p.id===autoPriority(a).id)-PRIOS.findIndex(p=>p.id===autoPriority(b).id));const habits=habitList().map(h=>`<button class="an-habit ${rec.habits&&rec.habits[h.id]?"on":""}" data-v2-habit="${esc2(h.id)}">${habitIcon(h)}<span>${esc2(h.label)}</span></button>`).join("");const list=tasks.length?tasks.map(t=>`<button class="an-task ${t.done?"done":""}" data-v2-task="${esc2(t.id)}"><i>✓</i><span>${esc2(t.text)}</span><b>${esc2(autoPriority(t).label)}</b></button>`).join(""):`<p class="an-empty">予定を足すと、ここに表示します。</p>`;return analogPage("an-checklist","list","CHECKLIST","今日のやること",`<p class="an-date-note">${dateLabel(key)}</p><section class="an-chart-section"><h2>毎日の習慣</h2><div class="an-habits">${habits}</div></section><section class="an-chart-section"><h2>やること</h2><div class="an-tasks">${list}</div></section>`);}
+  function checklistV2(){
+    const key=flowDate,rec=S.daily[key]||{habits:{},},all=plannedOn(key).slice().sort((a,b)=>PRIOS.findIndex(p=>p.id===autoPriority(a).id)-PRIOS.findIndex(p=>p.id===autoPriority(b).id));
+    const tasks=all.filter(t=>t.kind!=="shopping"), shopping=all.filter(t=>t.kind==="shopping");
+    const habits=habitList().map(h=>`<button class="an-habit ${rec.habits&&rec.habits[h.id]?"on":""}" data-v2-habit="${esc2(h.id)}">${habitIcon(h)}<span>${esc2(h.label)}</span></button>`).join("");
+    const row=t=>`<button class="an-task ${t.done?"done":""}" data-v2-task="${esc2(t.id)}"><i>✓</i><span>${esc2(t.text)}</span>${t.kind==="shopping"?"":`<b>${esc2(autoPriority(t).label)}</b>`}</button>`;
+    const list=tasks.length?tasks.map(row).join(""):`<p class="an-empty">予定を足すと、ここに表示します。</p>`;
+    const shop=shopping.length?shopping.map(row).join(""):`<p class="an-empty">買うものを追加すると、ここに並びます。</p>`;
+    return analogPage("an-checklist","list","CHECKLIST","今日のやること",`<p class="an-date-note">${dateLabel(key)}</p><section class="an-chart-section"><h2>毎日の習慣</h2><div class="an-habits">${habits}</div></section><section class="an-chart-section"><h2>やること</h2><div class="an-tasks">${list}</div></section><section class="an-chart-section an-shopping-section"><h2>買い物リスト</h2><div class="an-tasks">${shop}</div><div class="an-shopping-add"><input id="v2ShoppingText" maxlength="80" placeholder="買うものを追加"><button type="button" data-v2-shopping-add>${icon("plus")}追加</button></div></section>`);
+  }
   function theme(){const key=ymd(now()),value=(S.daily[key]||{}).theme||"";return analogPage("an-theme","sun","TODAY'S THEME","今日のテーマ",`<div class="an-theme-editor"><label for="v2Theme">ひとことで書く</label><input id="v2Theme" value="${esc2(value)}" maxlength="40" placeholder="今日のテーマ"></div><button class="an-save yellow" data-v2-theme-save>テーマを保存</button>`);}
   function ideaNote(){
     const board=Object.assign({monthlyGoal:"",ideas:[],images:[]},S.ideaBoard||{}),ideas=Array.isArray(board.ideas)?board.ideas:[],images=Array.isArray(board.images)?board.images:[];
@@ -330,6 +347,94 @@
     const privacyKey=toggle.dataset.v2Private==="outlook"?"moneyOutlookVisible":"moneyVisible";
     S.ui[privacyKey]=!(S.ui[privacyKey]!==false);
     save(); newAppRender();
+  },true);
+  /* Schedule operations are deliberately limited to plans created in this app.
+     Imported/automatic items remain readable but cannot be changed by mistake. */
+  function findEditableFlowEvent(origin,id,key){
+    const list=origin==="daily" ? (Array.isArray(S.dailyTimeline)?S.dailyTimeline:[]) : (S.plan[key]||[]);
+    return {list,item:list.find(x=>x.id===id)};
+  }
+  let flowPress=null,flowDrag=null,suppressFlowEventClick=false;
+  function clearFlowPress(){
+    if(flowPress?.timer) clearTimeout(flowPress.timer);
+    flowPress=null;
+  }
+  root.addEventListener("click",event=>{
+    const del=event.target.closest("[data-v2-event-delete]");
+    if(del){
+      event.stopImmediatePropagation();
+      if(!canWrite()||!activeFlowEvent) return;
+      const found=findEditableFlowEvent(activeFlowEvent.origin,activeFlowEvent.id,activeFlowEvent.key);
+      if(!found.item) return;
+      found.list.splice(found.list.indexOf(found.item),1);
+      activeFlowEvent=null; save(); newAppRender(); toast("予定を削除しました");
+      return;
+    }
+    const close=event.target.closest("[data-v2-event-close]");
+    const sheetLayer=event.target.closest("[data-v2-event-sheet-layer]");
+    if(close || (sheetLayer && event.target===sheetLayer)){ event.stopImmediatePropagation(); activeFlowEvent=null; newAppRender(); return; }
+    const card=event.target.closest("[data-v2-event-id]");
+    if(!card||suppressFlowEventClick) return;
+    event.stopImmediatePropagation();
+    const visibleBlocks=allBlocks(flowDate).filter(b=>b.cat!=="sleep");
+    const found=visibleBlocks[Number(card.dataset.v2EventIndex)];
+    if(!found) return;
+    activeFlowEvent={id:found.id,origin:found._v2Origin,key:flowDate,text:found.text,a:found.a,b:found.b,lane:flowLane(found)};
+    newAppRender();
+  },true);
+  root.addEventListener("pointerdown",event=>{
+    const card=event.target.closest('[data-v2-event-editable="true"]');
+    if(!card||event.button>0) return;
+    const timeline=card.closest("[data-v2-timeline]");
+    if(!timeline) return;
+    const press={card,timeline,origin:card.dataset.v2EventOrigin,id:card.dataset.v2EventId,key:card.dataset.v2EventKey,startY:event.clientY,pointerId:event.pointerId};
+    press.timer=setTimeout(()=>{
+      const found=findEditableFlowEvent(press.origin,press.id,press.key);
+      if(!found.item) return;
+      const rect=press.timeline.getBoundingClientRect();
+      flowDrag=Object.assign(press,{rect,baseStart:toMin(found.item.from),baseEnd:toMin(found.item.to),nextStart:toMin(found.item.from)});
+      press.card.classList.add("is-dragging");
+      press.card.setPointerCapture?.(event.pointerId);
+      clearFlowPress();
+    },430);
+    flowPress=press;
+  },true);
+  root.addEventListener("pointermove",event=>{
+    if(flowDrag&&event.pointerId===flowDrag.pointerId){
+      event.preventDefault();
+      const start=+flowDrag.timeline.dataset.v2Start,end=+flowDrag.timeline.dataset.v2End,duration=flowDrag.baseEnd-flowDrag.baseStart;
+      const minutesPerPixel=(end-start)/flowDrag.rect.height;
+      let next=Math.round((flowDrag.baseStart+(event.clientY-flowDrag.startY)*minutesPerPixel)/30)*30;
+      next=Math.max(start,Math.min(end-duration,next));
+      flowDrag.nextStart=next;
+      flowDrag.card.style.transform=`translateY(${(next-flowDrag.baseStart)/minutesPerPixel}px)`;
+      return;
+    }
+    if(flowPress&&Math.abs(event.clientY-flowPress.startY)>8) clearFlowPress();
+  },{capture:true,passive:false});
+  root.addEventListener("pointerup",event=>{
+    clearFlowPress();
+    if(!flowDrag||event.pointerId!==flowDrag.pointerId) return;
+    const drag=flowDrag; flowDrag=null; drag.card.classList.remove("is-dragging");
+    if(drag.nextStart===drag.baseStart) return;
+    const found=findEditableFlowEvent(drag.origin,drag.id,drag.key);
+    if(!found.item) return;
+    const duration=drag.baseEnd-drag.baseStart;
+    found.item.from=toHHMM(drag.nextStart); found.item.to=toHHMM(drag.nextStart+duration);
+    suppressFlowEventClick=true; setTimeout(()=>{suppressFlowEventClick=false;},0);
+    save(); newAppRender(); toast("予定の時刻を更新しました");
+  },true);
+  root.addEventListener("pointercancel",()=>{ clearFlowPress(); if(flowDrag){flowDrag.card.classList.remove("is-dragging");flowDrag=null;} },true);
+  root.addEventListener("click",event=>{
+    const add=event.target.closest("[data-v2-shopping-add]");
+    if(!add) return;
+    event.stopImmediatePropagation();
+    if(!canWrite()) return;
+    const field=document.getElementById("v2ShoppingText"),text=field?.value.trim()||"";
+    if(!text) return toast("買うものを入力してください");
+    S.errands=Array.isArray(S.errands)?S.errands:[];
+    S.errands.push({id:uid(),text,note:"",due:"",from:"",to:"",prio:"n",done:false,doneAt:null,plan:flowDate,kind:"shopping"});
+    save(); newAppRender(); toast("買い物リストに追加しました");
   },true);
   root.addEventListener("input",e=>{if(e.target.id==="v2Amount"){const n=moneyAmount(e.target.value);e.target.value=n?`￥${n.toLocaleString("ja-JP")}`:"";}if(e.target.dataset.v2Health){healthDraft=Object.assign({},healthDraft||{},{[e.target.dataset.v2Health]:e.target.value});}});
   root.addEventListener("click", event => { if(event.target.closest("[data-v2-home]")){ goHome(); } });
@@ -474,14 +579,21 @@
       content=`<div class="v2-month">${Array.from({length:off},()=>"<span></span>").join("")}${Array.from({length:days},(_,i)=>{const d=i+1,key=`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`,has=filtered(key).length;return `<button class="${key===ymd(now())?"today ":""}${has?"has":""}" data-v2-cal-date="${key}">${d}</button>`}).join("")}</div>`;
     }
     const period=calendarMode==="week"?`${mon.getMonth()+1}月${mon.getDate()}日からの1週間`:`${base.getFullYear()}年${base.getMonth()+1}月`;
-    return analogPage("an-calendar","calendar","CALENDAR",period,`<div class="an-calendar-switch"><button class="${calendarMode==="week"?"on":""}" data-v2-cal-mode="week">1週間</button><button class="${calendarMode==="month"?"on":""}" data-v2-cal-mode="month">1か月</button></div><div class="an-calendar-filter"><button class="${calendarLane==="all"?"on":""}" data-v2-cal-lane="all">すべて</button><button class="${calendarLane==="work"?"on":""}" data-v2-cal-lane="work">${icon("work")}仕事</button><button class="${calendarLane==="life"?"on":""}" data-v2-cal-lane="life">${icon("life")}生活</button></div>${content}${legend}<p class="an-empty">日付をタップすると、その日の時間割を開きます。</p>`);
+    const purpose=calendarMode==="week"?`<section class="an-calendar-purpose"><strong>1週間：予定の重なりを見つけて整える</strong><span>仕事と生活を切り替え、負担が偏る日を確認します。</span></section>`:`<section class="an-calendar-purpose"><strong>1か月：先の予定を見通す</strong><span>支払い・通院・締切などを先回りして確認します。</span></section>`;
+    return analogPage("an-calendar","calendar","CALENDAR",period,`<div class="an-calendar-switch"><button class="${calendarMode==="week"?"on":""}" data-v2-cal-mode="week">1週間</button><button class="${calendarMode==="month"?"on":""}" data-v2-cal-mode="month">1か月</button></div><div class="an-calendar-filter"><button class="${calendarLane==="all"?"on":""}" data-v2-cal-lane="all">すべて</button><button class="${calendarLane==="work"?"on":""}" data-v2-cal-lane="work">${icon("work")}仕事</button><button class="${calendarLane==="life"?"on":""}" data-v2-cal-lane="life">${icon("life")}生活</button></div>${purpose}${content}${legend}<p class="an-empty">日付をタップすると、その日の時間割を開きます。</p>`);
+  }
+  let activeFlowEvent=null;
+  function flowEventSheet(){
+    if(!activeFlowEvent) return "";
+    const e=activeFlowEvent, editable=e.origin==="plan"||e.origin==="daily";
+    return `<div class="an-event-sheet-layer" data-v2-event-sheet-layer><section class="an-event-sheet" role="dialog" aria-modal="true" aria-labelledby="v2EventTitle"><button type="button" class="an-event-sheet-close" data-v2-event-close aria-label="閉じる">${icon("close")}</button><small>${editable?"予定を編集":"読み取り専用の予定"}</small><h2 id="v2EventTitle">${esc2(e.text)}</h2><p>${toHHMM(e.a%1440)} – ${toHHMM(e.b%1440)} · ${e.lane==="work"?"仕事":"生活"}</p>${editable?`<p class="an-event-sheet-note">長押しして上下に動かすと、30分ごとに時間を変更できます。</p><div class="an-event-sheet-actions"><button type="button" class="danger" data-v2-event-delete>予定を削除</button><button type="button" data-v2-event-close>閉じる</button></div>`:`<p class="an-event-sheet-note">この予定は取り込み済みのため、ここでは編集できません。</p>`}</section></div>`;
   }
   function flow(){
-    const key=flowDate,rec=S.daily[key]||{},blocks=allBlocks(key),start=typeof TL_START==="number"?TL_START:4*60,end=typeof TL_END==="number"?TL_END:27*60,h=Math.round(((end-start)/60)*28),slots=[];
+    const key=flowDate,rec=S.daily[key]||{},blocks=allBlocks(key).filter(b=>b.cat!=="sleep"),start=typeof TL_START==="number"?TL_START:4*60,end=typeof TL_END==="number"?TL_END:27*60,h=Math.round(((end-start)/60)*28),slots=[];
     for(let m=start;m<end;m+=60)slots.push(`<span class="v2-time" style="top:${(m-start)/(end-start)*h}px">${toHHMM(m%1440)}</span>`);
-    const events=blocks.map(b=>{const a=Math.max(start,b.a),z=Math.min(end,b.b);return z<=a?"":`<div class="v2-event an-flow-event an-lane-${flowLane(b)}" style="--event:${esc2(b.color||catOf(b.cat).color)};top:${(a-start)/(end-start)*h}px;height:${Math.max(42,(z-a)/(end-start)*h-3)}px"><strong>${esc2(b.text)}</strong><span>${toHHMM(a%1440)} - ${toHHMM(z%1440)}${b.repeat?" ・ 毎日":""}</span></div>`}).join("");
+    const events=blocks.map((b,index)=>{const a=Math.max(start,b.a),z=Math.min(end,b.b),editable=b._v2Origin==="plan"||b._v2Origin==="daily";return z<=a?"":`<button type="button" class="v2-event an-flow-event an-lane-${flowLane(b)}" data-v2-event-id="${esc2(b.id||"")}" data-v2-event-index="${index}" data-v2-event-origin="${esc2(b._v2Origin||"auto")}" data-v2-event-key="${esc2(key)}" data-v2-event-editable="${editable?"true":"false"}" style="--event:${esc2(b.color||catOf(b.cat).color)};top:${(a-start)/(end-start)*h}px;height:${Math.max(42,(z-a)/(end-start)*h-3)}px"><strong>${esc2(b.text)}</strong><span>${toHHMM(a%1440)} - ${toHHMM(z%1440)}${b.repeat?" ・ 毎日":""}</span></button>`}).join("");
     const n=now(),rawNowM=n.getHours()*60+n.getMinutes(),nowM=rawNowM<start?rawNowM+1440:rawNowM,isToday=key===ymd(n),nowline=isToday&&nowM>=start&&nowM<=end?`<div class="v2-now" data-v2-now-line data-v2-start="${start}" data-v2-end="${end}" style="top:${(nowM-start)/(end-start)*h}px"><b data-v2-now-label>いま ${toHHMM(rawNowM)}</b></div>`:"";
-    return analogPage("an-flow","calendar","DAILY FLOW","一日の流れ",`<section class="an-theme-strip"><small>${dateLabel(key)}</small><strong>${esc2(rec.theme||"今日のテーマを設定")}</strong></section><section class="an-timeline-section"><h2>${icon("clock")}時間割</h2><div class="an-flow-timeline-shell"><div class="an-flow-lane-guide"><span>${icon("work")}仕事</span><span>${icon("life")}生活</span></div><div class="v2-timeline" style="min-height:${h}px">${slots.join("")}${events}${nowline}</div></div></section><div class="an-flow-actions"><button data-v2-plan-open aria-expanded="false">${icon("plus")}予定を足す</button><button data-v2-go="checklist">${icon("list")}チェックリスト</button><button data-v2-go="calendar">${icon("calendar")}週／月を見る</button></div><div id="v2PlanArea" aria-live="polite"></div>`);
+    return analogPage("an-flow","calendar","DAILY FLOW","一日の流れ",`<section class="an-theme-strip"><small>${dateLabel(key)}</small><strong>${esc2(rec.theme||"今日のテーマを設定")}</strong></section><section class="an-timeline-section"><h2>${icon("clock")}時間割</h2><div class="an-flow-timeline-shell"><div class="an-flow-lane-guide"><span>${icon("work")}仕事</span><span>${icon("life")}生活</span></div><div class="v2-timeline" data-v2-timeline data-v2-start="${start}" data-v2-end="${end}" style="min-height:${h}px">${slots.join("")}${events}${nowline}</div></div></section><div class="an-flow-actions"><button data-v2-plan-open aria-expanded="false">${icon("plus")}予定を足す</button><button data-v2-go="checklist">${icon("list")}チェックリスト</button><button data-v2-go="calendar">${icon("calendar")}週／月を見る</button></div><div id="v2PlanArea" aria-live="polite"></div>${flowEventSheet()}`);
   }
   root.addEventListener("click", event => {
     const opener=event.target.closest("[data-v2-plan-open]");
@@ -533,7 +645,7 @@
       (S.plan[flowDate]||(S.plan[flowDate]=[])).push(item);
       toast("この日の予定を時間割に追加しました");
     }
-    save(); render();
+    save(); newAppRender();
   },true);
   root.addEventListener("click", event => {
     const lane=event.target.closest("[data-v2-cal-lane]");

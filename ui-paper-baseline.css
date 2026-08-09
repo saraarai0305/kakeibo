@@ -241,3 +241,41 @@ body[data-app-shell="v2"]{min-height:100dvh!important}
 .an-board-image figcaption{overflow:hidden!important;margin:6px 3px 1px!important;color:#68726a!important;font-size:10px!important;font-weight:800!important;white-space:nowrap!important;text-overflow:ellipsis!important}
 .an-board-image button{position:absolute!important;top:10px!important;right:10px!important;display:grid!important;place-items:center!important;width:28px!important;height:28px!important;margin:0!important;padding:0!important;border:1px solid rgba(255,255,255,.8)!important;border-radius:50%!important;background:rgba(35,49,45,.75)!important;color:#fff!important}.an-board-image button .v2-icon{width:14px!important;height:14px!important}
 .an-free-board>.an-empty{grid-column:1 / -1!important;margin:0!important}
+
+/* 2026-08-09: schedule details and direct manipulation.
+   User-created plans are buttons so their full title can be inspected in a sheet;
+   the timeline itself stays readable and keeps its paper rhythm. */
+.an-flow .v2-event{appearance:none!important;border:0!important;text-align:left!important;font:inherit!important;cursor:pointer!important}
+.an-flow .v2-event[data-v2-event-editable="true"]{touch-action:pan-y!important;cursor:grab!important}
+.an-flow .v2-event.is-dragging{z-index:6!important;opacity:.94!important;cursor:grabbing!important;box-shadow:4px 5px 0 rgba(73,56,36,.2)!important;transition:none!important}
+.an-flow .v2-now b{display:inline-grid!important;place-items:center!important;min-height:30px!important;padding:4px 10px!important;border:1.5px solid #c95f54!important;border-radius:999px!important;background:#fffaf0!important;color:#c95f54!important;line-height:1!important;box-shadow:2px 2px 0 rgba(157,73,62,.12)!important}
+.an-event-sheet-layer{position:fixed!important;z-index:10020!important;inset:0!important;display:grid!important;align-items:end!important;padding:18px!important;background:rgba(33,49,45,.28)!important;animation:an-sheet-in .18s ease-out!important}
+.an-event-sheet{position:relative!important;width:min(100%,520px)!important;margin:0 auto!important;padding:25px 20px 19px!important;border:1.5px solid #bbaa8d!important;border-radius:20px!important;background:#fffaf0!important;color:#21312d!important;box-shadow:0 -8px 30px rgba(50,39,23,.18)!important;animation:an-sheet-up .2s ease-out!important}
+.an-event-sheet>small{display:block!important;margin:0 38px 7px 0!important;color:#85755e!important;font-size:12px!important;font-weight:800!important;letter-spacing:.07em!important}
+.an-event-sheet h2{margin:0!important;color:#21312d!important;font-size:24px!important;line-height:1.28!important;overflow-wrap:anywhere!important}
+.an-event-sheet p{margin:9px 0 0!important;color:#68726a!important;font-size:14px!important;line-height:1.55!important}
+.an-event-sheet-note{padding-top:8px!important;border-top:1px dashed #c8b99f!important}
+.an-event-sheet-close{position:absolute!important;top:14px!important;right:14px!important;display:grid!important;place-items:center!important;width:34px!important;height:34px!important;margin:0!important;padding:0!important;border:1px solid #c8b99f!important;border-radius:50%!important;background:#f6efe1!important;color:#315674!important}
+.an-event-sheet-close .v2-icon{width:17px!important;height:17px!important;margin:0!important}
+.an-event-sheet-actions{display:grid!important;grid-template-columns:1fr 1fr!important;gap:9px!important;margin-top:18px!important}
+.an-event-sheet-actions button{min-height:46px!important;margin:0!important;padding:0 10px!important;border:1px solid #c8b99f!important;border-radius:11px!important;background:#fffaf0!important;color:#315674!important;font:800 14px/1 inherit!important}
+.an-event-sheet-actions button.danger{border-color:#c95f54!important;background:#f8e5df!important;color:#a9463d!important}
+@keyframes an-sheet-in{from{opacity:0}to{opacity:1}}
+@keyframes an-sheet-up{from{transform:translateY(14px)}to{transform:translateY(0)}}
+
+/* Checklist shopping is a small, separate list: it does not compete with the
+   day's required tasks and can still contribute to the completion trend. */
+.an-shopping-section{border-top:1px dashed #c8b99f!important}
+.an-shopping-add{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:8px!important;margin-top:10px!important}
+.an-shopping-add input{min-width:0!important;min-height:44px!important;padding:0 11px!important;border:1px solid #c8b99f!important;border-radius:10px!important;background:#fffaf0!important;color:#21312d!important;font:inherit!important;font-size:14px!important}
+.an-shopping-add button{display:flex!important;align-items:center!important;justify-content:center!important;gap:4px!important;min-height:44px!important;padding:0 12px!important;border:0!important;border-radius:10px!important;background:#4d80ad!important;color:#fff!important;font:800 13px/1 inherit!important}
+.an-shopping-add .v2-icon{width:16px!important;height:16px!important;margin:0!important}
+
+/* Calendar exposes the reason for each scale before showing its grid. */
+.an-calendar-purpose{display:grid!important;gap:4px!important;margin:0 0 15px!important;padding:12px 0!important;border-top:1px solid #c8b99f!important;border-bottom:1px dashed #c8b99f!important}
+.an-calendar-purpose strong{color:#21312d!important;font-size:14px!important;line-height:1.35!important}
+.an-calendar-purpose span{color:#68726a!important;font-size:12px!important;line-height:1.45!important}
+
+/* Home settings is intentionally a quiet fourth action under the primary trio. */
+.an-home-settings{display:flex!important;align-items:center!important;justify-content:center!important;gap:7px!important;width:100%!important;min-height:48px!important;margin:14px 0 0!important;padding:0 14px!important;border:1px solid #c8b99f!important;border-radius:13px!important;background:#fffaf0!important;color:#315674!important;font:800 14px/1 inherit!important;box-shadow:2px 2px 0 rgba(103,82,49,.09)!important}
+.an-home-settings .v2-icon{width:20px!important;height:20px!important;margin:0!important}
