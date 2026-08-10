@@ -14,6 +14,10 @@
   let calendarDate = ymd(now());
   let flowDate = ymd(now());
   const metricOn = {sleep:true, steps:true, body:true, mind:true, checklist:true};
+  let healthChartSelectedPoint = null;
+  const successToast = message => {
+    if(S?.ui?.successNotices !== false) toast(message);
+  };
   // ホームの3枠に登録できる遷移先。ホーム自身以外の全画面を対象にする。
   const HOME_SHORTCUT_CATALOG = Object.freeze({
     record:["edit","記録する"],
@@ -64,6 +68,11 @@
       life:'<path d="m3.5 11 8.5-7 8.5 7v9H14v-5h-4v5H3.5z"/><path d="M18 5.5h2.5V9"/>',
       refresh:'<path d="M20 11a8 8 0 0 0-13.8-4L4 9M4 5v4h4M4 13a8 8 0 0 0 13.8 4L20 15M20 19v-4h-4"/>',
       download:'<path d="M12 3v12m-5-5 5 5 5-5M4 20h16"/>'
+      ,text:'<path d="M4 5h16M12 5v14M8 19h8"/>'
+      ,shape:'<rect x="4" y="5" width="16" height="14" rx="3"/>'
+      ,memo:'<path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/>'
+      ,pen:'<path d="m4 20 4.3-.9L19.2 8.2 15.8 4.8 4.9 15.7zM14.9 5.7l3.4 3.4"/>'
+      ,image:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8" cy="9" r="1.5"/><path d="m4 18 5-5 3 3 3-4 5 6"/>'
       ,folder:'<path d="M3.5 7.5h5l2 2h10v11H3.5z"/>'
       ,pill:'<rect x="8" y="3.5" width="8" height="17" rx="4"/><path d="M8 12h8"/>'
       ,walk:'<path d="M4 6h5.4a1 1 0 0 1 .9.5l1.1 1.8a3 3 0 0 0 1.9 1.4l4.7 1.1a4 4 0 0 1 3.1 3.9V17a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z"/><path d="m14 13 1-2M8 18v-1a4 4 0 0 0-4-4H3M10 12l1.5-3"/>'
@@ -166,19 +175,28 @@
   function healthChart(){
     const ds=healthDays();
     const metrics=[
-      {id:"sleep",label:"睡眠",range:"3–10時間",min:180,max:600,c:"#376b91",kind:"bar",vals:ds.map(d=>{const h=S.health[d]||{},v=sleepMin(h.bed,h.wake);return v||null;})},
-      {id:"steps",label:"歩数",range:"0–12,000歩",min:0,max:12000,c:"#39785d",kind:"bar",vals:ds.map(d=>{const v=(S.health[d]||{}).steps;return v==null?null:+v;})},
-      {id:"body",label:"からだ",range:"1–5",min:1,max:5,c:"#7263a8",kind:"line",vals:ds.map(d=>{const v=+(S.health[d]||{}).body||0;return v||null;})},
-      {id:"mind",label:"こころ",range:"1–5",min:1,max:5,c:"#c86655",kind:"line",vals:ds.map(d=>{const v=+(S.health[d]||{}).mind||0;return v||null;})},
-      {id:"checklist",label:"達成度",range:"0–100%",min:0,max:100,c:"#d2a449",kind:"bar",vals:ds.map(checklistProgress)}
+      {id:"sleep",label:"睡眠",min:180,max:600,c:"#376b91",kind:"bar",vals:ds.map(d=>{const h=S.health[d]||{},v=sleepMin(h.bed,h.wake);return v||null;}),format:v=>fmtSleep(v)},
+      {id:"steps",label:"歩数",min:0,max:12000,c:"#39785d",kind:"bar",vals:ds.map(d=>{const v=(S.health[d]||{}).steps;return v==null?null:+v;}),format:v=>`${(+v).toLocaleString("ja-JP")}歩`},
+      {id:"body",label:"からだ",min:1,max:5,c:"#7263a8",kind:"line",vals:ds.map(d=>{const v=+(S.health[d]||{}).body||0;return v||null;}),format:v=>`${v} / 5`},
+      {id:"mind",label:"こころ",min:1,max:5,c:"#c86655",kind:"line",vals:ds.map(d=>{const v=+(S.health[d]||{}).mind||0;return v||null;}),format:v=>`${v} / 5`},
+      {id:"checklist",label:"毎日の習慣",min:0,max:100,c:"#d2a449",kind:"line",vals:ds.map(checklistProgress),format:v=>`${v}%`}
     ].filter(m=>metricOn[m.id]);
-    const gx=90, gw=254, rowH=46, top=11, footer=22, height=Math.max(1,metrics.length)*rowH+top+footer;
+    const W=360,H=238,L=34,R=12,T=33,B=34,gx=L,gw=W-L-R,base=H-B;
     const x=i=>gx+(ds.length<2?gw/2:i*gw/(ds.length-1));
+    const shortDate=d=>{const dt=new Date(`${d}T00:00:00`);return `${dt.getMonth()+1}/${dt.getDate()} ${"日月火水木金土"[dt.getDay()]}`;};
     const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
     const norm=(m,v)=>v==null?null:clamp((v-m.min)/(m.max-m.min),0,1);
-    const linePath=(m,base)=>{let active=false;return m.vals.map((v,i)=>{const n=norm(m,v);if(n==null){active=false;return "";}const y=base-4-n*25,cmd=active?"L":"M";active=true;return `${cmd}${x(i)} ${y}`;}).join(" ");};
-    const rows=metrics.map((m,j)=>{const base=top+j*rowH+33,mid=base-14;const bars=m.kind==="bar"?m.vals.map((v,i)=>{const n=norm(m,v);return n==null?"":`<rect x="${x(i)-7}" y="${base-n*25}" width="14" height="${Math.max(2,n*25)}" rx="3" fill="${m.c}" opacity=".86"></rect>`;}).join(""):"";const dots=m.kind==="line"?m.vals.map((v,i)=>{const n=norm(m,v);return n==null?"":`<circle cx="${x(i)}" cy="${base-4-n*25}" r="3.1" fill="${m.c}"></circle>`;}).join(""):"";return `<g class="v2-health-chart-row"><text x="0" y="${base-16}" fill="#21312d">${m.label}</text><text x="0" y="${base-3}" fill="#85755e">${m.range}</text><line x1="${gx}" y1="${base}" x2="${gx+gw}" y2="${base}" stroke="rgba(39,55,68,.34)"></line><line x1="${gx}" y1="${mid}" x2="${gx+gw}" y2="${mid}" stroke="rgba(39,55,68,.13)" stroke-dasharray="2 3"></line>${bars}${m.kind==="line"?`<path d="${linePath(m,base)}" fill="none" stroke="${m.c}" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"></path>${dots}`:""}</g>`;}).join("");
-    return `<svg class="v2-line-chart v2-health-compare" viewBox="0 0 360 ${height}" role="img" aria-label="一週間の体調比較。指標ごとに実際の範囲を使って表示"><title>一週間の体調比較</title>${rows}${ds.map((d,i)=>`<text x="${x(i)}" y="${height-4}" text-anchor="middle">${"日月火水木金土"[new Date(d+"T00:00:00").getDay()]}</text>`).join("")}</svg>`;
+    const y=n=>base-n*(base-T);
+    const barMetrics=metrics.filter(m=>m.kind==="bar"),lineMetrics=metrics.filter(m=>m.kind==="line");
+    const grid=[1,2,3,4,5].map(v=>`<line x1="${gx}" y1="${y((v-1)/4)}" x2="${gx+gw}" y2="${y((v-1)/4)}" stroke="rgba(39,55,68,.15)" stroke-dasharray="3 4"></line>`).join("");
+    const bars=barMetrics.map((m,mi)=>m.vals.map((v,i)=>{const n=norm(m,v);if(n==null)return "";const offset=barMetrics.length===1?0:(mi===0?-7:7);return `<rect class="v2-health-value-target" data-v2-health-point="${i}" data-v2-health-metric="${m.id}" tabindex="0" role="button" aria-label="${dateLabel(ds[i])}の${m.label}: ${m.format(v)}" x="${x(i)+offset-5}" y="${y(n)}" width="10" height="${Math.max(2,base-y(n))}" rx="4" fill="${m.c}" opacity=".72"></rect>`;}).join("")).join("");
+    const pathFor=m=>{let joined=false;return m.vals.map((v,i)=>{const n=norm(m,v);if(n==null){joined=false;return "";}const cmd=joined?"L":"M";joined=true;return `${cmd}${x(i)} ${y(n)}`;}).join(" ");};
+    const lines=lineMetrics.map(m=>`<path d="${pathFor(m)}" fill="none" stroke="${m.c}" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"></path>${m.vals.map((v,i)=>{const n=norm(m,v);return n==null?"":`<circle class="v2-health-value-target" data-v2-health-point="${i}" data-v2-health-metric="${m.id}" tabindex="0" role="button" aria-label="${dateLabel(ds[i])}の${m.label}: ${m.format(v)}" cx="${x(i)}" cy="${y(n)}" r="5.5" fill="#fffaf0" stroke="${m.c}" stroke-width="2.5"></circle>`;}).join("")}`).join("");
+    const picked=healthChartSelectedPoint&&ds[healthChartSelectedPoint.index]?healthChartSelectedPoint:null;
+    const pickedMetric=picked&&metrics.find(m=>m.id===picked.metric);
+    const pickedValue=pickedMetric?.vals[picked.index];
+    const tooltip=(!pickedMetric||pickedValue==null)?"":`<g class="v2-health-tooltip"><rect x="${Math.max(6,Math.min(W-110,x(picked.index)-48))}" y="5" width="96" height="22" rx="7"></rect><text x="${Math.max(54,Math.min(W-62,x(picked.index))) }" y="20" text-anchor="middle">${shortDate(ds[picked.index])} ${pickedMetric.label} ${pickedMetric.format(pickedValue)}</text></g>`;
+    return `<svg class="v2-line-chart v2-health-compare" viewBox="0 0 ${W} ${H}" role="img" aria-label="睡眠と歩数の棒グラフ、からだ・こころ・毎日の習慣の折れ線を重ねた一週間の比較グラフ"><title>一週間の体調比較</title>${grid}${bars}${lines}${tooltip}<line x1="${gx}" y1="${base}" x2="${gx+gw}" y2="${base}" stroke="rgba(39,55,68,.4)"></line>${ds.map((d,i)=>`<text x="${x(i)}" y="${H-10}" text-anchor="middle">${"日月火水木金土"[new Date(d+"T00:00:00").getDay()]}</text>`).join("")}</svg>`;
   }
   function healthAnalysis(){const labels=[["sleep","睡眠","#376b91"],["steps","歩数","#39785d"],["body","からだ","#7263a8"],["mind","こころ","#c86655"]];return `<section class="v2-page v2-health-analysis">${top(titleFor(page))}<p class="v2-kicker">${icon("chart")}HEALTH ANALYSIS</p><h2 class="v2-page-lead">一週間の相関</h2><div class="v2-chart-block"><h2>睡眠・歩数・調子の変化</h2><div class="v2-metric-toggle">${labels.map(([id,l,c])=>`<button class="${metricOn[id]?"":"off"}" data-v2-metric="${id}"><i style="background:${c}"></i>${l}</button>`).join("")}</div>${healthChart()}</div><div class="v2-chart-block"><h2>振り返り</h2><div class="v2-outline-row"><i>${icon("moon")}</i><span>睡眠が短い日<small>5時間未満の日</small></span><strong>${healthDays().filter(d=>(sleepMin((S.health[d]||{}).bed,(S.health[d]||{}).wake)||0)<360).length}日</strong></div><div class="v2-outline-row"><i>${icon("foot")}</i><span>よく歩いた日<small>8,000歩以上の日</small></span><strong class="v2-green">${healthDays().filter(d=>+(S.health[d]||{}).steps>=8000).length}日</strong></div></div></section>`;}
   function flow(){
@@ -275,7 +293,7 @@
     return analogPage("an-health-record","heart","HEALTH LOG","今日の調子を残す",`<p class="an-date-note">${dateLabel(ymd(now()))}</p><section class="an-health-sheet">${rating("body","からだ","体の調子")}${rating("mind","こころ","心の調子")}<div class="an-health-data"><span>${icon("moon")}睡眠</span><strong>${fmtSleep(sm)}</strong><small>設定から自動取り込み</small><details><summary>睡眠時間を編集</summary><div class="an-time-fields"><input id="v2Bed" type="time" value="${esc2(h.bed||"")}" data-v2-health="bed"><input id="v2Wake" type="time" value="${esc2(h.wake||"")}" data-v2-health="wake"></div></details></div><div class="an-health-data"><span>${icon("foot")}歩数</span><strong>${steps}</strong><small>設定から自動取り込み</small></div></section><button class="an-save green" data-v2-health-save>この日の記録を保存</button><button class="an-wide-action green" data-v2-go="healthAnalysis">${icon("chart")}<span>体調の変化を見る</span><b>›</b></button>`);
   }
   function healthAnalysis(){
-    const labels=[["sleep","睡眠","#4d80ad"],["steps","歩数","#4f986f"],["body","からだ","#796aa8"],["mind","こころ","#ca796b"],["checklist","達成度","#d2a449"]];
+    const labels=[["sleep","睡眠","#4d80ad"],["steps","歩数","#4f986f"],["body","からだ","#796aa8"],["mind","こころ","#ca796b"],["checklist","毎日の習慣","#d2a449"]];
     return analogPage("an-health-analysis","body","HEALTH ANALYSIS","体調の分析",`<section class="an-chart-section"><h2>睡眠・歩数・調子の変化</h2><div class="an-metric-toggle">${labels.map(([id,l,c])=>`<button class="${metricOn[id]?"":"off"}" data-v2-metric="${id}"><i style="background:${c}"></i>${l}</button>`).join("")}</div>${healthChart()}</section><section class="an-chart-section"><h2>振り返り</h2><div class="an-insight"><span>${icon("moon")}睡眠が短い日</span><b>${healthDays().filter(d=>(sleepMin((S.health[d]||{}).bed,(S.health[d]||{}).wake)||0)<360).length}日</b></div><div class="an-insight"><span>${icon("foot")}よく歩いた日</span><b>${healthDays().filter(d=>+(S.health[d]||{}).steps>=8000).length}日</b></div></section>`);
   }
   function flow(){
@@ -292,11 +310,96 @@
     return analogPage("an-checklist","list","CHECKLIST","今日のやること",`<p class="an-date-note">${dateLabel(key)}</p><section class="an-chart-section"><h2>毎日の習慣</h2><div class="an-habits">${habits}</div></section><section class="an-chart-section"><h2>やること</h2><div class="an-tasks">${list}</div></section><section class="an-chart-section an-shopping-section"><h2>買い物リスト</h2><div class="an-tasks">${shop}</div><div class="an-shopping-add"><input id="v2ShoppingText" maxlength="80" placeholder="買うものを追加"><button type="button" data-v2-shopping-add>${icon("plus")}追加</button></div></section>`);
   }
   function theme(){const key=ymd(now()),value=(S.daily[key]||{}).theme||"";return analogPage("an-theme","sun","TODAY'S THEME","今日のテーマ",`<div class="an-theme-editor"><label for="v2Theme">ひとことで書く</label><input id="v2Theme" value="${esc2(value)}" maxlength="40" placeholder="今日のテーマ"></div><button class="an-save yellow" data-v2-theme-save>テーマを保存</button>`);}
-  function ideaNote(){
+  function legacyIdeaNote(){
     const board=Object.assign({monthlyGoal:"",ideas:[],images:[]},S.ideaBoard||{}),ideas=Array.isArray(board.ideas)?board.ideas:[],images=Array.isArray(board.images)?board.images:[];
     const notes=ideas.slice().reverse().map(x=>`<article class="an-board-note"><small>${esc2(x.date||"")}</small><p>${esc2(x.text||"")}</p></article>`).join("");
     const photos=images.slice().reverse().map(x=>`<figure class="an-board-image"><img src="${esc2(x.src||"")}" alt="追加したアイデア画像"><button type="button" data-v2-board-image-delete="${esc2(x.id)}" aria-label="画像を削除">${icon("close")}</button><figcaption>${esc2(x.name||"画像")}</figcaption></figure>`).join("");
     return analogPage("an-idea-note","edit","IDEA NOTE","アイデアと目標",`<section class="an-board-goal"><div><span>今月の目標</span><textarea id="v2MonthlyGoal" maxlength="240" placeholder="今月かなえたいことを書く">${esc2(board.monthlyGoal||"")}</textarea></div><button class="an-small-action" data-v2-month-goal-save>目標を保存</button></section><section class="an-board-composer"><label for="v2IdeaText">シートにメモを置く</label><textarea id="v2IdeaText" maxlength="500" placeholder="プラグイン、映像、暮らしのアイデアなど"></textarea><div><label class="an-board-upload">${icon("upload")}画像を追加<input id="v2IdeaImage" type="file" accept="image/*" multiple></label><button class="an-small-action" data-v2-idea-add>${icon("plus")}メモを追加</button></div><small>画像とメモはこの端末に保存されます。</small></section><section class="an-free-board" aria-label="アイデアボード">${photos}${notes||(!photos?`<p class="an-empty">画像やメモを置くと、ここに並びます。</p>`:"")}</section>`);
+  }
+  function boardState(){
+    S.ideaBoard=Object.assign({monthlyGoal:"",ideas:[],images:[],cards:[]},S.ideaBoard||{});
+    if(!Array.isArray(S.ideaBoard.cards)||!S.ideaBoard.cards.length){
+      const cards=[];
+      if(S.ideaBoard.monthlyGoal) cards.push({id:"goal",type:"goal",text:S.ideaBoard.monthlyGoal,x:7,y:6,w:86,h:18});
+      (S.ideaBoard.ideas||[]).forEach((note,index)=>cards.push({id:note.id||uid(),type:"note",text:note.text||"",x:8+(index%2)*44,y:29+Math.floor(index/2)*24,w:39,h:20}));
+      (S.ideaBoard.images||[]).forEach((image,index)=>cards.push({id:image.id||uid(),type:"image",src:image.src||"",name:image.name||"画像",x:8+(index%2)*44,y:29+Math.floor(index/2)*28,w:39,h:24}));
+      S.ideaBoard.cards=cards;
+    }
+    S.ideaBoard.cards.forEach(card=>{
+      /* Legacy cards are kept as free-board elements; no user content is discarded. */
+      if(card.type==="note") card.type="text";
+      if(card.type==="goal") { card.type="memo"; card.variant="goal"; }
+      if(!["text","memo","shape","image","stroke"].includes(card.type)) card.type="text";
+      card.x=Math.max(2,Math.min(92,Number(card.x)||8));
+      card.y=Math.max(2,Math.min(92,Number(card.y)||8));
+      card.w=Math.max(12,Math.min(88,Number(card.w)|| (card.type==="image"?42:38)));
+      card.h=Math.max(8,Math.min(55,Number(card.h)|| (card.type==="image"?30:16)));
+      if(card.type!=="image"){
+        card.size=Math.max(14,Math.min(34,Number(card.size)|| (card.type==="goal"?22:19)));
+        card.weight=[400,500,600,700,800].includes(+card.weight)?+card.weight:(card.type==="goal"?800:600);
+        card.face=["sans","mincho","udgothic","udmincho","mono"].includes(card.face)?card.face:(card.variant==="goal"?"mincho":"sans");
+      }
+    });
+    return S.ideaBoard;
+  }
+  function boardStyle(card){
+    const x=Math.max(1,Math.min(94,Number(card.x)||8)),y=Math.max(1,Math.min(88,Number(card.y)||8)),w=Math.max(24,Math.min(88,Number(card.w)||39)),h=Math.max(12,Math.min(45,Number(card.h)||20));
+    return `--board-x:${x};--board-y:${y};--board-w:${w};--board-h:${h};`;
+  }
+  let boardSelectedId=null;
+  function boardTextStyle(card){
+    const size=Math.max(14,Math.min(34,Number(card.size)||19));
+    const weight=[400,500,600,700,800].includes(+card.weight)?+card.weight:600;
+    const face=["sans","mincho","udgothic","udmincho","mono"].includes(card.face)?card.face:"sans";
+    return `--board-text-size:${size}px;--board-text-weight:${weight};--board-text-face:${face};`;
+  }
+  function boardFace(card){return ["sans","mincho","udgothic","udmincho","mono"].includes(card?.face)?card.face:"sans";}
+  function selectBoardItem(id){
+    const card=boardCardById(id);
+    if(!card) return;
+    boardSelectedId=id;
+    root.querySelectorAll("[data-v2-board-card]").forEach(node=>node.classList.toggle("is-selected",node.dataset.v2BoardCard===id));
+    const inspector=root.querySelector(".an-board-inspector");
+    if(!inspector) return;
+    inspector.querySelector("span").textContent=card.type==="image"?"画像を選択中です。移動または削除できます。":"選択中のテキストを整える";
+    const face=inspector.querySelector("[data-v2-board-face]"),weight=inspector.querySelector("[data-v2-board-weight]"),size=inspector.querySelector("[data-v2-board-size]");
+    [face,weight,size].forEach(control=>{if(control) control.disabled=card.type==="image";});
+    if(face) face.value=boardFace(card);
+    if(weight) weight.value=String(card.weight||600);
+    if(size) size.value=String(card.size||19);
+  }
+  let boardTool="select";
+  let boardFullscreen=false;
+  const boardTools=[
+    ["select","edit","選択"], ["text","text","テキスト"], ["shape","shape","図形"],
+    ["memo","memo","メモ"], ["pen","pen","手書き"], ["image","image","画像"]
+  ];
+  function boardToolbar(){
+    return `<nav class="an-board-tools" aria-label="ボードのツール">${boardTools.map(([id,mark,label])=>id==="image"
+      ? `<label class="${boardTool===id?"is-active":""}" title="${label}">${icon(mark)}<span>${label}</span><input id="v2BoardToolImageUpload" type="file" accept="image/*" multiple></label>`
+      : `<button type="button" class="${boardTool===id?"is-active":""}" data-v2-board-tool="${id}" aria-pressed="${boardTool===id}">${icon(mark)}<span>${label}</span></button>`).join("")}</nav>`;
+  }
+  function boardNode(card,{preview=false}={}){
+    const selected=!preview&&boardSelectedId===card.id?" is-selected":"";
+    const common=`class="an-board-node an-board-node-${esc2(card.type)} an-board-face-${boardFace(card)}${card.variant?` an-board-variant-${esc2(card.variant)}`:""}${selected}" data-v2-board-node="${esc2(card.id)}" style="${boardStyle(card)} ${boardTextStyle(card)}"`;
+    if(card.type==="stroke"){
+      const points=(card.points||[]).map(p=>`${Number(p[0]).toFixed(2)},${Number(p[1]).toFixed(2)}`).join(" ");
+      return `<svg ${common} viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="手書き線"><polyline points="${points}"/></svg>`;
+    }
+    if(card.type==="shape") return `<div ${common} aria-label="図形"></div>`;
+    if(card.type==="image") return `<figure ${common}><img src="${esc2(card.src||"")}" alt="${esc2(card.name||"追加した画像")}"></figure>`;
+    return `<article ${common}><textarea data-v2-board-text="${esc2(card.id)}" ${preview?"readonly tabindex=-1":""} maxlength="500" aria-label="${card.type==="memo"?"メモ":"テキスト"}" placeholder="テキストを入力">${esc2(card.text||"")}</textarea></article>`;
+  }
+  function boardProperties(selected){
+    if(!selected || ["image","shape","stroke"].includes(selected.type)) return `<p class="an-board-property-empty">要素を選ぶと、文字の書体・太さ・大きさを整えられます。</p>`;
+    const size=Math.max(14,Math.min(34,Number(selected.size)||19)),weight=selected.weight||600,face=boardFace(selected);
+    return `<div class="an-board-properties"><label>書体<select data-v2-board-face><option value="sans" ${face==="sans"?"selected":""}>Noto Sans JP</option><option value="mincho" ${face==="mincho"?"selected":""}>Noto Serif JP</option><option value="udgothic" ${face==="udgothic"?"selected":""}>BIZ UDPゴシック</option><option value="udmincho" ${face==="udmincho"?"selected":""}>BIZ UDP明朝</option></select></label><label>太さ<select data-v2-board-weight><option value="400" ${+weight===400?"selected":""}>細い</option><option value="600" ${+weight===600?"selected":""}>標準</option><option value="800" ${+weight===800?"selected":""}>太い</option></select></label><label>文字サイズ<input data-v2-board-size type="range" min="14" max="34" value="${size}"></label><button type="button" class="an-board-delete" data-v2-board-delete="${esc2(selected.id)}">${icon("close")}削除</button></div>`;
+  }
+  function ideaNote(){
+    const board=boardState(),cards=board.cards||[],selected=cards.find(card=>card.id===boardSelectedId);
+    const nodes=cards.map(card=>boardNode(card)).join("");
+    if(boardFullscreen) return analogPage("an-idea-note an-idea-workspace","edit","IDEA BOARD","アイデアと目標",`<section class="an-board-workspace" aria-label="フリーボード編集"><header><button type="button" data-v2-board-close>${icon("back")}戻る</button><strong>フリーボード</strong><button type="button" data-v2-board-delete="${esc2(selected?.id||"")}" ${selected?"":"disabled"}>${icon("close")}削除</button></header>${boardToolbar()}<section class="an-free-board an-free-board-canvas an-board-editor" data-v2-board-canvas aria-label="フリーボード。選択ツールでは要素を動かし、手書きツールではドラッグで線を描けます。">${nodes||`<p class="an-empty">ツールを選んで、ここから自由に置いてください。</p>`}</section>${boardProperties(selected)}</section>`,{settings:false});
+    return analogPage("an-idea-note","edit","IDEA BOARD","アイデアと目標",`<p class="an-board-guide">文字・図形・メモ・手書き・画像を、好きな位置に置ける自由なボードです。</p>${boardToolbar()}<section class="an-board-inline"><header><strong>フリーボード</strong><button type="button" data-v2-board-open>${icon("edit")}全画面表示</button></header><section class="an-free-board an-board-editor an-board-editor-inline" data-v2-board-canvas aria-label="アイデアと目標のフリーボード">${nodes||`<span class="an-empty">ツールを選んで、最初のアイデアを置きましょう。</span>`}</section>${boardProperties(selected)}</section>`);
   }
   function calendar(){const base=new Date(calendarDate+"T00:00:00"),mon=new Date(base);mon.setDate(base.getDate()-((base.getDay()+6)%7));let content="";if(calendarMode==="week"){content=`<div class="v2-week">${Array.from({length:7},(_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);const key=ymd(d),bs=allBlocks(key);return `<button class="v2-week-day ${key===ymd(now())?"today":""}" data-v2-cal-date="${key}"><span>${"月火水木金土日"[i]}</span><b>${d.getDate()}</b>${bs.slice(0,3).map(b=>`<i class="v2-cal-dot" style="background:${esc2(b.color||catOf(b.cat).color)}"></i>`).join("")}</button>`}).join("")}</div>`;}else{const y=base.getFullYear(),m=base.getMonth(),days=new Date(y,m+1,0).getDate(),off=(new Date(y,m,1).getDay()+6)%7;content=`<div class="v2-month">${Array.from({length:off},()=>"<span></span>").join("")}${Array.from({length:days},(_,i)=>{const d=i+1,key=`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`,has=allBlocks(key).length;return `<button class="${key===ymd(now())?"today ":""}${has?"has":""}" data-v2-cal-date="${key}">${d}</button>`}).join("")}</div>`;}const period=calendarMode==="week"?`${mon.getMonth()+1}月${mon.getDate()}日からの1週間`:`${base.getFullYear()}年${base.getMonth()+1}月`;return analogPage("an-calendar","calendar","CALENDAR",period,`<div class="an-calendar-switch"><button class="${calendarMode==="week"?"on":""}" data-v2-cal-mode="week">1週間</button><button class="${calendarMode==="month"?"on":""}" data-v2-cal-mode="month">1か月</button></div>${content}<p class="an-empty">日付をタップすると、その日の時間割を開きます。</p>`);}
   function settingsV2(){const cfg=syncCfg();return analogPage("an-settings","settings","SETTINGS","暮らしの設定",`<div class="an-settings v2-settings">${[["refresh","同期・歩数／睡眠",cfg.token&&cfg.gistId?"同期済み・アプリを開くと更新します":"未接続",`<p>歩数と睡眠は、設定済みのiPhoneショートカット／同期から読み込みます。</p><label>GitHubトークン</label><input id="v2SyncToken" type="password" autocomplete="off" placeholder="初回設定時のみ入力"><label>Gist ID</label><input id="v2SyncGist" value="${esc2(cfg.gistId||"")}" placeholder="2台目のみ入力"><button class="an-small-action" data-v2-sync-start>同期を設定・開始</button><button class="an-small-action" data-v2-sync>今すぐ同期する</button><button class="an-small-action" data-v2-role>${cfg.role==="ro"?"記録する端末にする":"見るだけの端末にする"}</button>`],["list","毎日の習慣","今日の流れに表示する項目",`<div class="an-habits">${habitList().map(h=>`<span class="an-habit">${habitIcon(h)}<span>${esc2(h.label)}</span></span>`).join("")}</div><label>習慣の名前</label><input id="v2HabitLabel" placeholder="例：ストレッチ"><button class="an-small-action" data-v2-habit-add>習慣を追加</button>`],["wallet","お金の初期設定","カード上限・方法・カテゴリー",`<label>カードの上限</label><input id="v2CardCap" type="text" inputmode="numeric" value="${(+S.cardCap||0).toLocaleString("ja-JP")}"><button class="an-small-action" data-v2-card-cap>上限を保存</button><label>支出の方法</label><input id="v2MethodAdd" placeholder="例：交通系IC"><button class="an-small-action" data-v2-method-add>方法を追加</button><label>支出のカテゴリー</label><input id="v2CategoryAdd" placeholder="例：医療費"><button class="an-small-action" data-v2-category-add>カテゴリーを追加</button><label>収入の受け取り方法</label><input id="v2IncomeMethodAdd" placeholder="例：PayPay"><button class="an-small-action" data-v2-income-method-add>方法を追加</button><label>収入のカテゴリー</label><input id="v2IncomeCategoryAdd" placeholder="例：傷病手当"><button class="an-small-action" data-v2-income-category-add>カテゴリーを追加</button>`],["calendar","カレンダー連携","予定の取り込みと表示",`<p>予定は「一日の流れ」から確認・追加できます。</p>`],["download","バックアップ","この端末のデータを保存",`<p>端末の記録を書き出して保管できます。</p><button class="an-small-action" data-v2-export>データを書き出す</button>`]].map(([i,t,s,b])=>`<details><summary><i>${icon(i)}</i><span><strong>${t}</strong><small>${s}</small></span><b>›</b></summary><div class="an-settings-body">${b}</div></details>`).join("")}</div>`,{settings:false});}
@@ -348,26 +451,104 @@
     S.ui[privacyKey]=!(S.ui[privacyKey]!==false);
     save(); newAppRender();
   },true);
-  /* Schedule operations are deliberately limited to plans created in this app.
-     Imported/automatic items remain readable but cannot be changed by mistake. */
-  function findEditableFlowEvent(origin,id,key){
-    const list=origin==="daily" ? (Array.isArray(S.dailyTimeline)?S.dailyTimeline:[]) : (S.plan[key]||[]);
-    return {list,item:list.find(x=>x.id===id)};
+  /* Imported blocks remain as their source data.  A date-specific override is
+     saved for any edit, drag, or delete so every visible event is editable. */
+  function flowOverrideMap(key){
+    S.flowOverrides=S.flowOverrides||{};
+    S.flowOverrides[key]=S.flowOverrides[key]||{};
+    return S.flowOverrides[key];
   }
+  function flowEventStore(event){
+    if(event.origin==="plan"){
+      const list=S.plan[event.key]||[];
+      return {list,item:list.find(x=>x.id===event.id),override:false};
+    }
+    const map=flowOverrideMap(event.key),source=event.sourceKey;
+    let item=map[source];
+    if(!item || item.deleted){
+      item={id:`override_${uid()}`,text:event.text,a:event.a,b:event.b,from:toHHMM(event.a%1440),to:toHHMM(event.b%1440),cat:event.cat||"custom",lane:event.lane||"life",color:event.color||""};
+      map[source]=item;
+    }
+    return {map,item,override:true,source};
+  }
+  function deleteFlowEvent(event){
+    if(event.origin==="plan"){
+      const list=S.plan[event.key]||[],index=list.findIndex(x=>x.id===event.id);
+      if(index>=0) list.splice(index,1);
+      return;
+    }
+    const map=flowOverrideMap(event.key);
+    map[event.sourceKey]=Object.assign({},map[event.sourceKey]||{}, {deleted:true});
+  }
+  function chooseHealthChartPoint(target){
+    const index=Number(target?.dataset?.v2HealthPoint), metric=target?.dataset?.v2HealthMetric;
+    if(!Number.isInteger(index)||!metric) return false;
+    healthChartSelectedPoint={index,metric};
+    newAppRender();
+    return true;
+  }
+  root.addEventListener("pointerover",event=>{
+    const target=event.target.closest("[data-v2-health-point]");
+    if(!target||event.pointerType==="touch") return;
+    if(Number(target.dataset.v2HealthPoint)===healthChartSelectedPoint?.index&&target.dataset.v2HealthMetric===healthChartSelectedPoint?.metric) return;
+    chooseHealthChartPoint(target);
+  },true);
+  root.addEventListener("click",event=>{
+    const target=event.target.closest("[data-v2-health-point]");
+    if(!target) return;
+    event.stopImmediatePropagation();
+    chooseHealthChartPoint(target);
+  },true);
+  root.addEventListener("keydown",event=>{
+    if(event.key!=="Enter"&&event.key!==" ") return;
+    const target=event.target.closest?.("[data-v2-health-point]");
+    if(!target) return;
+    event.preventDefault();
+    chooseHealthChartPoint(target);
+  },true);
   let flowPress=null,flowDrag=null,suppressFlowEventClick=false;
   function clearFlowPress(){
     if(flowPress?.timer) clearTimeout(flowPress.timer);
     flowPress=null;
+  }
+  /* Pointer events are shared by a desktop mouse and iPhone touch.  A mouse
+     starts moving after a small movement threshold; touch keeps the intended
+     long-press gesture so an ordinary tap can still open the detail sheet. */
+  function startFlowDrag(press){
+    if(!press || flowDrag) return false;
+    const baseStart=press.a!=null?press.a:onTl(toMin(press.from));
+    const baseEnd=press.b!=null?press.b:onTl(toMin(press.to));
+    if(baseStart==null||baseEnd==null||baseEnd<=baseStart) return false;
+    const rect=press.timeline.getBoundingClientRect();
+    flowDrag=Object.assign(press,{rect,baseStart,baseEnd,nextStart:baseStart,nextEnd:baseEnd,mode:press.mode||"move",originalTop:press.card.style.top,originalHeight:press.card.style.height,originalTransform:press.card.style.transform});
+    press.card.classList.add(flowDrag.mode==="move"?"is-dragging":"is-resizing");
+    press.card.setPointerCapture?.(press.pointerId);
+    clearFlowPress();
+    return true;
   }
   root.addEventListener("click",event=>{
     const del=event.target.closest("[data-v2-event-delete]");
     if(del){
       event.stopImmediatePropagation();
       if(!canWrite()||!activeFlowEvent) return;
-      const found=findEditableFlowEvent(activeFlowEvent.origin,activeFlowEvent.id,activeFlowEvent.key);
+      deleteFlowEvent(activeFlowEvent);
+      activeFlowEvent=null; save(); newAppRender(); successToast("予定を削除しました");
+      return;
+    }
+    const saveEvent=event.target.closest("[data-v2-event-save]");
+    if(saveEvent){
+      event.stopImmediatePropagation();
+      if(!canWrite()||!activeFlowEvent) return;
+      const text=document.getElementById("v2EventText")?.value.trim()||"";
+      const from=document.getElementById("v2EventFrom")?.value||"";
+      const to=document.getElementById("v2EventTo")?.value||"";
+      const lane=document.getElementById("v2EventLane")?.value||"life";
+      const a=toMin(from),b=toMin(to);
+      if(!text||a==null||b==null||b<=a) return toast("予定・開始時刻・終了時刻を確認してください");
+      const found=flowEventStore(activeFlowEvent);
       if(!found.item) return;
-      found.list.splice(found.list.indexOf(found.item),1);
-      activeFlowEvent=null; save(); newAppRender(); toast("予定を削除しました");
+      Object.assign(found.item,{text,from,to,a:onTl(a),b:onTl(b),lane});
+      activeFlowEvent=null; save(); newAppRender(); successToast("予定を保存しました");
       return;
     }
     const close=event.target.closest("[data-v2-event-close]");
@@ -379,7 +560,7 @@
     const visibleBlocks=allBlocks(flowDate).filter(b=>b.cat!=="sleep");
     const found=visibleBlocks[Number(card.dataset.v2EventIndex)];
     if(!found) return;
-    activeFlowEvent={id:found.id,origin:found._v2Origin,key:flowDate,text:found.text,a:found.a,b:found.b,lane:flowLane(found)};
+    activeFlowEvent={id:found.id,origin:found._v2Origin,key:flowDate,sourceKey:found._v2SourceKey,text:found.text,a:found.a,b:found.b,lane:flowLane(found),cat:found.cat,color:found.color};
     newAppRender();
   },true);
   root.addEventListener("pointerdown",event=>{
@@ -387,44 +568,83 @@
     if(!card||event.button>0) return;
     const timeline=card.closest("[data-v2-timeline]");
     if(!timeline) return;
-    const press={card,timeline,origin:card.dataset.v2EventOrigin,id:card.dataset.v2EventId,key:card.dataset.v2EventKey,startY:event.clientY,pointerId:event.pointerId};
+    const visibleBlocks=allBlocks(card.dataset.v2EventKey).filter(b=>b.cat!=="sleep");
+    const source=visibleBlocks[Number(card.dataset.v2EventIndex)];
+    if(!source) return;
+    const cardBox=card.getBoundingClientRect();
+    const edgeSize=Math.min(18,cardBox.height/2);
+    const offsetY=event.clientY-cardBox.top;
+    const mode=offsetY<=edgeSize?"start":offsetY>=cardBox.height-edgeSize?"end":"move";
+    const press={card,timeline,origin:card.dataset.v2EventOrigin,id:card.dataset.v2EventId,sourceKey:card.dataset.v2EventSource,key:card.dataset.v2EventKey,text:source.text,a:source.a,b:source.b,lane:flowLane(source),cat:source.cat,color:source.color,startY:event.clientY,pointerId:event.pointerId,pointerType:event.pointerType||"mouse",mode};
+    if(mode!=="move"){
+      suppressFlowEventClick=true;
+      setTimeout(()=>{suppressFlowEventClick=false;},120);
+      startFlowDrag(press);
+      event.preventDefault();
+      return;
+    }
     press.timer=setTimeout(()=>{
-      const found=findEditableFlowEvent(press.origin,press.id,press.key);
-      if(!found.item) return;
-      const rect=press.timeline.getBoundingClientRect();
-      flowDrag=Object.assign(press,{rect,baseStart:toMin(found.item.from),baseEnd:toMin(found.item.to),nextStart:toMin(found.item.from)});
-      press.card.classList.add("is-dragging");
-      press.card.setPointerCapture?.(event.pointerId);
-      clearFlowPress();
+      if(flowPress===press) startFlowDrag(press);
     },430);
     flowPress=press;
+    // Capture from pointerdown so a mouse or finger can leave the card while
+    // dragging.  For touch, direct manipulation owns only the card itself.
+    card.setPointerCapture?.(event.pointerId);
+    if(press.pointerType!=="mouse") event.preventDefault();
   },true);
   root.addEventListener("pointermove",event=>{
+    if(!flowDrag&&flowPress&&event.pointerId===flowPress.pointerId){
+      const moved=Math.abs(event.clientY-flowPress.startY);
+      if(flowPress.pointerType==="mouse"&&moved>=4) startFlowDrag(flowPress);
+      else if(flowPress.pointerType!=="mouse"&&moved>10) clearFlowPress();
+    }
     if(flowDrag&&event.pointerId===flowDrag.pointerId){
       event.preventDefault();
       const start=+flowDrag.timeline.dataset.v2Start,end=+flowDrag.timeline.dataset.v2End,duration=flowDrag.baseEnd-flowDrag.baseStart;
       const minutesPerPixel=(end-start)/flowDrag.rect.height;
-      let next=Math.round((flowDrag.baseStart+(event.clientY-flowDrag.startY)*minutesPerPixel)/30)*30;
-      next=Math.max(start,Math.min(end-duration,next));
-      flowDrag.nextStart=next;
-      flowDrag.card.style.transform=`translateY(${(next-flowDrag.baseStart)/minutesPerPixel}px)`;
+      if(flowDrag.mode==="start"){
+        let next=Math.round((flowDrag.baseStart+(event.clientY-flowDrag.startY)*minutesPerPixel)/30)*30;
+        next=Math.max(start,Math.min(flowDrag.baseStart,next));
+        flowDrag.nextStart=next;
+        flowDrag.card.style.transform="";
+        flowDrag.card.style.top=`${(next-start)/(end-start)*Math.round(((end-start)/60)*28)}px`;
+        flowDrag.card.style.height=`${Math.max(42,(flowDrag.baseEnd-next)/(end-start)*Math.round(((end-start)/60)*28)-3)}px`;
+      }else if(flowDrag.mode==="end"){
+        let next=Math.round((flowDrag.baseEnd+(event.clientY-flowDrag.startY)*minutesPerPixel)/30)*30;
+        next=Math.max(flowDrag.baseEnd,Math.min(end,next));
+        flowDrag.nextEnd=next;
+        flowDrag.card.style.transform="";
+        flowDrag.card.style.height=`${Math.max(42,(next-flowDrag.baseStart)/(end-start)*Math.round(((end-start)/60)*28)-3)}px`;
+      }else{
+        let next=Math.round((flowDrag.baseStart+(event.clientY-flowDrag.startY)*minutesPerPixel)/30)*30;
+        next=Math.max(start,Math.min(end-duration,next));
+        flowDrag.nextStart=next;
+        flowDrag.card.style.transform=`translateY(${(next-flowDrag.baseStart)/minutesPerPixel}px)`;
+      }
       return;
     }
-    if(flowPress&&Math.abs(event.clientY-flowPress.startY)>8) clearFlowPress();
   },{capture:true,passive:false});
   root.addEventListener("pointerup",event=>{
     clearFlowPress();
     if(!flowDrag||event.pointerId!==flowDrag.pointerId) return;
-    const drag=flowDrag; flowDrag=null; drag.card.classList.remove("is-dragging");
-    if(drag.nextStart===drag.baseStart) return;
-    const found=findEditableFlowEvent(drag.origin,drag.id,drag.key);
+    const drag=flowDrag; flowDrag=null; drag.card.classList.remove("is-dragging","is-resizing");
+    drag.card.releasePointerCapture?.(event.pointerId);
+    const changed=drag.mode==="start"?drag.nextStart!==drag.baseStart:drag.mode==="end"?drag.nextEnd!==drag.baseEnd:drag.nextStart!==drag.baseStart;
+    if(!changed){ drag.card.style.top=drag.originalTop; drag.card.style.height=drag.originalHeight; drag.card.style.transform=drag.originalTransform; return; }
+    const found=flowEventStore(drag);
     if(!found.item) return;
-    const duration=drag.baseEnd-drag.baseStart;
-    found.item.from=toHHMM(drag.nextStart); found.item.to=toHHMM(drag.nextStart+duration);
-    suppressFlowEventClick=true; setTimeout(()=>{suppressFlowEventClick=false;},0);
-    save(); newAppRender(); toast("予定の時刻を更新しました");
+    if(drag.mode==="start"){
+      found.item.from=toHHMM(drag.nextStart%1440); found.item.a=drag.nextStart;
+    }else if(drag.mode==="end"){
+      found.item.to=toHHMM(drag.nextEnd%1440); found.item.b=drag.nextEnd;
+    }else{
+      const duration=drag.baseEnd-drag.baseStart;
+      found.item.from=toHHMM(drag.nextStart%1440); found.item.to=toHHMM((drag.nextStart+duration)%1440); found.item.a=drag.nextStart; found.item.b=drag.nextStart+duration;
+    }
+    suppressFlowEventClick=true; setTimeout(()=>{suppressFlowEventClick=false;},120);
+    save(); newAppRender(); successToast("予定を変更しました");
   },true);
-  root.addEventListener("pointercancel",()=>{ clearFlowPress(); if(flowDrag){flowDrag.card.classList.remove("is-dragging");flowDrag=null;} },true);
+  root.addEventListener("pointercancel",event=>{ clearFlowPress(); if(flowDrag){flowDrag.card.classList.remove("is-dragging","is-resizing");flowDrag.card.style.top=flowDrag.originalTop;flowDrag.card.style.height=flowDrag.originalHeight;flowDrag.card.style.transform=flowDrag.originalTransform;flowDrag.card.releasePointerCapture?.(event.pointerId);flowDrag=null;} },true);
   root.addEventListener("click",event=>{
     const add=event.target.closest("[data-v2-shopping-add]");
     if(!add) return;
@@ -561,6 +781,118 @@
     S.ideaBoard.images=(S.ideaBoard.images||[]).filter(x=>x.id!==remove.dataset.v2BoardImageDelete);
     save(); render(); toast("画像を削除しました");
   });
+  /* The visual board keeps the old note/image arrays intact.  New cards are
+     stored independently so that a board can be rearranged without losing
+     any previously recorded content. */
+  function boardCardPosition(board){
+    const n=(board.cards||[]).length;
+    return {x:7+(n%2)*46,y:7+(Math.floor(n/2)%4)*22};
+  }
+  function boardCardById(id){
+    return (boardState().cards||[]).find(card=>card.id===id);
+  }
+  /* Freeboard: the selected tool acts directly on the canvas.  Existing cards
+     remain elements, so legacy ideas and images are preserved. */
+  function boardCanvasPoint(canvas,event){
+    const rect=canvas.getBoundingClientRect();
+    return {x:Math.max(2,Math.min(96,(event.clientX-rect.left)/rect.width*100)),y:Math.max(2,Math.min(96,(event.clientY-rect.top)/rect.height*100))};
+  }
+  function boardNewElement(type,point){
+    const board=boardState();
+    const defaults={text:{w:40,h:16,text:"",size:19,weight:600,face:"sans"},memo:{w:38,h:20,text:"",size:18,weight:600,face:"udgothic"},shape:{w:28,h:16}}[type];
+    if(!defaults) return null;
+    const card=Object.assign({id:uid(),type,x:point.x,y:point.y},defaults);
+    card.x=Math.min(96-card.w,card.x); card.y=Math.min(96-card.h,card.y);
+    board.cards.push(card); boardSelectedId=card.id; save(); return card;
+  }
+  function boardSaveText(id,value){const card=boardCardById(id);if(card){card.text=value;save();}}
+  let boardGesture=null;
+  root.addEventListener("click",event=>{
+    const open=event.target.closest("[data-v2-board-open]"),close=event.target.closest("[data-v2-board-close]"),tool=event.target.closest("[data-v2-board-tool]"),remove=event.target.closest("[data-v2-board-delete]");
+    if(!open&&!close&&!tool&&!remove) return;
+    event.stopImmediatePropagation();
+    if(open){boardFullscreen=true;newAppRender();return;}
+    if(close){boardFullscreen=false;boardSelectedId=null;newAppRender();return;}
+    if(tool){boardTool=tool.dataset.v2BoardTool;newAppRender();return;}
+    if(remove){
+      if(!remove.dataset.v2BoardDelete) return;
+      if(!canWrite()) return;
+      const board=boardState(); board.cards=board.cards.filter(card=>card.id!==remove.dataset.v2BoardDelete);
+      boardSelectedId=null;save();newAppRender();toast("要素を削除しました");
+    }
+  },true);
+  root.addEventListener("change",event=>{
+    const field=event.target.closest("[data-v2-board-text]");
+    if(field&&canWrite()){boardSaveText(field.dataset.v2BoardText,field.value);return;}
+    const face=event.target.closest("[data-v2-board-face]"),weight=event.target.closest("[data-v2-board-weight]");
+    if((!face&&!weight)||!canWrite()||!boardSelectedId) return;
+    const card=boardCardById(boardSelectedId);if(!card) return;
+    if(face) card.face=face.value;if(weight) card.weight=+weight.value;save();newAppRender();
+  },true);
+  root.addEventListener("input",event=>{
+    const control=event.target.closest("[data-v2-board-size]");
+    if(!control||!canWrite()||!boardSelectedId) return;
+    const card=boardCardById(boardSelectedId);if(!card) return;
+    card.size=+control.value;save();
+    root.querySelector(`[data-v2-board-node="${CSS.escape(boardSelectedId)}"]`)?.style.setProperty("--board-text-size",`${card.size}px`);
+  },true);
+  root.addEventListener("change",async event=>{
+    const input=event.target;
+    if(input.id!=="v2BoardToolImageUpload"||!input.files?.length||!canWrite()) return;
+    const files=Array.from(input.files).slice(0,4);
+    try{
+      const images=await Promise.all(files.map(boardImageData)),board=boardState();
+      images.forEach((src,index)=>{const pos=boardCardPosition(board);board.cards.push({id:uid(),type:"image",src,name:files[index].name,x:pos.x,y:pos.y,w:42,h:30});});
+      boardTool="select";save();newAppRender();toast(`${images.length}枚の画像を置きました`);
+    }catch(error){toast(error.message||"画像を追加できませんでした");}
+  },true);
+  root.addEventListener("pointerdown",event=>{
+    const canvas=event.target.closest("[data-v2-board-canvas]");
+    if(!canvas||event.button>0||!canWrite()) return;
+    const node=event.target.closest("[data-v2-board-node]"),point=boardCanvasPoint(canvas,event);
+    if(boardTool==="pen"){
+      const board=boardState(),stroke={id:uid(),type:"stroke",x:0,y:0,w:100,h:100,points:[[point.x,point.y]]};
+      board.cards.push(stroke);boardSelectedId=stroke.id;boardGesture={kind:"draw",pointerId:event.pointerId,canvas,id:stroke.id};canvas.setPointerCapture?.(event.pointerId);event.preventDefault();newAppRender();return;
+    }
+    if(boardTool!=="select"&&!node){
+      const card=boardNewElement(boardTool,point);boardTool="select";newAppRender();
+      if(card?.type==="text"||card?.type==="memo") requestAnimationFrame(()=>root.querySelector(`[data-v2-board-text="${CSS.escape(card.id)}"]`)?.focus());
+      return;
+    }
+    if(!node) return;
+    const id=node.dataset.v2BoardNode,card=boardCardById(id);if(!card) return;
+    boardSelectedId=id;
+    if(event.target.closest("textarea")){newAppRender();return;}
+    const rect=canvas.getBoundingClientRect();
+    boardGesture={kind:"move",pointerId:event.pointerId,canvas,node,id,startX:event.clientX,startY:event.clientY,baseX:+card.x||8,baseY:+card.y||8,rect};
+    canvas.setPointerCapture?.(event.pointerId);event.preventDefault();
+  },true);
+  root.addEventListener("pointermove",event=>{
+    if(!boardGesture||event.pointerId!==boardGesture.pointerId) return;
+    const card=boardCardById(boardGesture.id);if(!card) return;
+    const rect=boardGesture.canvas.getBoundingClientRect();
+    if(boardGesture.kind==="draw"){
+      const point=boardCanvasPoint(boardGesture.canvas,event);card.points.push([point.x,point.y]);
+      const line=root.querySelector(`[data-v2-board-node="${CSS.escape(card.id)}"] polyline`);if(line) line.setAttribute("points",card.points.map(p=>`${p[0].toFixed(2)},${p[1].toFixed(2)}`).join(" "));
+    }else{
+      const maxX=Math.max(2,98-(+card.w||42)),maxY=Math.max(2,96-(+card.h||20));
+      const x=Math.max(2,Math.min(maxX,boardGesture.baseX+(event.clientX-boardGesture.startX)/rect.width*100));
+      const y=Math.max(2,Math.min(maxY,boardGesture.baseY+(event.clientY-boardGesture.startY)/rect.height*100));
+      boardGesture.node.style.setProperty("--board-x",x.toFixed(2));boardGesture.node.style.setProperty("--board-y",y.toFixed(2));
+    }
+    event.preventDefault();
+  },{capture:true,passive:false});
+  root.addEventListener("pointerup",event=>{
+    if(!boardGesture||event.pointerId!==boardGesture.pointerId) return;
+    const gesture=boardGesture;boardGesture=null;const card=boardCardById(gesture.id);if(!card)return;
+    if(gesture.kind==="move"){
+      const rect=gesture.canvas.getBoundingClientRect(),maxX=Math.max(2,98-(+card.w||42)),maxY=Math.max(2,96-(+card.h||20));
+      card.x=Math.max(2,Math.min(maxX,gesture.baseX+(event.clientX-gesture.startX)/rect.width*100));
+      card.y=Math.max(2,Math.min(maxY,gesture.baseY+(event.clientY-gesture.startY)/rect.height*100));
+    }
+    save();newAppRender();
+  },true);
+  root.addEventListener("pointercancel",()=>{boardGesture=null;},true);
   /* DAILY FLOW: a single shared time axis with a light dotted work/life guide. */
   const flowLane = block => block.lane || ((block.cat === "sleep" || block.cat === "life" || block.cat === "out" || block.errand) ? "life" : "work");
   function calendar(){
@@ -585,13 +917,13 @@
   let activeFlowEvent=null;
   function flowEventSheet(){
     if(!activeFlowEvent) return "";
-    const e=activeFlowEvent, editable=e.origin==="plan"||e.origin==="daily";
-    return `<div class="an-event-sheet-layer" data-v2-event-sheet-layer><section class="an-event-sheet" role="dialog" aria-modal="true" aria-labelledby="v2EventTitle"><button type="button" class="an-event-sheet-close" data-v2-event-close aria-label="閉じる">${icon("close")}</button><small>${editable?"予定を編集":"読み取り専用の予定"}</small><h2 id="v2EventTitle">${esc2(e.text)}</h2><p>${toHHMM(e.a%1440)} – ${toHHMM(e.b%1440)} · ${e.lane==="work"?"仕事":"生活"}</p>${editable?`<p class="an-event-sheet-note">長押しして上下に動かすと、30分ごとに時間を変更できます。</p><div class="an-event-sheet-actions"><button type="button" class="danger" data-v2-event-delete>予定を削除</button><button type="button" data-v2-event-close>閉じる</button></div>`:`<p class="an-event-sheet-note">この予定は取り込み済みのため、ここでは編集できません。</p>`}</section></div>`;
+    const e=activeFlowEvent;
+    return `<div class="an-event-sheet-layer" data-v2-event-sheet-layer><section class="an-event-sheet" role="dialog" aria-modal="true" aria-labelledby="v2EventTitle"><button type="button" class="an-event-sheet-close" data-v2-event-close aria-label="閉じる">${icon("close")}</button><small>この日の予定を編集</small><h2 id="v2EventTitle">${esc2(e.text)}</h2><div class="an-event-form"><label>予定の名前<input id="v2EventText" value="${esc2(e.text)}" maxlength="80"></label><div><label>開始<input id="v2EventFrom" type="time" value="${toHHMM(e.a%1440)}"></label><label>終了<input id="v2EventTo" type="time" value="${toHHMM(e.b%1440)}"></label></div><label>区分<select id="v2EventLane"><option value="work" ${e.lane==="work"?"selected":""}>仕事</option><option value="life" ${e.lane!=="work"?"selected":""}>生活</option></select></label></div><p class="an-event-sheet-note">長押しで上下に動かすと、30分ごとに移動できます。上端をドラッグすると開始を早め、下端をドラッグすると終了を遅くできます。取り込んだ予定も、この日だけ編集できます。</p><div class="an-event-sheet-actions"><button type="button" class="danger" data-v2-event-delete>予定を削除</button><button type="button" class="primary" data-v2-event-save>保存</button></div></section></div>`;
   }
   function flow(){
     const key=flowDate,rec=S.daily[key]||{},blocks=allBlocks(key).filter(b=>b.cat!=="sleep"),start=typeof TL_START==="number"?TL_START:4*60,end=typeof TL_END==="number"?TL_END:27*60,h=Math.round(((end-start)/60)*28),slots=[];
     for(let m=start;m<end;m+=60)slots.push(`<span class="v2-time" style="top:${(m-start)/(end-start)*h}px">${toHHMM(m%1440)}</span>`);
-    const events=blocks.map((b,index)=>{const a=Math.max(start,b.a),z=Math.min(end,b.b),editable=b._v2Origin==="plan"||b._v2Origin==="daily";return z<=a?"":`<button type="button" class="v2-event an-flow-event an-lane-${flowLane(b)}" data-v2-event-id="${esc2(b.id||"")}" data-v2-event-index="${index}" data-v2-event-origin="${esc2(b._v2Origin||"auto")}" data-v2-event-key="${esc2(key)}" data-v2-event-editable="${editable?"true":"false"}" style="--event:${esc2(b.color||catOf(b.cat).color)};top:${(a-start)/(end-start)*h}px;height:${Math.max(42,(z-a)/(end-start)*h-3)}px"><strong>${esc2(b.text)}</strong><span>${toHHMM(a%1440)} - ${toHHMM(z%1440)}${b.repeat?" ・ 毎日":""}</span></button>`}).join("");
+    const events=blocks.map((b,index)=>{const a=Math.max(start,b.a),z=Math.min(end,b.b);return z<=a?"":`<button type="button" class="v2-event an-flow-event an-lane-${flowLane(b)}" data-v2-event-id="${esc2(b.id||"")}" data-v2-event-index="${index}" data-v2-event-source="${esc2(b._v2SourceKey||"")}" data-v2-event-origin="${esc2(b._v2Origin||"auto")}" data-v2-event-key="${esc2(key)}" data-v2-event-editable="true" style="--event:${esc2(b.color||catOf(b.cat).color)};top:${(a-start)/(end-start)*h}px;height:${Math.max(42,(z-a)/(end-start)*h-3)}px"><span class="v2-event-resize v2-event-resize-start" data-v2-event-resize="start" aria-hidden="true"></span><strong>${esc2(b.text)}</strong><span>${toHHMM(a%1440)} - ${toHHMM(z%1440)}${b.repeat?" ・ 毎日":""}</span><span class="v2-event-resize v2-event-resize-end" data-v2-event-resize="end" aria-hidden="true"></span></button>`}).join("");
     const n=now(),rawNowM=n.getHours()*60+n.getMinutes(),nowM=rawNowM<start?rawNowM+1440:rawNowM,isToday=key===ymd(n),nowline=isToday&&nowM>=start&&nowM<=end?`<div class="v2-now" data-v2-now-line data-v2-start="${start}" data-v2-end="${end}" style="top:${(nowM-start)/(end-start)*h}px"><b data-v2-now-label>いま ${toHHMM(rawNowM)}</b></div>`:"";
     return analogPage("an-flow","calendar","DAILY FLOW","一日の流れ",`<section class="an-theme-strip"><small>${dateLabel(key)}</small><strong>${esc2(rec.theme||"今日のテーマを設定")}</strong></section><section class="an-timeline-section"><h2>${icon("clock")}時間割</h2><div class="an-flow-timeline-shell"><div class="an-flow-lane-guide"><span>${icon("work")}仕事</span><span>${icon("life")}生活</span></div><div class="v2-timeline" data-v2-timeline data-v2-start="${start}" data-v2-end="${end}" style="min-height:${h}px">${slots.join("")}${events}${nowline}</div></div></section><div class="an-flow-actions"><button data-v2-plan-open aria-expanded="false">${icon("plus")}予定を足す</button><button data-v2-go="checklist">${icon("list")}チェックリスト</button><button data-v2-go="calendar">${icon("calendar")}週／月を見る</button></div><div id="v2PlanArea" aria-live="polite"></div>${flowEventSheet()}`);
   }
@@ -640,10 +972,10 @@
     if(kind==="daily"){
       S.dailyTimeline=Array.isArray(S.dailyTimeline)?S.dailyTimeline:[];
       S.dailyTimeline.push(item);
-      toast("毎日やることを時間割に追加しました");
+      successToast("毎日やることを時間割に追加しました");
     }else{
       (S.plan[flowDate]||(S.plan[flowDate]=[])).push(item);
-      toast("この日の予定を時間割に追加しました");
+      successToast("この日の予定を時間割に追加しました");
     }
     save(); newAppRender();
   },true);
@@ -707,9 +1039,10 @@
       ["list","毎日の習慣","今日の流れに表示する項目",`<div class="an-habits">${habitList().map(h=>`<span class="an-habit">${habitIcon(h)}<span>${esc2(h.label)}</span></span>`).join("")}</div><label>習慣の名前</label><input id="v2HabitLabel" placeholder="例：ストレッチ"><button class="an-small-action" data-v2-habit-add>習慣を追加</button>`],
       ["wallet","お金の初期設定","カード上限・方法・カテゴリー",`<label>カードの上限</label><input id="v2CardCap" type="text" inputmode="numeric" value="${(+S.cardCap||0).toLocaleString("ja-JP")}"><button class="an-small-action" data-v2-card-cap>上限を保存</button>`],
       ["calendar","カレンダー連携","予定の読み込みと表示",`<p>予定は「一日の流れ」とカレンダーから確認できます。</p>`],
+      ["list","表示","完了メッセージ",`<p>「変更しました」など、操作が完了したときのメッセージを切り替えます。入力不足などの注意は常に表示します。</p><button class="an-small-action" data-v2-success-notices>${S.ui?.successNotices===false?"完了メッセージを表示する":"完了メッセージを表示しない"}</button>`],
       ["download","バックアップ","この端末の記録を書き出す",`<button class="an-small-action" data-v2-export>データを書き出す</button>`]
     ];
-    return analogPage("an-settings","settings","SETTINGS","暮らしの設定",`<div class="an-settings v2-settings an-sync-settings">${sections.map(([i,t,s,b])=>`<details ${i==="refresh"||i==="health"?"open":""}><summary><i>${icon(i)}</i><span><strong>${t}</strong><small data-v2-sync-status="${i}">${s}</small></span><b>›</b></summary><div class="an-settings-body">${b}</div></details>`).join("")}</div>`,{settings:false});
+    return analogPage("an-settings","settings","SETTINGS","暮らしの設定",`<div class="an-settings v2-settings an-sync-settings">${sections.map(([i,t,s,b])=>`<details><summary><i>${icon(i)}</i><span><strong>${t}</strong><small data-v2-sync-status="${i}">${s}</small></span><b>›</b></summary><div class="an-settings-body">${b}</div></details>`).join("")}</div>`,{settings:false});
   }
   const renderWithSeparatedSync=window.newAppRender;
   window.newAppRender=function(){
@@ -719,6 +1052,15 @@
       root.querySelector('[data-v2-sync-status="health"]')?.replaceChildren(healthSyncStatus(healthSyncCfg()));
     }
   };
+  root.addEventListener("click",event=>{
+    const toggle=event.target.closest("[data-v2-success-notices]");
+    if(!toggle) return;
+    event.stopImmediatePropagation();
+    S.ui=S.ui||{};
+    S.ui.successNotices=S.ui.successNotices===false;
+    save();
+    newAppRender();
+  },true);
   root.addEventListener("click",async event=>{
     const button=event.target.closest("[data-v2-device-sync-start],[data-v2-device-sync-pull],[data-v2-health-sync-create],[data-v2-health-sync-check]");
     if(!button) return;
