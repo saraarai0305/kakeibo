@@ -15,6 +15,10 @@
   let flowDate = ymd(now());
   const metricOn = {sleep:true, steps:true, body:true, mind:true, checklist:true};
   let healthChartSelectedPoint = null;
+  let healthBarCycle = {};
+  let healthAnalysisOpen = false;
+  let healthChartView = {scale:1,x:0,y:0};
+  let healthChartPointers = new Map();
   const successToast = message => {
     if(S?.ui?.successNotices !== false) toast(message);
   };
@@ -52,6 +56,7 @@
       expense:'<path d="M5 4h14v16H5zM12 7v7m-3-3 3 3 3-3"/>',
       income:'<path d="M5 4h14v16H5zM12 17v-7m-3 3 3-3 3 3"/>',
       pay:'<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5M10 10h4v4h-4z"/>',
+      fullscreen:'<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>',
       tag:'<path d="M3 12V5h7l10 10-7 7z"/><circle cx="7.5" cy="8.5" r="1"/>',
       list:'<path d="M8 6h12M8 12h12M8 18h12M3 6l1 1 2-3M3 12l1 1 2-3M3 18l1 1 2-3"/>',
       eye:'<path d="M2.5 12s3.3-5.5 9.5-5.5 9.5 5.5 9.5 5.5-3.3 5.5-9.5 5.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.7"/>',
@@ -69,6 +74,7 @@
       refresh:'<path d="M20 11a8 8 0 0 0-13.8-4L4 9M4 5v4h4M4 13a8 8 0 0 0 13.8 4L20 15M20 19v-4h-4"/>',
       download:'<path d="M12 3v12m-5-5 5 5 5-5M4 20h16"/>'
       ,text:'<path d="M4 5h16M12 5v14M8 19h8"/>'
+      ,cursor:'<path d="m5 3.5 14 8.2-6.3 1.9-2.1 6.4z"/><path d="m13.2 14.1 4.3 4.3"/>'
       ,shape:'<rect x="4" y="5" width="16" height="14" rx="3"/>'
       ,memo:'<path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/>'
       ,pen:'<path d="m4 20 4.3-.9L19.2 8.2 15.8 4.8 4.9 15.7zM14.9 5.7l3.4 3.4"/>'
@@ -172,31 +178,37 @@
     const taskDone=tasks.filter(t=>t.done).length;
     return Math.round((habitDone+taskDone)/total*100);
   }
-  function healthChart(){
+  function healthMetrics(){
     const ds=healthDays();
-    const metrics=[
-      {id:"sleep",label:"睡眠",min:180,max:600,c:"#376b91",kind:"bar",vals:ds.map(d=>{const h=S.health[d]||{},v=sleepMin(h.bed,h.wake);return v||null;}),format:v=>fmtSleep(v)},
-      {id:"steps",label:"歩数",min:0,max:12000,c:"#39785d",kind:"bar",vals:ds.map(d=>{const v=(S.health[d]||{}).steps;return v==null?null:+v;}),format:v=>`${(+v).toLocaleString("ja-JP")}歩`},
-      {id:"body",label:"からだ",min:1,max:5,c:"#7263a8",kind:"line",vals:ds.map(d=>{const v=+(S.health[d]||{}).body||0;return v||null;}),format:v=>`${v} / 5`},
-      {id:"mind",label:"こころ",min:1,max:5,c:"#c86655",kind:"line",vals:ds.map(d=>{const v=+(S.health[d]||{}).mind||0;return v||null;}),format:v=>`${v} / 5`},
-      {id:"checklist",label:"毎日の習慣",min:0,max:100,c:"#d2a449",kind:"line",vals:ds.map(checklistProgress),format:v=>`${v}%`}
-    ].filter(m=>metricOn[m.id]);
+    return [
+      {id:"sleep",label:"睡眠",min:180,max:600,c:"#4d80ad",kind:"bar",vals:ds.map(d=>{const h=S.health[d]||{},v=sleepMin(h.bed,h.wake);return v||null;}),format:v=>fmtSleep(v)},
+      {id:"steps",label:"歩数",min:0,max:12000,c:"#4f986f",kind:"bar",vals:ds.map(d=>{const v=(S.health[d]||{}).steps;return v==null?null:+v;}),format:v=>`${(+v).toLocaleString("ja-JP")}歩`},
+      {id:"body",label:"からだ",min:1,max:5,c:"#796aa8",kind:"line",marker:"circle",vals:ds.map(d=>{const v=+(S.health[d]||{}).body||0;return v||null;}),format:v=>`${v} / 5`},
+      {id:"mind",label:"こころ",min:1,max:5,c:"#ca796b",kind:"line",marker:"square",dash:"5 4",vals:ds.map(d=>{const v=+(S.health[d]||{}).mind||0;return v||null;}),format:v=>`${v} / 5`},
+      {id:"checklist",label:"毎日の習慣",min:0,max:100,c:"#d2a449",kind:"line",marker:"triangle",dash:"2 5",vals:ds.map(checklistProgress),format:v=>`${v}%`}
+    ];
+  }
+  function healthChart(){
+    const ds=healthDays(), metrics=healthMetrics().filter(m=>metricOn[m.id]);
     const W=360,H=238,L=34,R=12,T=33,B=34,gx=L,gw=W-L-R,base=H-B;
     const x=i=>gx+(ds.length<2?gw/2:i*gw/(ds.length-1));
-    const shortDate=d=>{const dt=new Date(`${d}T00:00:00`);return `${dt.getMonth()+1}/${dt.getDate()} ${"日月火水木金土"[dt.getDay()]}`;};
     const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
     const norm=(m,v)=>v==null?null:clamp((v-m.min)/(m.max-m.min),0,1);
-    const y=n=>base-n*(base-T);
-    const barMetrics=metrics.filter(m=>m.kind==="bar"),lineMetrics=metrics.filter(m=>m.kind==="line");
-    const grid=[1,2,3,4,5].map(v=>`<line x1="${gx}" y1="${y((v-1)/4)}" x2="${gx+gw}" y2="${y((v-1)/4)}" stroke="rgba(39,55,68,.15)" stroke-dasharray="3 4"></line>`).join("");
-    const bars=barMetrics.map((m,mi)=>m.vals.map((v,i)=>{const n=norm(m,v);if(n==null)return "";const offset=barMetrics.length===1?0:(mi===0?-7:7);return `<rect class="v2-health-value-target" data-v2-health-point="${i}" data-v2-health-metric="${m.id}" tabindex="0" role="button" aria-label="${dateLabel(ds[i])}の${m.label}: ${m.format(v)}" x="${x(i)+offset-5}" y="${y(n)}" width="10" height="${Math.max(2,base-y(n))}" rx="4" fill="${m.c}" opacity=".72"></rect>`;}).join("")).join("");
+    const y=n=>base-n*(base-T), barMetrics=metrics.filter(m=>m.kind==="bar"), lineMetrics=metrics.filter(m=>m.kind==="line");
+    const grid=[0,.25,.5,.75,1].map(n=>`<line x1="${gx}" y1="${y(n)}" x2="${gx+gw}" y2="${y(n)}" stroke="rgba(39,55,68,.15)" stroke-dasharray="3 4"></line>`).join("");
+    const bars=barMetrics.map((m,mi)=>m.vals.map((v,i)=>{const n=norm(m,v);if(n==null)return "";const width=mi===0?16:8, opacity=mi===0?.48:.9;return `<rect x="${x(i)-width/2}" y="${y(n)}" width="${width}" height="${Math.max(2,base-y(n))}" rx="4" fill="${m.c}" opacity="${opacity}"></rect>`;}).join("")).join("");
+    const barHits=ds.map((d,i)=>{const ids=barMetrics.filter(m=>m.vals[i]!=null).map(m=>m.id);return ids.length?`<rect class="v2-health-bar-hit" data-v2-health-bars="${ids.join(",")}" data-v2-health-bar-index="${i}" x="${x(i)-12}" y="${T}" width="24" height="${base-T}" rx="8" tabindex="0" role="button" aria-label="${dateLabel(d)}の睡眠と歩数"></rect>`:"";}).join("");
     const pathFor=m=>{let joined=false;return m.vals.map((v,i)=>{const n=norm(m,v);if(n==null){joined=false;return "";}const cmd=joined?"L":"M";joined=true;return `${cmd}${x(i)} ${y(n)}`;}).join(" ");};
-    const lines=lineMetrics.map(m=>`<path d="${pathFor(m)}" fill="none" stroke="${m.c}" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"></path>${m.vals.map((v,i)=>{const n=norm(m,v);return n==null?"":`<circle class="v2-health-value-target" data-v2-health-point="${i}" data-v2-health-metric="${m.id}" tabindex="0" role="button" aria-label="${dateLabel(ds[i])}の${m.label}: ${m.format(v)}" cx="${x(i)}" cy="${y(n)}" r="5.5" fill="#fffaf0" stroke="${m.c}" stroke-width="2.5"></circle>`;}).join("")}`).join("");
+    const marker=(m,i,n)=>{const common=`class="v2-health-value-target" data-v2-health-point="${i}" data-v2-health-metric="${m.id}" tabindex="0" role="button" aria-label="${dateLabel(ds[i])}の${m.label}: ${m.format(m.vals[i])}" fill="#fffaf0" stroke="${m.c}" stroke-width="2.4"`;
+      if(m.marker==="square")return `<rect ${common} x="${x(i)-4.8}" y="${y(n)-4.8}" width="9.6" height="9.6" rx="1.5"></rect>`;
+      if(m.marker==="triangle")return `<path ${common} d="M ${x(i)} ${y(n)-5.8} L ${x(i)+5.3} ${y(n)+4.4} L ${x(i)-5.3} ${y(n)+4.4} Z"></path>`;
+      return `<circle ${common} cx="${x(i)}" cy="${y(n)}" r="5.1"></circle>`;
+    };
+    const lines=lineMetrics.map(m=>{const path=pathFor(m);return `<path d="${path}" fill="none" stroke="${m.c}" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" ${m.dash?`stroke-dasharray="${m.dash}"`:""}></path><path class="v2-health-line-hit" data-v2-health-line="${m.id}" d="${path}" fill="none"></path>${m.vals.map((v,i)=>{const n=norm(m,v);return n==null?"":marker(m,i,n);}).join("")}`;}).join("");
     const picked=healthChartSelectedPoint&&ds[healthChartSelectedPoint.index]?healthChartSelectedPoint:null;
-    const pickedMetric=picked&&metrics.find(m=>m.id===picked.metric);
-    const pickedValue=pickedMetric?.vals[picked.index];
-    const tooltip=(!pickedMetric||pickedValue==null)?"":`<g class="v2-health-tooltip"><rect x="${Math.max(6,Math.min(W-110,x(picked.index)-48))}" y="5" width="96" height="22" rx="7"></rect><text x="${Math.max(54,Math.min(W-62,x(picked.index))) }" y="20" text-anchor="middle">${shortDate(ds[picked.index])} ${pickedMetric.label} ${pickedMetric.format(pickedValue)}</text></g>`;
-    return `<svg class="v2-line-chart v2-health-compare" viewBox="0 0 ${W} ${H}" role="img" aria-label="睡眠と歩数の棒グラフ、からだ・こころ・毎日の習慣の折れ線を重ねた一週間の比較グラフ"><title>一週間の体調比較</title>${grid}${bars}${lines}${tooltip}<line x1="${gx}" y1="${base}" x2="${gx+gw}" y2="${base}" stroke="rgba(39,55,68,.4)"></line>${ds.map((d,i)=>`<text x="${x(i)}" y="${H-10}" text-anchor="middle">${"日月火水木金土"[new Date(d+"T00:00:00").getDay()]}</text>`).join("")}</svg>`;
+    const pickedMetric=picked&&healthMetrics().find(m=>m.id===picked.metric), pickedValue=pickedMetric?.vals[picked.index];
+    const detail=(!pickedMetric||pickedValue==null)?"":`<p class="an-health-detail" style="--health-detail:${pickedMetric.c}"><strong>${pickedMetric.label} ${pickedMetric.format(pickedValue)}</strong></p>`;
+    return `<div class="v2-health-viewport" data-v2-health-viewport><div class="v2-health-stage" data-v2-health-stage style="--health-chart-scale:${healthChartView.scale};--health-chart-x:${healthChartView.x}px;--health-chart-y:${healthChartView.y}px"><svg class="v2-line-chart v2-health-compare" viewBox="0 0 ${W} ${H}" role="img" aria-label="睡眠と歩数の棒グラフ、からだ・こころ・毎日の習慣の折れ線を重ねた一週間の比較グラフ"><title>一週間の体調比較</title>${grid}${bars}${barHits}${lines}<line x1="${gx}" y1="${base}" x2="${gx+gw}" y2="${base}" stroke="rgba(39,55,68,.4)"></line>${ds.map((d,i)=>`<text x="${x(i)}" y="${H-10}" text-anchor="middle">${"日月火水木金土"[new Date(d+"T00:00:00").getDay()]}</text>`).join("")}</svg></div></div>${detail}`;
   }
   function healthAnalysis(){const labels=[["sleep","睡眠","#376b91"],["steps","歩数","#39785d"],["body","からだ","#7263a8"],["mind","こころ","#c86655"]];return `<section class="v2-page v2-health-analysis">${top(titleFor(page))}<p class="v2-kicker">${icon("chart")}HEALTH ANALYSIS</p><h2 class="v2-page-lead">一週間の相関</h2><div class="v2-chart-block"><h2>睡眠・歩数・調子の変化</h2><div class="v2-metric-toggle">${labels.map(([id,l,c])=>`<button class="${metricOn[id]?"":"off"}" data-v2-metric="${id}"><i style="background:${c}"></i>${l}</button>`).join("")}</div>${healthChart()}</div><div class="v2-chart-block"><h2>振り返り</h2><div class="v2-outline-row"><i>${icon("moon")}</i><span>睡眠が短い日<small>5時間未満の日</small></span><strong>${healthDays().filter(d=>(sleepMin((S.health[d]||{}).bed,(S.health[d]||{}).wake)||0)<360).length}日</strong></div><div class="v2-outline-row"><i>${icon("foot")}</i><span>よく歩いた日<small>8,000歩以上の日</small></span><strong class="v2-green">${healthDays().filter(d=>+(S.health[d]||{}).steps>=8000).length}日</strong></div></div></section>`;}
   function flow(){
@@ -402,7 +414,7 @@
     return analogPage("an-idea-note","edit","IDEA BOARD","アイデアと目標",`<p class="an-board-guide">文字・図形・メモ・手書き・画像を、好きな位置に置ける自由なボードです。</p>${boardToolbar()}<section class="an-board-inline"><header><strong>フリーボード</strong><button type="button" data-v2-board-open>${icon("edit")}全画面表示</button></header><section class="an-free-board an-board-editor an-board-editor-inline" data-v2-board-canvas aria-label="アイデアと目標のフリーボード">${nodes||`<span class="an-empty">ツールを選んで、最初のアイデアを置きましょう。</span>`}</section>${boardProperties(selected)}</section>`);
   }
   function calendar(){const base=new Date(calendarDate+"T00:00:00"),mon=new Date(base);mon.setDate(base.getDate()-((base.getDay()+6)%7));let content="";if(calendarMode==="week"){content=`<div class="v2-week">${Array.from({length:7},(_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);const key=ymd(d),bs=allBlocks(key);return `<button class="v2-week-day ${key===ymd(now())?"today":""}" data-v2-cal-date="${key}"><span>${"月火水木金土日"[i]}</span><b>${d.getDate()}</b>${bs.slice(0,3).map(b=>`<i class="v2-cal-dot" style="background:${esc2(b.color||catOf(b.cat).color)}"></i>`).join("")}</button>`}).join("")}</div>`;}else{const y=base.getFullYear(),m=base.getMonth(),days=new Date(y,m+1,0).getDate(),off=(new Date(y,m,1).getDay()+6)%7;content=`<div class="v2-month">${Array.from({length:off},()=>"<span></span>").join("")}${Array.from({length:days},(_,i)=>{const d=i+1,key=`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`,has=allBlocks(key).length;return `<button class="${key===ymd(now())?"today ":""}${has?"has":""}" data-v2-cal-date="${key}">${d}</button>`}).join("")}</div>`;}const period=calendarMode==="week"?`${mon.getMonth()+1}月${mon.getDate()}日からの1週間`:`${base.getFullYear()}年${base.getMonth()+1}月`;return analogPage("an-calendar","calendar","CALENDAR",period,`<div class="an-calendar-switch"><button class="${calendarMode==="week"?"on":""}" data-v2-cal-mode="week">1週間</button><button class="${calendarMode==="month"?"on":""}" data-v2-cal-mode="month">1か月</button></div>${content}<p class="an-empty">日付をタップすると、その日の時間割を開きます。</p>`);}
-  function settingsV2(){const cfg=syncCfg();return analogPage("an-settings","settings","SETTINGS","暮らしの設定",`<div class="an-settings v2-settings">${[["refresh","同期・歩数／睡眠",cfg.token&&cfg.gistId?"同期済み・アプリを開くと更新します":"未接続",`<p>歩数と睡眠は、設定済みのiPhoneショートカット／同期から読み込みます。</p><label>GitHubトークン</label><input id="v2SyncToken" type="password" autocomplete="off" placeholder="初回設定時のみ入力"><label>Gist ID</label><input id="v2SyncGist" value="${esc2(cfg.gistId||"")}" placeholder="2台目のみ入力"><button class="an-small-action" data-v2-sync-start>同期を設定・開始</button><button class="an-small-action" data-v2-sync>今すぐ同期する</button><button class="an-small-action" data-v2-role>${cfg.role==="ro"?"記録する端末にする":"見るだけの端末にする"}</button>`],["list","毎日の習慣","今日の流れに表示する項目",`<div class="an-habits">${habitList().map(h=>`<span class="an-habit">${habitIcon(h)}<span>${esc2(h.label)}</span></span>`).join("")}</div><label>習慣の名前</label><input id="v2HabitLabel" placeholder="例：ストレッチ"><button class="an-small-action" data-v2-habit-add>習慣を追加</button>`],["wallet","お金の初期設定","カード上限・方法・カテゴリー",`<label>カードの上限</label><input id="v2CardCap" type="text" inputmode="numeric" value="${(+S.cardCap||0).toLocaleString("ja-JP")}"><button class="an-small-action" data-v2-card-cap>上限を保存</button><label>支出の方法</label><input id="v2MethodAdd" placeholder="例：交通系IC"><button class="an-small-action" data-v2-method-add>方法を追加</button><label>支出のカテゴリー</label><input id="v2CategoryAdd" placeholder="例：医療費"><button class="an-small-action" data-v2-category-add>カテゴリーを追加</button><label>収入の受け取り方法</label><input id="v2IncomeMethodAdd" placeholder="例：PayPay"><button class="an-small-action" data-v2-income-method-add>方法を追加</button><label>収入のカテゴリー</label><input id="v2IncomeCategoryAdd" placeholder="例：傷病手当"><button class="an-small-action" data-v2-income-category-add>カテゴリーを追加</button>`],["calendar","カレンダー連携","予定の取り込みと表示",`<p>予定は「一日の流れ」から確認・追加できます。</p>`],["download","バックアップ","この端末のデータを保存",`<p>端末の記録を書き出して保管できます。</p><button class="an-small-action" data-v2-export>データを書き出す</button>`]].map(([i,t,s,b])=>`<details><summary><i>${icon(i)}</i><span><strong>${t}</strong><small>${s}</small></span><b>›</b></summary><div class="an-settings-body">${b}</div></details>`).join("")}</div>`,{settings:false});}
+  function settingsV2(){const cfg=syncCfg();return analogPage("an-settings","settings","SETTINGS","くらしの設定",`<div class="an-settings v2-settings">${[["refresh","同期・歩数／睡眠",cfg.token&&cfg.gistId?"同期済み・アプリを開くと更新します":"未接続",`<p>歩数と睡眠は、設定済みのiPhoneショートカット／同期から読み込みます。</p><label>GitHubトークン</label><input id="v2SyncToken" type="password" autocomplete="off" placeholder="初回設定時のみ入力"><label>Gist ID</label><input id="v2SyncGist" value="${esc2(cfg.gistId||"")}" placeholder="2台目のみ入力"><button class="an-small-action" data-v2-sync-start>同期を設定・開始</button><button class="an-small-action" data-v2-sync>今すぐ同期する</button><button class="an-small-action" data-v2-role>${cfg.role==="ro"?"記録する端末にする":"見るだけの端末にする"}</button>`],["list","毎日の習慣","今日の流れに表示する項目",`<div class="an-habits">${habitList().map(h=>`<span class="an-habit">${habitIcon(h)}<span>${esc2(h.label)}</span></span>`).join("")}</div><label>習慣の名前</label><input id="v2HabitLabel" placeholder="例：ストレッチ"><button class="an-small-action" data-v2-habit-add>習慣を追加</button>`],["wallet","お金の初期設定","カード上限・方法・カテゴリー",`<label>カードの上限</label><input id="v2CardCap" type="text" inputmode="numeric" value="${(+S.cardCap||0).toLocaleString("ja-JP")}"><button class="an-small-action" data-v2-card-cap>上限を保存</button><label>支出の方法</label><input id="v2MethodAdd" placeholder="例：交通系IC"><button class="an-small-action" data-v2-method-add>方法を追加</button><label>支出のカテゴリー</label><input id="v2CategoryAdd" placeholder="例：医療費"><button class="an-small-action" data-v2-category-add>カテゴリーを追加</button><label>収入の受け取り方法</label><input id="v2IncomeMethodAdd" placeholder="例：PayPay"><button class="an-small-action" data-v2-income-method-add>方法を追加</button><label>収入のカテゴリー</label><input id="v2IncomeCategoryAdd" placeholder="例：傷病手当"><button class="an-small-action" data-v2-income-category-add>カテゴリーを追加</button>`],["calendar","カレンダー連携","予定の取り込みと表示",`<p>予定は「一日の流れ」から確認・追加できます。</p>`],["download","バックアップ","この端末のデータを保存",`<p>端末の記録を書き出して保管できます。</p><button class="an-small-action" data-v2-export>データを書き出す</button>`]].map(([i,t,s,b])=>`<details><summary><i>${icon(i)}</i><span><strong>${t}</strong><small>${s}</small></span><b>›</b></summary><div class="an-settings-body">${b}</div></details>`).join("")}</div>`,{settings:false});}
   function homeReturn(){ return analogReturn(); }
   window.newAppRender = function(){const view={home:homeV2,record:()=>branch("record"),today:()=>branch("today"),visualize:()=>branch("visualize"),moneyRecord,moneyOutlook,moneyAnalysis,healthRecord,healthAnalysis,flow,checklist:checklistV2,theme,ideas:ideaNote,calendar,settings:settingsV2}[page]||homeV2;root.innerHTML=view();document.body.dataset.v2Scroll=["home","record","today","visualize"].includes(page)?"locked":"auto";};
   function syncStatusLabel(cfg){
@@ -1044,6 +1056,9 @@
     ];
     return analogPage("an-settings","settings","SETTINGS","暮らしの設定",`<div class="an-settings v2-settings an-sync-settings">${sections.map(([i,t,s,b])=>`<details><summary><i>${icon(i)}</i><span><strong>${t}</strong><small data-v2-sync-status="${i}">${s}</small></span><b>›</b></summary><div class="an-settings-body">${b}</div></details>`).join("")}</div>`,{settings:false});
   }
+  /* ブランド表記はアプリ名に合わせて、設定画面も「くらし」で統一する。 */
+  const settingsV2WithBrand=settingsV2;
+  settingsV2=function(){return settingsV2WithBrand().replaceAll("暮らしの設定","くらしの設定");};
   const renderWithSeparatedSync=window.newAppRender;
   window.newAppRender=function(){
     renderWithSeparatedSync();
@@ -1097,5 +1112,313 @@
       toast(`ヘルスケア受信を設定できませんでした: ${c.lastError}`); newAppRender();
     }
   },true);
+  /* v0.29: direct-manipulation freeboard and a single comparable health graph.
+     These use their own data attributes so the retired board interactions cannot
+     steal pointer events from the newer editor. */
+  let freeBoardUI={tool:"select",selected:null,selectedIds:[],editingId:null,styleId:null,deleteReady:null,contextMenu:null,groupMenu:false,marquee:null,fullscreen:false,view:{scale:1,x:0,y:0},pointers:new Map(),gesture:null,lastTap:{id:"",at:0}};
+  const fbCards=()=>boardState().cards||[];
+  const fbCard=id=>fbCards().find(x=>x.id===id);
+  // The selected object is kept for compatibility, while selectedIds is the
+  // authoritative selection set used by marquee and group operations.
+  const fbSelectedIds=()=>Array.isArray(freeBoardUI.selectedIds)&&freeBoardUI.selectedIds.length?freeBoardUI.selectedIds:(freeBoardUI.selected?[freeBoardUI.selected]:[]);
+  function fbSelect(ids=[],primary=ids[ids.length-1]||null){
+    freeBoardUI.selectedIds=[...new Set(ids)].filter(id=>!!fbCard(id));
+    freeBoardUI.selected=primary&&freeBoardUI.selectedIds.includes(primary)?primary:(freeBoardUI.selectedIds.at(-1)||null);
+    freeBoardUI.deleteReady=null;freeBoardUI.contextMenu=null;freeBoardUI.groupMenu=false;
+  }
+  function fbBounds(ids=fbSelectedIds()){
+    const cards=ids.map(fbCard).filter(Boolean);if(!cards.length)return null;
+    const left=Math.min(...cards.map(c=>+c.x||0)),top=Math.min(...cards.map(c=>+c.y||0));
+    const right=Math.max(...cards.map(c=>(+c.x||0)+(+c.w||0))),bottom=Math.max(...cards.map(c=>(+c.y||0)+(+c.h||0)));
+    return {left,top,right,bottom,w:right-left,h:bottom-top};
+  }
+  const fbInside=(p,b)=>!!b&&p.x>=b.left&&p.x<=b.right&&p.y>=b.top&&p.y<=b.bottom;
+  function fbDelete(ids){
+    const wanted=new Set(ids);if(!wanted.size)return false;
+    const board=boardState();board.cards=(board.cards||[]).filter(card=>!wanted.has(card.id));
+    fbSelect([]);freeBoardUI.editingId=null;freeBoardUI.styleId=null;return true;
+  }
+  function fbDuplicate(ids=fbSelectedIds()){
+    const board=boardState(),copies=ids.map(fbCard).filter(Boolean).map(card=>Object.assign({},card,{id:uid(),x:Math.min(92-(+card.w||0),(+card.x||0)+3),y:Math.min(92-(+card.h||0),(+card.y||0)+3),z:Math.max(1,+card.z||1)+1,points:Array.isArray(card.points)?card.points.map(p=>[...p]):card.points}));
+    if(!copies.length)return false;board.cards.push(...copies);fbSelect(copies.map(c=>c.id),copies.at(-1).id);return true;
+  }
+  const fbType=card=>({text:"text",memo:"memo",shape:"shape",image:"image",stroke:"stroke"}[card.type]||card.type||"text");
+  const fbEsc=s=>esc2(String(s||"")).replace(/\n/g,"<br>");
+  function fbFit(card,text){
+    // A user-resized text frame owns its dimensions.  Editing the text must
+    // never silently replace that frame with an automatically sized one.
+    if(card.manualSize)return;
+    const lines=String(text||"").split(/\n/);const longest=Math.max(4,...lines.map(x=>x.length));
+    // The board works in percentages. Fit from actual type size so all text
+    // stays visible without a manual resize handle.
+    card.w=Math.max(22,Math.min(78,Math.ceil(longest*(+card.size||18)*.62/3.6)+10));
+    card.h=Math.max(13,Math.min(70,Math.ceil(lines.length*Math.max(9,(+card.size||18)*1.45)/4.2)+10));
+  }
+  function fbNode(card){
+    const type=fbType(card),selected=fbSelectedIds().includes(card.id),editing=freeBoardUI.editingId===card.id&&["text","memo"].includes(type);
+    const cls=`v2fb-node v2fb-${type}${selected?" is-selected":""}`;
+    const style=`--x:${+card.x||8}%;--y:${+card.y||8}%;--w:${+card.w||32}%;--h:${+card.h||16}%;--size:${+card.size||18}px;--weight:${+card.weight||600};--z:${Math.max(1,+card.z||1)};`;
+    // Text frames use the same live bounding-box contract as shapes.  The
+    // type itself scales uniformly; it is never stretched independently.
+    const handles=(["shape","image","text","memo"].includes(type))?["n","e","s","w","nw","ne","sw","se"].map(handle=>`<i class="v2fb-handle ${handle}" data-v2-freeboard-resize="${handle}" aria-hidden="true"></i>`).join(""):"";
+    // Deletion is deliberately separate from the north-east resize handle.
+    // Touch: a stationary long press reveals the ×. Desktop: a right click
+    // reveals a small text menu, so no control competes with the handle.
+    const remove=freeBoardUI.deleteReady===card.id?`<button type="button" class="v2fb-remove" data-v2-freeboard-delete="${esc2(card.id)}" aria-label="この要素を削除">×</button>`:"";
+    const context=freeBoardUI.contextMenu===card.id?`<menu class="v2fb-context-menu"><button type="button" data-v2-freeboard-delete="${esc2(card.id)}">削除</button></menu>`:"";
+    // A single SVG ring carries the selected state. It stays rounded at every
+    // scale and is deliberately separate from the object's own paper border.
+ // Selection is drawn from the element's *current* box.  The ring and every
+ // resize handle therefore share the same edge/corner coordinates.
+ const selection=selected?`<svg class="v2fb-selection-ring" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><rect x="0" y="0" width="100" height="100" rx="10" ry="10"/></svg>`:"";
+    if(type==="stroke") return `<div class="${cls}" data-v2-freeboard-node="${esc2(card.id)}" style="${style}" aria-label="手書き線"><svg viewBox="0 0 100 100" preserveAspectRatio="none"><polyline points="${(card.points||[]).map(p=>`${p[0]},${p[1]}`).join(" ")}"></polyline></svg>${selection}${remove}${context}</div>`;
+    if(type==="image") return `<figure class="${cls}" data-v2-freeboard-node="${esc2(card.id)}" style="${style}"><img src="${esc2(card.src||"")}" alt="${esc2(card.name||"追加した画像")}">${selection}${remove}${context}${handles}</figure>`;
+    if(type==="shape") return `<div class="${cls}" data-v2-freeboard-node="${esc2(card.id)}" style="${style}" aria-label="図形">${selection}${remove}${context}${handles}</div>`;
+    const tag=type==="memo"?"aside":"article";
+    const content=editing?`<textarea class="v2fb-inline-editor" data-v2-freeboard-inline-edit="${esc2(card.id)}" aria-label="テキストを編集">${esc2(card.text||"")}</textarea>`:`<div class="v2fb-text-content">${fbEsc(card.text||"テキスト")}</div>`;
+    const styleButton=selected?`<button type="button" class="v2fb-style" data-v2-freeboard-style="${esc2(card.id)}" aria-label="文字の書式">Aa</button>`:"";
+    return `<${tag} class="${cls} v2fb-face-${esc2(card.face||"sans")}" data-v2-freeboard-node="${esc2(card.id)}" style="${style}">${content}${selection}${styleButton}${remove}${context}${handles}</${tag}>`;
+  }
+  function fbTools(){
+    const toolSet=[["select","cursor","選択"],["text","kana","テキスト"],["shape","shape","図形"],["memo","memo","メモ"],["pen","pen","手書き"]];
+    return `<nav class="v2fb-tools" aria-label="フリーボードのツール">${toolSet.map(([id,mark,label])=>`<button type="button" class="${freeBoardUI.tool===id?"is-active":""}" data-v2-freeboard-tool="${id}">${mark==="kana"?`<i class="v2fb-tool-kana" aria-hidden="true">あ</i>`:icon(mark)}<span>${label}</span></button>`).join("")}<label class="${freeBoardUI.tool==="image"?"is-active":""}">${icon("image")}<span>画像</span><input data-v2-freeboard-upload type="file" accept="image/*"></label><button type="button" class="v2fb-clear" data-v2-freeboard-clear>${icon("close")}<span>すべて削除（オールクリア）</span></button></nav>`;
+  }
+  function fbEditor(){
+    const card=fbCard(freeBoardUI.styleId); if(!card || !["text","memo"].includes(fbType(card))) return "";
+    return `<div class="v2fb-modal" data-v2-freeboard-modal><section role="dialog" aria-modal="true" aria-label="文字の書式"><header><strong>文字の書式</strong><button type="button" data-v2-freeboard-modal-close>×</button></header><p class="v2fb-style-note">文字を直接編集するには、ボード上の文字をダブルタップします。</p><div class="v2fb-editor-fields"><label>書体<select data-v2-freeboard-face><option value="sans" ${card.face==="sans"?"selected":""}>Noto Sans JP</option><option value="mincho" ${card.face==="mincho"?"selected":""}>Noto Serif JP</option><option value="udgothic" ${card.face==="udgothic"?"selected":""}>BIZ UDPゴシック</option><option value="udmincho" ${card.face==="udmincho"?"selected":""}>BIZ UDP明朝</option></select></label><label>太さ<select data-v2-freeboard-weight><option value="400" ${+card.weight===400?"selected":""}>細い</option><option value="600" ${+card.weight===600?"selected":""}>標準</option><option value="800" ${+card.weight===800?"selected":""}>太い</option></select></label><label>文字サイズ<input data-v2-freeboard-size type="number" min="12" max="46" value="${+card.size||18}"></label></div><footer><button type="button" data-v2-freeboard-editor-save>適用</button></footer></section></div>`;
+  }
+  function fbMarquee(){
+    const m=freeBoardUI.marquee;if(!m)return "";
+    const left=Math.min(m.start.x,m.current.x),top=Math.min(m.start.y,m.current.y),w=Math.abs(m.current.x-m.start.x),h=Math.abs(m.current.y-m.start.y);
+    return `<i class="v2fb-marquee" style="--x:${left}%;--y:${top}%;--w:${w}%;--h:${h}%" aria-hidden="true"></i>`;
+  }
+  function fbGroupSelection(){
+    const ids=fbSelectedIds();if(ids.length<2)return "";const b=fbBounds(ids);if(!b)return "";
+    const actions=freeBoardUI.groupMenu?`<menu class="v2fb-group-menu"><button type="button" data-v2-freeboard-duplicate>複製</button><button type="button" data-v2-freeboard-delete-group>削除</button></menu>`:"";
+    return `<div class="v2fb-group-selection" data-v2-freeboard-group-box style="--x:${b.left}%;--y:${b.top}%;--w:${b.w}%;--h:${b.h}%" role="button" tabindex="0" aria-label="${ids.length}個を選択中">${actions}</div>`;
+  }
+  function fbCanvas(fullscreen=false){
+    const nodeMarkup=fbCards().map(fbNode).join(""),v=freeBoardUI.view;
+    return `<section class="v2fb-viewport ${fullscreen?"is-fullscreen":""}" data-v2-freeboard-viewport aria-label="自由に配置できるフリーボード"><div class="v2fb-stage" data-v2-freeboard-stage style="--fb-scale:${v.scale};--fb-x:${v.x}px;--fb-y:${v.y}px">${nodeMarkup||`<p class="v2fb-empty">ツールを選んで、画面に置いてください。</p>`}${fbGroupSelection()}${fbMarquee()}</div></section>`;
+  }
+  ideaNote=function(){
+    if(freeBoardUI.fullscreen) return `<section class="v2fb-fullscreen">${fbTools()}${fbCanvas(true)}${fbEditor()}<button type="button" class="v2fb-exit" data-v2-freeboard-fullscreen>${icon("back")}<span>戻る</span></button></section>`;
+    return analogPage("an-idea-note","edit","IDEA BOARD","アイデアと目標",`<p class="an-board-guide">文字・図形・メモ・手書き・画像を、好きな位置に置ける自由なボードです。</p>${fbTools()}<div class="v2fb-inline-head"><strong>フリーボード</strong><button type="button" data-v2-freeboard-fullscreen>${icon("fullscreen")}<span>全画面表示</span></button></div>${fbCanvas()}${fbEditor()}`);
+  };
+  function fbPoint(viewport,event){const r=viewport.getBoundingClientRect(),v=freeBoardUI.view;return {x:Math.max(0,Math.min(100,((event.clientX-r.left-v.x)/r.width/v.scale)*100)),y:Math.max(0,Math.min(100,((event.clientY-r.top-v.y)/r.height/v.scale)*100))};}
+  function fbAdd(type,p){const board=boardState(),top=Math.max(0,...(board.cards||[]).map(c=>+c.z||0)),base={id:uid(),type,x:p.x,y:p.y,w:32,h:16,size:18,weight:600,face:"sans",z:top+1};if(type==="memo")Object.assign(base,{w:30,h:19,text:"メモ"});if(type==="text")Object.assign(base,{w:30,h:13,text:"テキスト"});if(type==="shape")Object.assign(base,{w:24,h:14});board.cards.push(base);fbSelect([base.id],base.id);freeBoardUI.tool="select";save();return base;}
+  function fbStore(){save();newAppRender();}
+  root.addEventListener("click",event=>{
+    const tool=event.target.closest("[data-v2-freeboard-tool]"),full=event.target.closest("[data-v2-freeboard-fullscreen]"),remove=event.target.closest("[data-v2-freeboard-delete]"),close=event.target.closest("[data-v2-freeboard-modal-close]"),keep=event.target.closest("[data-v2-freeboard-editor-save]"),style=event.target.closest("[data-v2-freeboard-style]"),clear=event.target.closest("[data-v2-freeboard-clear]"),duplicate=event.target.closest("[data-v2-freeboard-duplicate]"),groupDelete=event.target.closest("[data-v2-freeboard-delete-group]"),groupBox=event.target.closest("[data-v2-freeboard-group-box]");
+    if(!tool&&!full&&!remove&&!close&&!keep&&!style&&!clear&&!duplicate&&!groupDelete&&!groupBox) return;
+    event.stopImmediatePropagation();
+    if(tool){freeBoardUI.tool=tool.dataset.v2FreeboardTool;fbSelect(fbSelectedIds());newAppRender();return;}
+    if(full){freeBoardUI.fullscreen=!freeBoardUI.fullscreen;fbSelect([]);freeBoardUI.editingId=null;freeBoardUI.styleId=null;newAppRender();return;}
+    if(clear){
+      if(!canWrite()){toast("この端末では書き込みできません");return;}
+      if(!fbCards().length||!window.confirm("フリーボードの内容をすべて削除しますか？"))return;
+      boardState().cards=[];fbSelect([]);fbStore();toast("すべて削除しました");return;
+    }
+    if(duplicate){
+      if(!canWrite()){toast("この端末では書き込みできません");return;}
+      if(!fbDuplicate())return;fbStore();toast("選択した要素を複製しました");return;
+    }
+    if(groupDelete){
+      if(!canWrite()){toast("この端末では書き込みできません");return;}
+      if(!fbDelete(fbSelectedIds()))return;fbStore();toast("選択した要素を削除しました");return;
+    }
+    if(remove){
+      if(!canWrite()){toast("この端末では書き込みできません");return;}
+      if(!fbDelete([remove.dataset.v2FreeboardDelete]))return;fbStore();toast("要素を削除しました");return;
+    }
+    // Group actions are opened from pointerup so the same tap cannot
+    // immediately close the menu again through this delegated click.
+    if(groupBox)return;
+    if(style){freeBoardUI.styleId=style.dataset.v2FreeboardStyle;freeBoardUI.editingId=null;newAppRender();return;}
+    if(close){freeBoardUI.styleId=null;newAppRender();return;}
+    if(keep){if(!canWrite())return;const card=fbCard(freeBoardUI.styleId);if(!card)return;card.face=document.querySelector("[data-v2-freeboard-face]")?.value||"sans";card.weight=+document.querySelector("[data-v2-freeboard-weight]")?.value||600;card.size=Math.max(12,Math.min(46,+document.querySelector("[data-v2-freeboard-size]")?.value||18));fbFit(card,card.text);freeBoardUI.styleId=null;fbStore();toast("文字の書式を変更しました");}
+  },true);
+  root.addEventListener("input",event=>{const editor=event.target.closest("[data-v2-freeboard-inline-edit]");if(!editor||!canWrite())return;const card=fbCard(editor.dataset.v2FreeboardInlineEdit);if(!card)return;card.text=editor.value;fbFit(card,card.text);const node=editor.closest("[data-v2-freeboard-node]");if(node){node.style.setProperty("--w",card.w+"%");node.style.setProperty("--h",card.h+"%");}save();},true);
+  root.addEventListener("focusout",event=>{const editor=event.target.closest("[data-v2-freeboard-inline-edit]");if(!editor)return;const card=fbCard(editor.dataset.v2FreeboardInlineEdit);if(card&&canWrite()){card.text=editor.value;fbFit(card,card.text);save();}freeBoardUI.editingId=null;newAppRender();},true);
+  root.addEventListener("change",async event=>{const file=event.target.matches("[data-v2-freeboard-upload]")?event.target.files?.[0]:null;if(!file||!canWrite())return;try{const src=await boardImageData(file),p={x:15,y:15},card={id:uid(),type:"image",src,name:file.name,x:p.x,y:p.y,w:40,h:27,z:Math.max(0,...fbCards().map(c=>+c.z||0))+1};boardState().cards.push(card);fbSelect([card.id],card.id);freeBoardUI.tool="select";fbStore();}catch(e){toast("画像を追加できませんでした");}},true);
+  // Desktop deletion is a context action so it never overlaps the north-east
+  // resize handle. Touch uses a stationary long press to reveal the same delete control.
+  root.addEventListener("contextmenu",event=>{
+    const node=event.target.closest("[data-v2-freeboard-node]");
+    if(!node||!canWrite())return;
+    event.preventDefault();event.stopImmediatePropagation();
+    fbSelect([node.dataset.v2FreeboardNode],node.dataset.v2FreeboardNode);freeBoardUI.editingId=null;
+    freeBoardUI.deleteReady=null;freeBoardUI.contextMenu=node.dataset.v2FreeboardNode;
+    newAppRender();
+  },true);
+  root.addEventListener("pointerdown",event=>{
+    const viewport=event.target.closest("[data-v2-freeboard-viewport]");if(!viewport||event.button>0)return;
+    // Buttons (especially delete / copy / formatting) must receive their own
+    // click.  Starting a board gesture from them previously swallowed actions.
+    if(event.target.closest("button,input,textarea,select,[data-v2-freeboard-inline-edit]"))return;
+    const node=event.target.closest("[data-v2-freeboard-node]"),groupBox=event.target.closest("[data-v2-freeboard-group-box]"),handle=event.target.closest("[data-v2-freeboard-resize]"),p=fbPoint(viewport,event);freeBoardUI.pointers.set(event.pointerId,{x:event.clientX,y:event.clientY});
+    if(freeBoardUI.pointers.size===2){const a=[...freeBoardUI.pointers.values()];freeBoardUI.gesture={kind:"pinch",distance:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y),scale:freeBoardUI.view.scale};event.preventDefault();return;}
+    if(groupBox){
+      const ids=fbSelectedIds(),bases=ids.map(id=>{const c=fbCard(id);return {id,x:+c.x||0,y:+c.y||0,w:+c.w||20,h:+c.h||14};});
+      const groupGesture={kind:"group-hold",id:ids.at(-1),ids,bases,pointerId:event.pointerId,pointerType:event.pointerType,viewport,startX:event.clientX,startY:event.clientY,baseX:0,baseY:0,baseW:0,baseH:0,movable:event.pointerType==="mouse",moved:false};
+      // Desktop groups drag immediately. On touch, a stationary long press
+      // enables movement; a short tap instead opens the group action menu.
+      if(event.pointerType!=="mouse")groupGesture.timer=setTimeout(()=>{if(freeBoardUI.gesture===groupGesture){groupGesture.movable=true;ids.forEach(id=>viewport.querySelector(`[data-v2-freeboard-node="${CSS.escape(id)}"]`)?.classList.add("is-moving"));}},360);
+      freeBoardUI.gesture=groupGesture;
+      viewport.setPointerCapture?.(event.pointerId);event.preventDefault();return;
+    }
+    if(freeBoardUI.tool==="pen"&&!node&&canWrite()){
+      const card={id:uid(),type:"stroke",x:0,y:0,w:100,h:100,points:[[p.x,p.y]]};boardState().cards.push(card);freeBoardUI.selected=card.id;
+      const svg=document.createElementNS("http://www.w3.org/2000/svg","svg"),poly=document.createElementNS("http://www.w3.org/2000/svg","polyline");
+      svg.className.baseVal="v2fb-node v2fb-stroke is-selected";svg.dataset.v2FreeboardNode=card.id;svg.setAttribute("viewBox","0 0 100 100");svg.setAttribute("preserveAspectRatio","none");svg.style.cssText="--x:0%;--y:0%;--w:100%;--h:100%;";poly.setAttribute("points",`${p.x},${p.y}`);svg.append(poly);viewport.querySelector("[data-v2-freeboard-stage]")?.append(svg);
+      freeBoardUI.gesture={kind:"draw",id:card.id,pointerId:event.pointerId,viewport};viewport.setPointerCapture?.(event.pointerId);event.preventDefault();return;
+    }
+    if(freeBoardUI.tool!=="select"&&!node&&canWrite()){
+      const card=fbAdd(freeBoardUI.tool,p);
+      // テキスト／メモは置いた直後から本文を入力する。選択だけで止めない。
+      freeBoardUI.selected=card.id;freeBoardUI.styleId=null;
+      freeBoardUI.editingId=["text","memo"].includes(fbType(card))?card.id:null;
+      freeBoardUI.tool="select";newAppRender();
+      if(freeBoardUI.editingId)setTimeout(()=>root.querySelector(`[data-v2-freeboard-inline-edit="${CSS.escape(card.id)}"]`)?.focus(),0);
+      return;
+    }
+    if(!node){
+      const groupBounds=fbBounds();
+      if(fbSelectedIds().length>1&&fbInside(p,groupBounds)){freeBoardUI.groupMenu=true;newAppRender();return;}
+      freeBoardUI.editingId=null;freeBoardUI.deleteReady=null;freeBoardUI.contextMenu=null;freeBoardUI.groupMenu=false;
+      freeBoardUI.gesture={kind:event.pointerType==="mouse"?"marquee":"marquee-hold",pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,start:p,current:p,viewport,clicked:true};
+      if(freeBoardUI.gesture.kind==="marquee-hold")freeBoardUI.gesture.timer=setTimeout(()=>{if(freeBoardUI.gesture?.pointerId===event.pointerId){freeBoardUI.gesture.kind="marquee";freeBoardUI.marquee={start:p,current:p};}},360);
+      else freeBoardUI.marquee={start:p,current:p};
+      viewport.setPointerCapture?.(event.pointerId);event.preventDefault();return;
+    }
+    const card=fbCard(node.dataset.v2FreeboardNode);if(!card)return;
+    // Safari の dblclick に依存せず、二回目のタップも直接編集として扱う。
+    const nowAt=Date.now(),double=event.detail>=2||(freeBoardUI.lastTap.id===card.id&&nowAt-freeBoardUI.lastTap.at<820);freeBoardUI.lastTap={id:card.id,at:nowAt};
+    if(!fbSelectedIds().includes(card.id))fbSelect([card.id],card.id);else freeBoardUI.selected=card.id;
+    if(double&&["text","memo"].includes(fbType(card))){freeBoardUI.editingId=card.id;freeBoardUI.styleId=null;newAppRender();setTimeout(()=>root.querySelector(`[data-v2-freeboard-inline-edit="${CSS.escape(card.id)}"]`)?.focus(),0);event.preventDefault();return;}
+    freeBoardUI.deleteReady=null;freeBoardUI.contextMenu=null;
+    const kind=handle?"resize":"hold",movingIds=handle?[card.id]:fbSelectedIds(),bases=movingIds.map(id=>{const c=fbCard(id);return {id,x:+c.x||0,y:+c.y||0,w:+c.w||20,h:+c.h||14};});
+    // A selected object is always brought to the front before it starts moving.
+    // It therefore never appears to be caught behind another board object.
+    if(kind==="hold"){
+      const top=Math.max(0,...fbCards().map(c=>+c.z||0));
+      movingIds.forEach((id,index)=>{const moving=fbCard(id);if(!moving)return;moving.z=top+index+1;viewport.querySelector(`[data-v2-freeboard-node="${CSS.escape(id)}"]`)?.style.setProperty("--z",moving.z);});
+    }
+    freeBoardUI.gesture={kind,id:card.id,ids:movingIds,bases,handle:handle?.dataset.v2FreeboardResize,pointerId:event.pointerId,pointerType:event.pointerType,viewport,startX:event.clientX,startY:event.clientY,baseX:+card.x||0,baseY:+card.y||0,baseW:+card.w||20,baseH:+card.h||14,baseSize:+card.size||18,movable:false,moved:false};
+    if(kind==="hold")freeBoardUI.gesture.timer=setTimeout(()=>{if(freeBoardUI.gesture?.id===card.id){freeBoardUI.gesture.movable=true;freeBoardUI.gesture.ids.forEach(id=>viewport.querySelector(`[data-v2-freeboard-node="${CSS.escape(id)}"]`)?.classList.add("is-moving"));}},360);
+    viewport.setPointerCapture?.(event.pointerId);node.classList.add("is-selected");event.preventDefault();
+  },true);
+  // Desktop browsers reliably report dblclick. Keep this explicit path in
+  // addition to the touch double-tap detection above so both inputs edit the
+  // text directly on the board.
+  root.addEventListener("dblclick",event=>{
+    const node=event.target.closest("[data-v2-freeboard-node]");
+    if(!node||event.target.closest("[data-v2-freeboard-inline-edit]"))return;
+    const card=fbCard(node.dataset.v2FreeboardNode);
+    if(!card||!["text","memo"].includes(fbType(card)))return;
+    event.preventDefault();event.stopImmediatePropagation();
+    fbSelect([card.id],card.id);freeBoardUI.editingId=card.id;freeBoardUI.styleId=null;
+    newAppRender();
+    setTimeout(()=>root.querySelector(`[data-v2-freeboard-inline-edit="${CSS.escape(card.id)}"]`)?.focus(),0);
+  },true);
+  root.addEventListener("pointermove",event=>{
+    const g=freeBoardUI.gesture,viewport=event.target.closest("[data-v2-freeboard-viewport]")||g?.viewport;if(!viewport)return; if(freeBoardUI.pointers.has(event.pointerId))freeBoardUI.pointers.set(event.pointerId,{x:event.clientX,y:event.clientY});
+    if(g?.kind==="pinch"&&freeBoardUI.pointers.size>=2){const a=[...freeBoardUI.pointers.values()],d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);freeBoardUI.view.scale=Math.max(.65,Math.min(2.6,g.scale*d/g.distance));viewport.querySelector("[data-v2-freeboard-stage]").style.setProperty("--fb-scale",freeBoardUI.view.scale);event.preventDefault();return;}
+    if(!g||g.pointerId!==event.pointerId)return;const r=viewport.getBoundingClientRect(),dx=(event.clientX-g.startX)/r.width*100/freeBoardUI.view.scale,dy=(event.clientY-g.startY)/r.height*100/freeBoardUI.view.scale;
+    if(g.kind==="pan"){freeBoardUI.view.x=g.baseX+event.clientX-g.startX;freeBoardUI.view.y=g.baseY+event.clientY-g.startY;const st=viewport.querySelector("[data-v2-freeboard-stage]");st.style.setProperty("--fb-x",freeBoardUI.view.x+"px");st.style.setProperty("--fb-y",freeBoardUI.view.y+"px");return;}
+    if(g.kind==="marquee-hold"){
+      if(Math.hypot(dx,dy)>.85){
+        clearTimeout(g.timer);
+        g.kind="pan";g.baseX=freeBoardUI.view.x;g.baseY=freeBoardUI.view.y;
+      }else return;
+    }
+    if(g.kind==="marquee"){
+      freeBoardUI.marquee={start:g.start,current:fbPoint(viewport,event)};
+      const m=viewport.querySelector(".v2fb-marquee"),q=freeBoardUI.marquee;
+      if(m){m.style.setProperty("--x",Math.min(q.start.x,q.current.x)+"%");m.style.setProperty("--y",Math.min(q.start.y,q.current.y)+"%");m.style.setProperty("--w",Math.abs(q.current.x-q.start.x)+"%");m.style.setProperty("--h",Math.abs(q.current.y-q.start.y)+"%");}
+      event.preventDefault();return;
+    }
+    const card=fbCard(g.id);if(!card||!canWrite())return;
+    if(g.kind==="draw"){card.points.push(fbPoint(viewport,event));const poly=viewport.querySelector(`[data-v2-freeboard-node="${CSS.escape(card.id)}"] polyline`);if(poly)poly.setAttribute("points",card.points.map(p=>`${p[0]},${p[1]}`).join(" "));return;}
+    if((g.kind==="hold"||g.kind==="group-hold")&&(Math.abs(dx)>.3||Math.abs(dy)>.3))g.moved=true;
+    if((g.kind==="hold"||g.kind==="group-hold")&&!g.movable)return;
+    if(g.kind==="hold"||g.kind==="group-hold"){
+      const highest=Math.max(1,...fbCards().map(c=>+c.z||1));
+      (g.bases||[]).forEach((base,index)=>{const moving=fbCard(base.id);if(!moving)return;moving.x=Math.max(0,Math.min(100-base.w,base.x+dx));moving.y=Math.max(0,Math.min(100-base.h,base.y+dy));moving.z=highest+index+1;const movingNode=viewport.querySelector(`[data-v2-freeboard-node="${CSS.escape(base.id)}"]`);if(movingNode){movingNode.style.setProperty("--x",moving.x+"%");movingNode.style.setProperty("--y",moving.y+"%");movingNode.style.setProperty("--z",moving.z);}});
+    }
+    else if(g.kind==="resize"){
+      // Each edge is anchored on its opposite side. Clamp the dragged edge first,
+      // so hitting a boundary or minimum size never expands the other side.
+      const h=g.handle||"se",minW=8,minH=8;
+      const left=g.baseX,top=g.baseY,right=left+g.baseW,bottom=top+g.baseH;
+      let x=left,y=top,w=g.baseW,hh=g.baseH;
+      if(h.includes("e")){const edge=Math.max(left+minW,Math.min(100,right+dx));w=edge-left;}
+      if(h.includes("w")){const edge=Math.max(0,Math.min(right-minW,left+dx));x=edge;w=right-edge;}
+      if(h.includes("s")){const edge=Math.max(top+minH,Math.min(100,bottom+dy));hh=edge-top;}
+      if(h.includes("n")){const edge=Math.max(0,Math.min(bottom-minH,top+dy));y=edge;hh=bottom-edge;}
+      card.x=x;card.y=y;card.w=w;card.h=hh;
+      // Text never stretches.  It follows its resized frame with one uniform
+      // scale (the smaller axis), while its inset remains fixed in CSS.
+      if(["text","memo"].includes(fbType(card))){
+        const ratio=Math.min(w/g.baseW,hh/g.baseH);
+        card.size=Math.max(10,Math.min(72,Math.round((g.baseSize||18)*ratio)));
+        card.manualSize=true;
+      }
+    }
+    const node=viewport.querySelector(`[data-v2-freeboard-node="${CSS.escape(card.id)}"]`);if(node){node.style.setProperty("--x",card.x+"%");node.style.setProperty("--y",card.y+"%");node.style.setProperty("--w",card.w+"%");node.style.setProperty("--h",card.h+"%");node.style.setProperty("--size",(card.size||18)+"px");}event.preventDefault();
+  },true);
+  root.addEventListener("wheel",event=>{
+    const viewport=event.target.closest("[data-v2-freeboard-viewport]");
+    if(!viewport||!window.matchMedia("(pointer:fine)").matches)return;
+    const before=freeBoardUI.view.scale;
+    const next=Math.max(.65,Math.min(2.6,before*Math.exp(-event.deltaY*.0015)));
+    if(next===before)return;
+    const r=viewport.getBoundingClientRect();
+    const localX=(event.clientX-r.left-freeBoardUI.view.x)/before;
+    const localY=(event.clientY-r.top-freeBoardUI.view.y)/before;
+    freeBoardUI.view.scale=next;
+    freeBoardUI.view.x=event.clientX-r.left-localX*next;
+    freeBoardUI.view.y=event.clientY-r.top-localY*next;
+    const stage=viewport.querySelector("[data-v2-freeboard-stage]");
+    stage?.style.setProperty("--fb-scale",next);
+    stage?.style.setProperty("--fb-x",freeBoardUI.view.x+"px");
+    stage?.style.setProperty("--fb-y",freeBoardUI.view.y+"px");
+    event.preventDefault();
+  },{capture:true,passive:false});
+  root.addEventListener("pointerup",event=>{
+    freeBoardUI.pointers.delete(event.pointerId);const g=freeBoardUI.gesture;if(!g)return;clearTimeout(g.timer);
+    if(g.kind==="pinch"&&freeBoardUI.pointers.size<2){freeBoardUI.gesture=null;return;}
+    if(g.pointerId!==event.pointerId)return;
+    if(g.kind==="marquee"){
+      const m=freeBoardUI.marquee||{start:g.start,current:g.current},left=Math.min(m.start.x,m.current.x),right=Math.max(m.start.x,m.current.x),top=Math.min(m.start.y,m.current.y),bottom=Math.max(m.start.y,m.current.y);
+      const ids=fbCards().filter(card=>{const x=+card.x||0,y=+card.y||0,w=+card.w||0,h=+card.h||0;return x<right&&x+w>left&&y<bottom&&y+h>top;}).map(card=>card.id);
+      fbSelect(ids,ids.at(-1)||null);freeBoardUI.marquee=null;freeBoardUI.gesture=null;newAppRender();return;
+    }
+    if(g.kind==="marquee-hold"){
+      fbSelect([]);freeBoardUI.marquee=null;freeBoardUI.gesture=null;newAppRender();return;
+    }
+    // A short group tap is a command gesture, not a movement. It opens the
+    // group command menu; a drag (or touch long-press then drag) moves items.
+    if(g.kind==="group-hold"&&!g.moved){
+      freeBoardUI.groupMenu=true;freeBoardUI.gesture=null;newAppRender();return;
+    }
+    if(g.kind!=="pan"&&canWrite())save();
+    if(g.kind==="hold"&&g.pointerType!=="mouse"&&g.movable&&!g.moved){freeBoardUI.deleteReady=g.id;freeBoardUI.contextMenu=null;}
+    if(g.kind==="pan"&&g.clicked&&Math.abs(event.clientX-g.startX)<5&&Math.abs(event.clientY-g.startY)<5){fbSelect([]);}
+    freeBoardUI.gesture=null;newAppRender();
+  },true);
+  root.addEventListener("pointercancel",()=>{freeBoardUI.pointers.clear();if(freeBoardUI.gesture)clearTimeout(freeBoardUI.gesture.timer);freeBoardUI.gesture=null;freeBoardUI.marquee=null;},true);
+  function healthMean(values){const x=values.filter(v=>v!=null);return x.length?x.reduce((a,b)=>a+b,0)/x.length:0;}
+  function healthCorr(a,b){const pairs=a.map((v,i)=>[v,b[i]]).filter(([x,y])=>x!=null&&y!=null);if(pairs.length<3)return null;const ax=healthMean(pairs.map(p=>p[0])),ay=healthMean(pairs.map(p=>p[1]));const n=pairs.reduce((s,[x,y])=>s+(x-ax)*(y-ay),0),dx=Math.sqrt(pairs.reduce((s,[x])=>s+(x-ax)**2,0)),dy=Math.sqrt(pairs.reduce((s,[,y])=>s+(y-ay)**2,0));return dx&&dy?n/(dx*dy):null;}
+  healthAnalysis=function(){
+    const ms=healthMetrics(),by=id=>ms.find(m=>m.id===id),sleep=by("sleep"),steps=by("steps"),body=by("body"),mind=by("mind"),checks=by("checklist");const sleepAvg=healthMean(sleep.vals),stepAvg=healthMean(steps.vals),kcal=Math.round(stepAvg*.038);const corr=healthCorr(sleep.vals,mind.vals);const insight=healthAnalysisOpen?`<article class="v2-health-ai"><strong>${corr==null?"記録をためると傾向を出せます":corr>.3?"睡眠とこころに同じ方向の動きがあります":"今週は睡眠とこころの強い連動は見えていません"}</strong><p>これは端末内の記録から算出した目安です。医療上の判断には使わず、気になる変化は専門家に相談してください。</p></article>`:"";
+    return analogPage("an-health-analysis","body","HEALTH ANALYSIS","体調の分析",`<section class="an-chart-section"><h2>睡眠・歩数・調子の変化</h2><div class="an-metric-toggle">${ms.map(m=>`<button class="${metricOn[m.id]?"":"off"}" data-v2-metric="${m.id}"><i style="background:${m.c}"></i>${m.label}</button>`).join("")}</div>${healthChart()}</section><section class="an-chart-section"><h2>振り返り</h2><div class="v2-health-review"><div><small>平均睡眠</small><b>${fmtSleep(Math.round(sleepAvg))}</b></div><div><small>平均歩数</small><b>${Math.round(stepAvg).toLocaleString("ja-JP")}歩</b></div><div><small>推定消費</small><b>${kcal} kcal</b></div><div><small>毎日の習慣</small><b>${Math.round(healthMean(checks.vals))}%</b></div></div><button type="button" class="an-wide-action" data-v2-health-analysis>${icon("chart")}<span>記録から分析する</span><b>›</b></button>${insight}</section>`);
+  };
+  root.addEventListener("click",event=>{const button=event.target.closest("[data-v2-health-analysis]");if(!button)return;event.stopImmediatePropagation();healthAnalysisOpen=!healthAnalysisOpen;newAppRender();},true);
+  root.addEventListener("click",event=>{const hit=event.target.closest("[data-v2-health-bars]");if(!hit)return;event.stopImmediatePropagation();const i=+hit.dataset.v2HealthBarIndex,ids=hit.dataset.v2HealthBars.split(",");healthBarCycle[i]=(healthBarCycle[i]||0)%ids.length;healthChartSelectedPoint={index:i,metric:ids[healthBarCycle[i]++]};newAppRender();},true);
+  root.addEventListener("click",event=>{const line=event.target.closest("[data-v2-health-line]");if(!line)return;event.stopImmediatePropagation();const svg=line.closest("svg"),r=svg.getBoundingClientRect(),i=Math.max(0,Math.min(healthDays().length-1,Math.round(((event.clientX-r.left)/r.width*360-34)/(314/Math.max(1,healthDays().length-1)))));healthChartSelectedPoint={index:i,metric:line.dataset.v2HealthLine};newAppRender();},true);
+  root.addEventListener("pointerdown",event=>{const vp=event.target.closest("[data-v2-health-viewport]");if(!vp)return;healthChartPointers.set(event.pointerId,{x:event.clientX,y:event.clientY});if(healthChartPointers.size===2){const a=[...healthChartPointers.values()];vp._v2Pinch={d:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y),s:healthChartView.scale};event.preventDefault();}},true);
+  root.addEventListener("pointermove",event=>{const vp=event.target.closest("[data-v2-health-viewport]");if(!vp||!healthChartPointers.has(event.pointerId))return;healthChartPointers.set(event.pointerId,{x:event.clientX,y:event.clientY});if(healthChartPointers.size<2||!vp._v2Pinch)return;const a=[...healthChartPointers.values()],d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);healthChartView.scale=Math.max(.85,Math.min(2.6,vp._v2Pinch.s*d/vp._v2Pinch.d));vp.querySelector("[data-v2-health-stage]")?.style.setProperty("--health-chart-scale",healthChartView.scale);event.preventDefault();},true);
+  root.addEventListener("pointerup",event=>{healthChartPointers.delete(event.pointerId);},true);
   newAppRender();
 })();
