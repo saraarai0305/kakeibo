@@ -1143,6 +1143,12 @@
     if(!copies.length)return false;board.cards.push(...copies);fbSelect(copies.map(c=>c.id),copies.at(-1).id);return true;
   }
   const fbType=card=>({text:"text",memo:"memo",shape:"shape",image:"image",stroke:"stroke"}[card.type]||card.type||"text");
+  // These sets are the single source of truth for freeboard affordances.
+  // Keeping them here prevents text/memo controls from drifting away from
+  // shape/image controls as the board gains new interaction methods.
+  const FB_TEXT_TYPES=new Set(["text","memo"]);
+  const FB_RESIZABLE_TYPES=new Set(["shape","image","text","memo"]);
+  const fbIsTextCard=card=>FB_TEXT_TYPES.has(fbType(card));
   const fbEsc=s=>esc2(String(s||"")).replace(/\n/g,"<br>");
   function fbFit(card,text){
     // A user-resized text frame owns its dimensions.  Editing the text must
@@ -1155,12 +1161,12 @@
     card.h=Math.max(13,Math.min(70,Math.ceil(lines.length*Math.max(9,(+card.size||18)*1.45)/4.2)+10));
   }
   function fbNode(card){
-    const type=fbType(card),selected=fbSelectedIds().includes(card.id),editing=freeBoardUI.editingId===card.id&&["text","memo"].includes(type);
+    const type=fbType(card),selected=fbSelectedIds().includes(card.id),editing=freeBoardUI.editingId===card.id&&fbIsTextCard(card);
     const cls=`v2fb-node v2fb-${type}${selected?" is-selected":""}`;
     const style=`--x:${+card.x||8}%;--y:${+card.y||8}%;--w:${+card.w||32}%;--h:${+card.h||16}%;--size:${+card.size||18}px;--weight:${+card.weight||600};--z:${Math.max(1,+card.z||1)};`;
     // Text frames use the same live bounding-box contract as shapes.  The
     // type itself scales uniformly; it is never stretched independently.
-    const handles=(["shape","image","text","memo"].includes(type))?["n","e","s","w","nw","ne","sw","se"].map(handle=>`<i class="v2fb-handle ${handle}" data-v2-freeboard-resize="${handle}" aria-hidden="true"></i>`).join(""):"";
+    const handles=FB_RESIZABLE_TYPES.has(type)?["n","e","s","w","nw","ne","sw","se"].map(handle=>`<i class="v2fb-handle ${handle}" data-v2-freeboard-resize="${handle}" aria-hidden="true"></i>`).join(""):"";
     // Deletion is deliberately separate from the north-east resize handle.
     // Touch: a stationary long press reveals the ×. Desktop: a right click
     // reveals a small text menu, so no control competes with the handle.
@@ -1184,7 +1190,7 @@
     return `<nav class="v2fb-tools" aria-label="フリーボードのツール">${toolSet.map(([id,mark,label])=>`<button type="button" class="${freeBoardUI.tool===id?"is-active":""}" data-v2-freeboard-tool="${id}">${mark==="kana"?`<i class="v2fb-tool-kana" aria-hidden="true">あ</i>`:icon(mark)}<span>${label}</span></button>`).join("")}<label class="${freeBoardUI.tool==="image"?"is-active":""}">${icon("image")}<span>画像</span><input data-v2-freeboard-upload type="file" accept="image/*"></label><button type="button" class="v2fb-clear" data-v2-freeboard-clear>${icon("close")}<span>すべて削除（オールクリア）</span></button></nav>`;
   }
   function fbEditor(){
-    const card=fbCard(freeBoardUI.styleId); if(!card || !["text","memo"].includes(fbType(card))) return "";
+    const card=fbCard(freeBoardUI.styleId); if(!card || !fbIsTextCard(card)) return "";
     return `<div class="v2fb-modal" data-v2-freeboard-modal><section role="dialog" aria-modal="true" aria-label="文字の書式"><header><strong>文字の書式</strong><button type="button" data-v2-freeboard-modal-close>×</button></header><p class="v2fb-style-note">文字を直接編集するには、ボード上の文字をダブルタップします。</p><div class="v2fb-editor-fields"><label>書体<select data-v2-freeboard-face><option value="sans" ${card.face==="sans"?"selected":""}>Noto Sans JP</option><option value="mincho" ${card.face==="mincho"?"selected":""}>Noto Serif JP</option><option value="udgothic" ${card.face==="udgothic"?"selected":""}>BIZ UDPゴシック</option><option value="udmincho" ${card.face==="udmincho"?"selected":""}>BIZ UDP明朝</option></select></label><label>太さ<select data-v2-freeboard-weight><option value="400" ${+card.weight===400?"selected":""}>細い</option><option value="600" ${+card.weight===600?"selected":""}>標準</option><option value="800" ${+card.weight===800?"selected":""}>太い</option></select></label><label>文字サイズ<input data-v2-freeboard-size type="number" min="12" max="46" value="${+card.size||18}"></label></div><footer><button type="button" data-v2-freeboard-editor-save>適用</button></footer></section></div>`;
   }
   function fbMarquee(){
