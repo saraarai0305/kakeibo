@@ -1213,7 +1213,22 @@
   };
   function fbPoint(viewport,event){const r=viewport.getBoundingClientRect(),v=freeBoardUI.view;return {x:Math.max(0,Math.min(100,((event.clientX-r.left-v.x)/r.width/v.scale)*100)),y:Math.max(0,Math.min(100,((event.clientY-r.top-v.y)/r.height/v.scale)*100))};}
   function fbAdd(type,p){const board=boardState(),top=Math.max(0,...(board.cards||[]).map(c=>+c.z||0)),base={id:uid(),type,x:p.x,y:p.y,w:32,h:16,size:18,weight:600,face:"sans",z:top+1};if(type==="memo")Object.assign(base,{w:30,h:19,text:"メモ"});if(type==="text")Object.assign(base,{w:30,h:13,text:"テキスト"});if(type==="shape")Object.assign(base,{w:24,h:14});board.cards.push(base);fbSelect([base.id],base.id);freeBoardUI.tool="select";save();return base;}
-  function fbStore(){save();newAppRender();}
+  // Direct manipulation must never reset the page position. Rebuilding root
+  // replaces the board DOM and Safari restores the document to its top, so
+  // freeboard-only refreshes capture and restore the viewport twice (the
+  // second frame covers scroll anchoring that runs after the first paint).
+  function fbRestoreScroll(position){
+    if(!position)return;
+    const restore=()=>window.scrollTo(position.left,position.top);
+    restore();
+    requestAnimationFrame(()=>{restore();requestAnimationFrame(restore);});
+  }
+  function fbRefreshKeepingScroll(position){
+    const before=position||{left:window.scrollX,top:window.scrollY};
+    newAppRender();
+    fbRestoreScroll(before);
+  }
+  function fbStore(){save();fbRefreshKeepingScroll();}
   root.addEventListener("click",event=>{
     const tool=event.target.closest("[data-v2-freeboard-tool]"),full=event.target.closest("[data-v2-freeboard-fullscreen]"),remove=event.target.closest("[data-v2-freeboard-delete]"),close=event.target.closest("[data-v2-freeboard-modal-close]"),keep=event.target.closest("[data-v2-freeboard-editor-save]"),style=event.target.closest("[data-v2-freeboard-style]"),clear=event.target.closest("[data-v2-freeboard-clear]"),duplicate=event.target.closest("[data-v2-freeboard-duplicate]"),groupDelete=event.target.closest("[data-v2-freeboard-delete-group]"),groupBox=event.target.closest("[data-v2-freeboard-group-box]");
     if(!tool&&!full&&!remove&&!close&&!keep&&!style&&!clear&&!duplicate&&!groupDelete&&!groupBox) return;
@@ -1262,6 +1277,10 @@
     // Buttons (especially delete / copy / formatting) must receive their own
     // click.  Starting a board gesture from them previously swallowed actions.
     if(event.target.closest("button,input,textarea,select,[data-v2-freeboard-inline-edit]"))return;
+    // A freeboard gesture owns the viewport until it finishes. iOS Safari can
+    // otherwise apply its own page scroll after pointerup, even though the
+    // object itself is manipulated inside the board.
+    freeBoardUI.gestureScroll={left:window.scrollX,top:window.scrollY};
     const node=event.target.closest("[data-v2-freeboard-node]"),groupBox=event.target.closest("[data-v2-freeboard-group-box]"),handle=event.target.closest("[data-v2-freeboard-resize]"),p=fbPoint(viewport,event);freeBoardUI.pointers.set(event.pointerId,{x:event.clientX,y:event.clientY});
     if(freeBoardUI.pointers.size===2){const a=[...freeBoardUI.pointers.values()];freeBoardUI.gesture={kind:"pinch",distance:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y),scale:freeBoardUI.view.scale};event.preventDefault();return;}
     if(groupBox){
@@ -1392,28 +1411,36 @@
     event.preventDefault();
   },{capture:true,passive:false});
   root.addEventListener("pointerup",event=>{
-    freeBoardUI.pointers.delete(event.pointerId);const g=freeBoardUI.gesture;if(!g)return;clearTimeout(g.timer);
-    if(g.kind==="pinch"&&freeBoardUI.pointers.size<2){freeBoardUI.gesture=null;return;}
+    freeBoardUI.pointers.delete(event.pointerId);const g=freeBoardUI.gesture;if(!g)return;clearTimeout(g.timer);const scrollAnchor=freeBoardUI.gestureScroll;
+    if(g.kind==="pinch"&&freeBoardUI.pointers.size<2){freeBoardUI.gesture=null;freeBoardUI.gestureScroll=null;fbRestoreScroll(scrollAnchor);return;}
     if(g.pointerId!==event.pointerId)return;
     if(g.kind==="marquee"){
       const m=freeBoardUI.marquee||{start:g.start,current:g.current},left=Math.min(m.start.x,m.current.x),right=Math.max(m.start.x,m.current.x),top=Math.min(m.start.y,m.current.y),bottom=Math.max(m.start.y,m.current.y);
       const ids=fbCards().filter(card=>{const x=+card.x||0,y=+card.y||0,w=+card.w||0,h=+card.h||0;return x<right&&x+w>left&&y<bottom&&y+h>top;}).map(card=>card.id);
-      fbSelect(ids,ids.at(-1)||null);freeBoardUI.marquee=null;freeBoardUI.gesture=null;newAppRender();return;
+      fbSelect(ids,ids.at(-1)||null);freeBoardUI.marquee=null;freeBoardUI.gesture=null;freeBoardUI.gestureScroll=null;fbRefreshKeepingScroll(scrollAnchor);return;
     }
     if(g.kind==="marquee-hold"){
-      fbSelect([]);freeBoardUI.marquee=null;freeBoardUI.gesture=null;newAppRender();return;
+      fbSelect([]);freeBoardUI.marquee=null;freeBoardUI.gesture=null;freeBoardUI.gestureScroll=null;fbRefreshKeepingScroll(scrollAnchor);return;
     }
     // A short group tap is a command gesture, not a movement. It opens the
     // group command menu; a drag (or touch long-press then drag) moves items.
     if(g.kind==="group-hold"&&!g.moved){
-      freeBoardUI.groupMenu=true;freeBoardUI.gesture=null;newAppRender();return;
+      freeBoardUI.groupMenu=true;freeBoardUI.gesture=null;freeBoardUI.gestureScroll=null;fbRefreshKeepingScroll(scrollAnchor);return;
     }
     if(g.kind!=="pan"&&canWrite())save();
     if(g.kind==="hold"&&g.pointerType!=="mouse"&&g.movable&&!g.moved){freeBoardUI.deleteReady=g.id;freeBoardUI.contextMenu=null;}
     if(g.kind==="pan"&&g.clicked&&Math.abs(event.clientX-g.startX)<5&&Math.abs(event.clientY-g.startY)<5){fbSelect([]);}
-    freeBoardUI.gesture=null;newAppRender();
+    // Positions, sizes, pen strokes, and the board viewport are updated live
+    // while dragging. Re-rendering root here used to force the document top.
+    // A stationary touch long-press is the only completion that needs a fresh
+    // DOM, to reveal its delete control.
+    const revealDelete=g.kind==="hold"&&g.pointerType!=="mouse"&&g.movable&&!g.moved;
+    freeBoardUI.gesture=null;
+    freeBoardUI.gestureScroll=null;
+    if(revealDelete)fbRefreshKeepingScroll(scrollAnchor);
+    else fbRestoreScroll(scrollAnchor);
   },true);
-  root.addEventListener("pointercancel",()=>{freeBoardUI.pointers.clear();if(freeBoardUI.gesture)clearTimeout(freeBoardUI.gesture.timer);freeBoardUI.gesture=null;freeBoardUI.marquee=null;},true);
+  root.addEventListener("pointercancel",()=>{const scrollAnchor=freeBoardUI.gestureScroll;freeBoardUI.pointers.clear();if(freeBoardUI.gesture)clearTimeout(freeBoardUI.gesture.timer);freeBoardUI.gesture=null;freeBoardUI.gestureScroll=null;freeBoardUI.marquee=null;fbRestoreScroll(scrollAnchor);},true);
   function healthMean(values){const x=values.filter(v=>v!=null);return x.length?x.reduce((a,b)=>a+b,0)/x.length:0;}
   function healthCorr(a,b){const pairs=a.map((v,i)=>[v,b[i]]).filter(([x,y])=>x!=null&&y!=null);if(pairs.length<3)return null;const ax=healthMean(pairs.map(p=>p[0])),ay=healthMean(pairs.map(p=>p[1]));const n=pairs.reduce((s,[x,y])=>s+(x-ax)*(y-ay),0),dx=Math.sqrt(pairs.reduce((s,[x])=>s+(x-ax)**2,0)),dy=Math.sqrt(pairs.reduce((s,[,y])=>s+(y-ay)**2,0));return dx&&dy?n/(dx*dy):null;}
   healthAnalysis=function(){
