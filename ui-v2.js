@@ -2,6 +2,25 @@
 (() => {
   "use strict";
   const root = document.getElementById("lifeNoteV2");
+  // 体調の各項目は独立して保存する。保存済みの値は残し、入力欄だけを空に戻す。
+  root.addEventListener("click",event=>{
+    const button=event.target.closest("[data-v2-health-save]");
+    if(!button)return;
+    event.preventDefault();event.stopImmediatePropagation();
+    const mode=button.dataset.v2HealthSave,key=ymd(now()),draft=healthDraft||{},saved=Object.assign({},S.health[key]||{}),remaining=Object.assign({},draft);
+    const missing=message=>{toast(message);};
+    if(mode==="body"||mode==="mind"){
+      if(!draft[mode])return missing(`${mode==="body"?"からだ":"こころ"}の調子を選んでください`);
+      saved[mode]=+draft[mode];delete remaining[mode];
+    }else if(mode==="sleep"){
+      if(!draft.bed||!draft.wake)return missing("就寝時刻と起床時刻を入力してください");
+      saved.bed=draft.bed;saved.wake=draft.wake;delete remaining.bed;delete remaining.wake;
+    }else if(mode==="steps"){
+      if(draft.steps===""||draft.steps==null)return missing("歩数を入力してください");
+      saved.steps=Math.max(0,+draft.steps||0);delete remaining.steps;
+    }else return;
+    S.health[key]=saved;healthDraft=Object.keys(remaining).length?remaining:null;save();render();successToast(`${mode==="body"?"からだ":mode==="mind"?"こころ":mode==="sleep"?"睡眠":"歩数"}を保存しました`);
+  },true);
   if (!root) return;
   document.body.dataset.appShell = "v2";
 
@@ -164,7 +183,9 @@
   function moneyOutlook(){ const c=calc(), rest=c.balance-c.unpaid-c.cardNow; const benefit=(S.incomes||[]).find(x=>x.benefit||x.id==="benefit"); return `<section class="v2-page v2-outlook-page">${top(titleFor(page))}<p class="v2-kicker">${icon("money")}MONEY OUTLOOK</p><h2 class="v2-page-lead">お金の見通し</h2><div class="v2-balance"><div class="v2-balance-row primary"><span>今日使えるお金</span><button class="v2-privacy" data-v2-private>${S.ui.moneyVisible ? icon("eyeoff") + "隠す" : icon("eye") + "表示"}</button>${privateMoney(c.left)}</div></div><div class="v2-outline-row"><i>${icon("bank")}</i><span>今残っているお金<small>予定されている支払いを引いた残高</small></span>${privateMoney(rest)}</div><div class="v2-outline-row"><i>${icon("coin")}</i><span>生活を支える収入<small>傷病手当などの大切な収入</small></span>${privateMoney(benefit ? +benefit.amt||0 : 0,"v2-green")}</div><div class="v2-outline-row"><i>${icon("card")}</i><span>今後のカード・固定費<small>カード請求と未払いの固定費</small></span>${privateMoney(c.unpaid+c.cardNow)}</div><button class="v2-sub-action" data-v2-go="moneyAnalysis">${icon("chart")}お金の分析を見る</button></section>`; }
   function moneyAnalysis(){ const cut=new Date();cut.setDate(cut.getDate()-29);const from=ymd(cut), rec=S.spends.filter(x=>x.d>=from), byPay={cash:0,paypay:0,card:0},byCat={};rec.forEach(x=>{const n=+x.amt||0;byPay[x.pay==="card"?"card":x.pay==="paypay"?"paypay":"cash"]+=n;byCat[x.cat]=(byCat[x.cat]||0)+n});const max=Math.max(1,...Object.values(byPay));const cats=Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,4),sum=cats.reduce((a,[,v])=>a+v,0), cols=["#376b91","#39785d","#7263a8","#d2a73e"];let p=0;const stops=cats.map(([,v],i)=>{const a=p;p+=sum?v/sum*100:0;return `${cols[i]} ${a}% ${p}%`}).join(",");const income=(S.incomeLogs||[]).filter(x=>x.d>=from).reduce((a,x)=>a+(+x.amt||0),0); const bar=(lab,n,color)=>`<div class="v2-bar-row"><span>${lab}</span><span class="v2-bar-track"><i class="v2-bar-fill" style="width:${n/max*100}%;--bar:${color}"></i></span><strong>${money(n)}</strong></div>`; return `<section class="v2-page v2-money-analysis">${top(titleFor(page))}<p class="v2-kicker">${icon("chart")}MONEY ANALYSIS</p><h2 class="v2-page-lead">直近30日の動き</h2><div class="v2-chart-block"><h2>収入と支出のバランス</h2>${bar("収入",income,"#39785d")}${bar("支出",rec.reduce((a,x)=>a+(+x.amt||0),0),"#376b91")}</div><div class="v2-chart-block"><h2>支払い方法</h2>${bar("カード",byPay.card,"#7263a8")}${bar("現金・引落",byPay.cash,"#376b91")}${bar("PayPay",byPay.paypay,"#d2a73e")}</div><div class="v2-chart-block"><h2>お金を使ったカテゴリー</h2>${cats.length?`<div class="v2-donut-wrap"><div class="v2-donut" style="background:conic-gradient(${stops})"></div><div>${cats.map(([k,v],i)=>`<div class="v2-legend-row"><i style="background:${cols[i]}"></i><span>${esc2(k)}</span><b>${sum?Math.round(v/sum*100):0}%</b></div>`).join("")}</div></div>`:`<p class="v2-empty">支出を記録すると、カテゴリーの比率を円グラフで表示します。</p>`}</div></section>`; }
   function shownHealth(){return Object.assign({},S.health[ymd(now())]||{},healthDraft||{});} function dots(kind,value){return `<div class="v2-rating">${[1,2,3,4,5].map(i=>`<button class="${i<= (+value||0)?"on "+kind:""}" data-v2-rate="${kind}" data-v2-value="${i}" aria-label="${i}">${i}</button>`).join("")}</div>`;}
-  function healthRecord(){
+  // 旧レイアウトは参照用に残し、実際の画面には使わない。
+  // healthRecord は下の「項目ごとに保存する」実装だけを公開する。
+  function healthRecordLegacy(){
     const h = shownHealth();
     const sm = sleepMin(h.bed, h.wake);
     const steps = h.steps != null ? `${(+h.steps).toLocaleString("ja-JP")}歩` : "—";
@@ -197,8 +218,8 @@
     const y=n=>base-n*(base-T), barMetrics=metrics.filter(m=>m.kind==="bar"), lineMetrics=metrics.filter(m=>m.kind==="line");
     const grid=[0,.25,.5,.75,1].map(n=>`<line x1="${gx}" y1="${y(n)}" x2="${gx+gw}" y2="${y(n)}" stroke="rgba(39,55,68,.15)" stroke-dasharray="3 4"></line>`).join("");
     const bars=barMetrics.map((m,mi)=>m.vals.map((v,i)=>{const n=norm(m,v);if(n==null)return "";const width=mi===0?16:8, opacity=mi===0?.48:.9;return `<rect x="${x(i)-width/2}" y="${y(n)}" width="${width}" height="${Math.max(2,base-y(n))}" rx="4" fill="${m.c}" opacity="${opacity}"></rect>`;}).join("")).join("");
-    const barHits=ds.map((d,i)=>{const ids=barMetrics.filter(m=>m.vals[i]!=null).map(m=>m.id);return ids.length?`<rect class="v2-health-bar-hit" data-v2-health-bars="${ids.join(",")}" data-v2-health-bar-index="${i}" x="${x(i)-12}" y="${T}" width="24" height="${base-T}" rx="8" tabindex="0" role="button" aria-label="${dateLabel(d)}の睡眠と歩数"></rect>`:"";}).join("");
-    const pathFor=m=>{let joined=false;return m.vals.map((v,i)=>{const n=norm(m,v);if(n==null){joined=false;return "";}const cmd=joined?"L":"M";joined=true;return `${cmd}${x(i)} ${y(n)}`;}).join(" ");};
+    const barHits=ds.map((d,i)=>{const ids=barMetrics.filter(m=>m.vals[i]!=null).map(m=>m.id);return ids.length?`<rect class="v2-health-bar-hit" data-v2-health-bars="${ids.join(",")}" data-v2-health-bar-index="${i}" x="${x(i)-12}" y="${T}" width="24" height="${base-T}" rx="8" fill="transparent" fill-opacity="0" stroke="none" style="fill:transparent;fill-opacity:0;stroke:none" pointer-events="all" tabindex="0" role="button" aria-label="${dateLabel(d)}の睡眠と歩数"></rect>`:"";}).join("");
+    const pathFor=m=>{let joined=false;return m.vals.map((v,i)=>{const n=norm(m,v);if(n==null)return "";const cmd=joined?"L":"M";joined=true;return `${cmd}${x(i)} ${y(n)}`;}).join(" ");};
     const marker=(m,i,n)=>{const common=`class="v2-health-value-target" data-v2-health-point="${i}" data-v2-health-metric="${m.id}" tabindex="0" role="button" aria-label="${dateLabel(ds[i])}の${m.label}: ${m.format(m.vals[i])}" fill="#fffaf0" stroke="${m.c}" stroke-width="2.4"`;
       if(m.marker==="square")return `<rect ${common} x="${x(i)-4.8}" y="${y(n)-4.8}" width="9.6" height="9.6" rx="1.5"></rect>`;
       if(m.marker==="triangle")return `<path ${common} d="M ${x(i)} ${y(n)-5.8} L ${x(i)+5.3} ${y(n)+4.4} L ${x(i)-5.3} ${y(n)+4.4} Z"></path>`;
@@ -299,10 +320,18 @@
     const cut=new Date();cut.setDate(cut.getDate()-29);const from=ymd(cut),rec=S.spends.filter(x=>x.d>=from),byPay={cash:0,paypay:0,card:0},byCat={};rec.forEach(x=>{const n=+x.amt||0;byPay[x.pay==="card"?"card":x.pay==="paypay"?"paypay":"cash"]+=n;byCat[x.cat]=(byCat[x.cat]||0)+n});const expense=rec.reduce((a,x)=>a+(+x.amt||0),0),income=(S.incomeLogs||[]).filter(x=>x.d>=from).reduce((a,x)=>a+(+x.amt||0),0);const max=Math.max(1,income,expense,...Object.values(byPay));const chart=(label,n,color)=>`<div class="an-bar"><span>${label}</span><i><b style="width:${Math.max(0,n/max*100)}%;background:${color}"></b></i><strong>${money(n)}</strong></div>`;const cats=Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,4),sum=cats.reduce((a,[,v])=>a+v,0),cols=["#4d80ad","#4f986f","#796aa8","#ca796b"];let p=0;const stops=cats.map(([,v],i)=>{const a=p;p+=sum?v/sum*100:0;return `${cols[i]} ${a}% ${p}%`}).join(",");
     return analogPage("an-analysis","chart","MONEY ANALYSIS","直近30日の動き",`<section class="an-chart-section v2-chart-block"><h2>収入と支出のバランス</h2>${chart("収入",income,"#4f986f")}${chart("支出",expense,"#4d80ad")}</section><section class="an-chart-section v2-chart-block"><h2>支払い方法</h2>${chart("カード",byPay.card,"#796aa8")}${chart("現金・引落",byPay.cash,"#4d80ad")}${chart("PayPay",byPay.paypay,"#d2a449")}</section><section class="an-chart-section v2-chart-block"><h2>お金を使ったカテゴリー</h2>${cats.length?`<div class="an-donut-wrap"><div class="an-donut" style="background:conic-gradient(${stops})"></div><div>${cats.map(([k,v],i)=>`<p><i style="background:${cols[i]}"></i><span>${esc2(k)}</span><b>${sum?Math.round(v/sum*100):0}%</b></p>`).join("")}</div></div>`:`<p class="an-empty">支出を記録すると、ここに割合を表示します。</p>`}</section>`);
   }
-  function healthRecord(){
+  function healthRecordLegacyAnalog(){
     const h=shownHealth(),sm=sleepMin(h.bed,h.wake),steps=h.steps!=null?`${(+h.steps).toLocaleString("ja-JP")}歩`:"—";
     const rating=(kind,label,sub)=>`<section class="an-health-rating ${kind}"><div><span>${icon(kind==="body"?"body":"heart")}</span><strong>${label}</strong><small>${sub}</small></div>${dots(kind,h[kind])}</section>`;
     return analogPage("an-health-record","heart","HEALTH LOG","今日の調子を残す",`<p class="an-date-note">${dateLabel(ymd(now()))}</p><section class="an-health-sheet">${rating("body","からだ","体の調子")}${rating("mind","こころ","心の調子")}<div class="an-health-data"><span>${icon("moon")}睡眠</span><strong>${fmtSleep(sm)}</strong><small>設定から自動取り込み</small><details><summary>睡眠時間を編集</summary><div class="an-time-fields"><input id="v2Bed" type="time" value="${esc2(h.bed||"")}" data-v2-health="bed"><input id="v2Wake" type="time" value="${esc2(h.wake||"")}" data-v2-health="wake"></div></details></div><div class="an-health-data"><span>${icon("foot")}歩数</span><strong>${steps}</strong><small>設定から自動取り込み</small></div></section><button class="an-save green" data-v2-health-save>この日の記録を保存</button><button class="an-wide-action green" data-v2-go="healthAnalysis">${icon("chart")}<span>体調の変化を見る</span><b>›</b></button>`);
+  }
+  function healthRecord(){
+    const key=ymd(now()),saved=S.health[key]||{},draft=healthDraft||{};
+    const draftValue=name=>Object.prototype.hasOwnProperty.call(draft,name)?draft[name]:"";
+    const savedRating=(kind,label,sub)=>`<section class="an-health-rating ${kind}"><div><span>${icon(kind==="body"?"body":"heart")}</span><strong>${label}</strong><small>${sub}</small></div>${dots(kind,draftValue(kind))}<p class="an-health-saved">保存済み: ${saved[kind]?`${saved[kind]} / 5`:"—"}</p><button class="an-health-item-save" data-v2-health-save="${kind}">${label}を保存</button></section>`;
+    const savedSleep=sleepMin(saved.bed,saved.wake);
+    const savedSteps=saved.steps!=null?`${(+saved.steps).toLocaleString("ja-JP")}歩`:"—";
+    return analogPage("an-health-record","heart","HEALTH LOG","今日の調子を残す",`<p class="an-date-note">${dateLabel(key)}</p><section class="an-health-sheet">${savedRating("body","からだ","体の調子")}${savedRating("mind","こころ","心の調子")}<section class="an-health-data"><span>${icon("moon")}睡眠</span><strong>${fmtSleep(savedSleep)}</strong><small>保存済みの睡眠時間</small><div class="an-time-fields"><input id="v2Bed" type="time" value="${esc2(draftValue("bed"))}" data-v2-health="bed" aria-label="就寝時刻"><input id="v2Wake" type="time" value="${esc2(draftValue("wake"))}" data-v2-health="wake" aria-label="起床時刻"></div><button class="an-health-item-save" data-v2-health-save="sleep">睡眠を保存</button></section><section class="an-health-data"><span>${icon("foot")}歩数</span><strong>${savedSteps}</strong><small>保存済みの歩数</small><input id="v2Steps" type="number" inputmode="numeric" min="0" value="${esc2(draftValue("steps"))}" placeholder="歩数を入力" data-v2-health="steps"><button class="an-health-item-save" data-v2-health-save="steps">歩数を保存</button></section></section><button class="an-wide-action green" data-v2-go="healthAnalysis">${icon("chart")}<span>体調の変化を見る</span><b>›</b></button>`);
   }
   function healthAnalysis(){
     const labels=[["sleep","睡眠","#4d80ad"],["steps","歩数","#4f986f"],["body","からだ","#796aa8"],["mind","こころ","#ca796b"],["checklist","毎日の習慣","#d2a449"]];
@@ -1166,7 +1195,7 @@
     const style=`--x:${+card.x||8}%;--y:${+card.y||8}%;--w:${+card.w||32}%;--h:${+card.h||16}%;--size:${+card.size||18}px;--weight:${+card.weight||600};--z:${Math.max(1,+card.z||1)};`;
     // Text frames use the same live bounding-box contract as shapes.  The
     // type itself scales uniformly; it is never stretched independently.
-    const handles=FB_RESIZABLE_TYPES.has(type)?["n","e","s","w","nw","ne","sw","se"].map(handle=>`<i class="v2fb-handle ${handle}" data-v2-freeboard-resize="${handle}" aria-hidden="true"></i>`).join(""):"";
+    const handles=selected&&FB_RESIZABLE_TYPES.has(type)?["n","e","s","w","nw","ne","sw","se"].map(handle=>`<i class="v2fb-handle ${handle}" data-v2-freeboard-resize="${handle}" aria-hidden="true"></i>`).join(""):"";
     // Deletion is deliberately separate from the north-east resize handle.
     // Touch: a stationary long press reveals the ×. Desktop: a right click
     // reveals a small text menu, so no control competes with the handle.
@@ -1293,7 +1322,7 @@
       viewport.setPointerCapture?.(event.pointerId);event.preventDefault();return;
     }
     if(freeBoardUI.tool==="pen"&&!node&&canWrite()){
-      const card={id:uid(),type:"stroke",x:0,y:0,w:100,h:100,points:[[p.x,p.y]]};boardState().cards.push(card);freeBoardUI.selected=card.id;
+      const card={id:uid(),type:"stroke",x:0,y:0,w:100,h:100,points:[[p.x,p.y]]};boardState().cards.push(card);fbSelect([card.id],card.id);
       const svg=document.createElementNS("http://www.w3.org/2000/svg","svg"),poly=document.createElementNS("http://www.w3.org/2000/svg","polyline");
       svg.className.baseVal="v2fb-node v2fb-stroke is-selected";svg.dataset.v2FreeboardNode=card.id;svg.setAttribute("viewBox","0 0 100 100");svg.setAttribute("preserveAspectRatio","none");svg.style.cssText="--x:0%;--y:0%;--w:100%;--h:100%;";poly.setAttribute("points",`${p.x},${p.y}`);svg.append(poly);viewport.querySelector("[data-v2-freeboard-stage]")?.append(svg);
       freeBoardUI.gesture={kind:"draw",id:card.id,pointerId:event.pointerId,viewport};viewport.setPointerCapture?.(event.pointerId);event.preventDefault();return;
@@ -1301,7 +1330,7 @@
     if(freeBoardUI.tool!=="select"&&!node&&canWrite()){
       const card=fbAdd(freeBoardUI.tool,p);
       // テキスト／メモは置いた直後から本文を入力する。選択だけで止めない。
-      freeBoardUI.selected=card.id;freeBoardUI.styleId=null;
+      fbSelect([card.id],card.id);freeBoardUI.styleId=null;
       freeBoardUI.editingId=["text","memo"].includes(fbType(card))?card.id:null;
       freeBoardUI.tool="select";newAppRender();
       if(freeBoardUI.editingId)setTimeout(()=>root.querySelector(`[data-v2-freeboard-inline-edit="${CSS.escape(card.id)}"]`)?.focus(),0);
@@ -1319,7 +1348,9 @@
     const card=fbCard(node.dataset.v2FreeboardNode);if(!card)return;
     // Safari の dblclick に依存せず、二回目のタップも直接編集として扱う。
     const nowAt=Date.now(),double=event.detail>=2||(freeBoardUI.lastTap.id===card.id&&nowAt-freeBoardUI.lastTap.at<820);freeBoardUI.lastTap={id:card.id,at:nowAt};
-    if(!fbSelectedIds().includes(card.id))fbSelect([card.id],card.id);else freeBoardUI.selected=card.id;
+    if(event.shiftKey){
+      fbSelect([...new Set([...fbSelectedIds(),card.id])],card.id);
+    }else fbSelect([card.id],card.id);
     if(double&&["text","memo"].includes(fbType(card))){freeBoardUI.editingId=card.id;freeBoardUI.styleId=null;newAppRender();setTimeout(()=>root.querySelector(`[data-v2-freeboard-inline-edit="${CSS.escape(card.id)}"]`)?.focus(),0);event.preventDefault();return;}
     freeBoardUI.deleteReady=null;freeBoardUI.contextMenu=null;
     const kind=handle?"resize":"hold",movingIds=handle?[card.id]:fbSelectedIds(),bases=movingIds.map(id=>{const c=fbCard(id);return {id,x:+c.x||0,y:+c.y||0,w:+c.w||20,h:+c.h||14};});

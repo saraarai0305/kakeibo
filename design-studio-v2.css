@@ -1,0 +1,35 @@
+/*
+ * Design Studio v2: 操作画面の構造契約
+ * 旧紙面スタイルの見出し指定をここで受けず、functional トークンだけを使う。
+ */
+:root {
+  --studio-font: var(--ds-font-functional, var(--ds-font-ui, "Noto Sans JP", sans-serif));
+  --studio-expression: var(--ds-font-expression, "Noto Serif JP", serif);
+}
+
+.studio-top h1,
+.panel h2,
+.settings-actions h3,
+.action-section-title,
+.danger-operation summary,
+.mini-body h3 {
+  font-family: var(--studio-font) !important;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+}
+
+.studio-top h1 {
+  font-size: clamp(25px, 4vw, 38px);
+  line-height: 1.15;
+}
+
+.mini-body h3 {
+  font-size: calc(28px * var(--ds-ui-scale, 1));
+  line-height: 1.15;
+}
+
+/* 危険操作は主操作から視覚的にも距離を置く。 */
+.danger-operation {
+  margin-top: 18px;
+}

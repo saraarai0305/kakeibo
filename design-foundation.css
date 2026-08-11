@@ -1,0 +1,64 @@
+/* くらしのしるし / shared design foundation
+ * Existing screen CSS remains the source of layout during migration.
+ * This layer only provides safe, global design-token bridges.
+ */
+:root {
+  --paper-base: var(--ds-paper, #f6efe1);
+  --paper-dot: color-mix(in srgb, var(--ds-line, #c9b99c) 42%, transparent);
+  --board-font-functional: var(--ds-font-functional, "Noto Sans JP", "BIZ UDPGothic", sans-serif);
+  --board-font-expression: var(--ds-font-expression, "Noto Serif JP", "BIZ UDPMincho", serif);
+  /* 旧紙面用別名は、操作画面に明朝が漏れないよう機能用へ退避する。 */
+  --board-font-sans: var(--ds-font-functional, "Noto Sans JP", "BIZ UDPGothic", sans-serif);
+  --board-font-mincho: var(--ds-font-functional, "Noto Sans JP", "BIZ UDPGothic", sans-serif);
+  --board-font-udgothic: var(--ds-font-functional, "BIZ UDPGothic", "Noto Sans JP", sans-serif);
+  --board-font-udmincho: var(--ds-font-functional, "BIZ UDPGothic", "Noto Sans JP", sans-serif);
+
+  /* Legacy screen aliases. These are the migration bridge: existing screens
+     can adopt the shared settings before each component is rebuilt. */
+  --bg: var(--ds-paper, #f6efe1);
+  --card: var(--ds-surface, #fffaf0);
+  --card2: color-mix(in srgb, var(--ds-surface, #fffaf0) 86%, var(--ds-paper, #f6efe1));
+  --line: var(--ds-line, #c9b99c);
+  --fg: var(--ds-ink, #1f3430);
+  --dim: var(--ds-muted, #6e786f);
+  --faint: color-mix(in srgb, var(--ds-muted, #6e786f) 62%, transparent);
+  --blue: var(--ds-blue, #4f83b4);
+  --green: var(--ds-green, #4e9d72);
+  --coral: var(--ds-coral, #d27667);
+  --violet: var(--ds-violet, #7864ad);
+  --yellow: var(--ds-yellow, #d8a83d);
+  --r: var(--ds-radius, 22px);
+}
+
+html,
+body {
+  background-color: var(--ds-paper, #f6efe1);
+  color: var(--ds-ink, #1f3430);
+  font-family: var(--ds-font-ui, "Noto Sans JP", sans-serif);
+}
+
+body[data-app-shell="v2"] {
+  --v2-design-blue: var(--ds-blue, #4f83b4);
+  --v2-design-green: var(--ds-green, #4e9d72);
+  --v2-design-coral: var(--ds-coral, #d27667);
+  --v2-design-violet: var(--ds-violet, #7864ad);
+}
+
+/* Icons are optically centred by their viewBox; their hit area stays independent. */
+.v2-icon,
+.an-icon,
+.ui-icon {
+  inline-size: var(--ds-icon-size, 26px);
+  block-size: var(--ds-icon-size, 26px);
+  flex: 0 0 var(--ds-icon-size, 26px);
+}
+
+/* Respect the user's motion setting without changing state or page behaviour. */
+html[data-reduce-motion="true"] *,
+html[data-reduce-motion="true"] *::before,
+html[data-reduce-motion="true"] *::after {
+  animation-duration: 1ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 1ms !important;
+  scroll-behavior: auto !important;
+}
