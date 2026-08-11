@@ -1,4 +1,10 @@
 /* LIFE NOTE analogue layer — screen layout tokens shared by every v2 page. */
+/* v0.30: checklist mobile contract — habit labels must never wrap unevenly. */
+.an-checklist .an-habits{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}
+.an-checklist .an-habit{width:100%!important;min-width:0!important;height:58px!important;min-height:58px!important;padding:0 10px!important;justify-content:center!important;gap:8px!important;border-radius:18px!important}
+.an-checklist .an-habit span{min-width:0!important;overflow:hidden!important;white-space:nowrap!important;text-overflow:ellipsis!important;line-height:1!important;font-size:14px!important}
+.an-checklist .an-habit .v2-icon{width:20px!important;height:20px!important;flex:0 0 20px!important}
+@media(min-width:620px){.an-checklist .an-habits{grid-template-columns:repeat(3,minmax(0,1fr))!important}}
 :root{
   --a-paper:#f6efdE;
   --a-paper-deep:#ead8b8;

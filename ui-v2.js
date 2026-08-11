@@ -1484,5 +1484,222 @@
   root.addEventListener("pointerdown",event=>{const vp=event.target.closest("[data-v2-health-viewport]");if(!vp)return;healthChartPointers.set(event.pointerId,{x:event.clientX,y:event.clientY});if(healthChartPointers.size===2){const a=[...healthChartPointers.values()];vp._v2Pinch={d:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y),s:healthChartView.scale};event.preventDefault();}},true);
   root.addEventListener("pointermove",event=>{const vp=event.target.closest("[data-v2-health-viewport]");if(!vp||!healthChartPointers.has(event.pointerId))return;healthChartPointers.set(event.pointerId,{x:event.clientX,y:event.clientY});if(healthChartPointers.size<2||!vp._v2Pinch)return;const a=[...healthChartPointers.values()],d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);healthChartView.scale=Math.max(.85,Math.min(2.6,vp._v2Pinch.s*d/vp._v2Pinch.d));vp.querySelector("[data-v2-health-stage]")?.style.setProperty("--health-chart-scale",healthChartView.scale);event.preventDefault();},true);
   root.addEventListener("pointerup",event=>{healthChartPointers.delete(event.pointerId);},true);
+  /*
+   * Record correction + completed-shopping swipe actions.
+   * These are kept here, inside the UI closure, so they use the same data
+   * store and rendering lifecycle as the rest of the PWA.
+   */
+  const recordUiState={editing:null,swipe:null,ignoreClickUntil:0};
+  function recordTodayEntries(){
+    const day=ymd(now());
+    return [...S.spends.filter(x=>x.d===day).map(x=>({type:"expense",item:x})),...(S.incomeLogs||[]).filter(x=>x.d===day).map(x=>({type:"income",item:x}))].sort((a,b)=>(b.item.t||"").localeCompare(a.item.t||""));
+  }
+  function recordEntryByKey(key){
+    const [type,id]=String(key||"").split("::");
+    const list=type==="income"?(S.incomeLogs||[]):S.spends;
+    const item=list.find(x=>x.id===id);
+    return item?{type,item}:null;
+  }
+  function recordOptions(type){
+    return moneyOptions(type==="income"?"income":"expense");
+  }
+  function recordCloseEditor(){
+    document.querySelector(".v2-record-editor-layer")?.remove();
+    recordUiState.editing=null;
+  }
+  function recordField(label,control){
+    const wrap=document.createElement("label");
+    wrap.className="v2-record-editor-field";
+    const text=document.createElement("span");
+    text.textContent=label;
+    wrap.append(text,control);
+    return wrap;
+  }
+  function recordOptionList(select,items,current){
+    items.forEach(item=>{
+      const value=Array.isArray(item)?item[0]:item;
+      const label=Array.isArray(item)?item[1]:item;
+      const option=document.createElement("option");
+      option.value=value;option.textContent=label;option.selected=value===current;
+      select.append(option);
+    });
+  }
+  function recordOpenEditor(key){
+    if(!canWrite())return;
+    const entry=recordEntryByKey(key);
+    if(!entry)return;
+    recordCloseEditor();
+    recordUiState.editing=key;
+    const type=entry.type, item=entry.item, options=recordOptions(type);
+    const layer=document.createElement("div");
+    layer.className="v2-record-editor-layer";
+    const panel=document.createElement("section");
+    panel.className="v2-record-editor";
+    const title=document.createElement("h2");
+    title.textContent=type==="income"?"収入を編集":"支出を編集";
+    const note=document.createElement("p");
+    note.textContent="金額・方法・カテゴリーを直せます。保存すると残高にも反映されます。";
+    const amount=document.createElement("input");
+    amount.type="text";amount.inputMode="numeric";amount.value=String(item.amt||"");amount.setAttribute("aria-label","金額");
+    const method=document.createElement("select");
+    recordOptionList(method,options.methods,type==="income"?(item.method||"bank"):(item.pay||"cash"));
+    const category=document.createElement("select");
+    recordOptionList(category,options.cats,item.cat||options.cats[0]);
+    const actions=document.createElement("div");
+    actions.className="v2-record-editor-actions";
+    const cancel=document.createElement("button");
+    cancel.type="button";cancel.className="v2-record-editor-cancel";cancel.textContent="キャンセル";
+    const saveButton=document.createElement("button");
+    saveButton.type="button";saveButton.className="v2-record-editor-save";saveButton.textContent="変更を保存";
+    cancel.addEventListener("click",recordCloseEditor);
+    layer.addEventListener("click",event=>{if(event.target===layer)recordCloseEditor();});
+    saveButton.addEventListener("click",()=>{
+      const nextAmount=moneyAmount(amount.value);
+      if(!(nextAmount>0)){toast("金額を入れてください");amount.focus();return;}
+      const oldAmount=Number(item.amt||0);
+      if(type==="expense"){
+        const oldPay=item.pay||"cash", nextPay=method.value;
+        const account=primaryAcct();
+        if(account&&["cash","paypay"].includes(oldPay))account.bal=(+account.bal||0)+oldAmount;
+        if(account&&["cash","paypay"].includes(nextPay))account.bal=(+account.bal||0)-nextAmount;
+        item.amt=nextAmount;item.pay=nextPay;item.methodLabel=method.selectedOptions[0]?.textContent||nextPay;item.cat=category.value;
+      }else{
+        const account=bankAcct();
+        if(account)account.bal=(+account.bal||0)-oldAmount+nextAmount;
+        item.amt=nextAmount;item.method=method.value;item.methodLabel=method.selectedOptions[0]?.textContent||method.value;item.cat=category.value;
+      }
+      save();recordCloseEditor();newAppRender();toast("記録を変更しました");
+    });
+    actions.append(cancel,saveButton);
+    panel.append(title,note,recordField("金額",amount),recordField(type==="income"?"受け取り方法":"支払い方法",method),recordField(type==="income"?"収入のカテゴリー":"支出のカテゴリー",category),actions);
+    layer.append(panel);document.body.append(layer);
+    setTimeout(()=>amount.focus(),0);
+  }
+  function recordDecoratePage(){
+    // Mobile checklist contract: apply the geometry directly as an inline
+    // important style. Older analog stylesheet rules also use !important, so
+    // a selector-only override can lose depending on stylesheet order.
+    const habits=root.querySelector(".an-checklist .an-habits");
+    if(habits){
+      habits.style.setProperty("display","grid","important");
+      habits.style.setProperty("grid-template-columns","repeat(2,minmax(0,1fr))","important");
+      habits.style.setProperty("gap","10px","important");
+      habits.querySelectorAll(".an-habit").forEach(habit=>{
+        habit.style.setProperty("width","100%","important");
+        habit.style.setProperty("min-width","0","important");
+        habit.style.setProperty("height","58px","important");
+        habit.style.setProperty("min-height","58px","important");
+        habit.style.setProperty("padding","0 10px","important");
+        habit.style.setProperty("justify-content","center","important");
+        habit.style.setProperty("gap","8px","important");
+        habit.style.setProperty("border-radius","18px","important");
+        const label=habit.querySelector("span");
+        if(label){
+          label.style.setProperty("min-width","0","important");
+          label.style.setProperty("overflow","hidden","important");
+          label.style.setProperty("white-space","nowrap","important");
+          label.style.setProperty("text-overflow","ellipsis","important");
+          label.style.setProperty("line-height","1","important");
+          label.style.setProperty("font-size","14px","important");
+        }
+      });
+    }
+    const rows=root.querySelectorAll(".mr-activity-row");
+    const entries=recordTodayEntries();
+    rows.forEach((row,index)=>{
+      const entry=entries[index];
+      if(!entry||row.dataset.v2RecordDecorated)return;
+      row.dataset.v2RecordDecorated="1";
+      row.dataset.v2RecordEdit=entry.type+"::"+entry.item.id;
+      row.setAttribute("role","button");row.setAttribute("tabindex","0");
+      const hint=document.createElement("em");
+      hint.textContent="編集";
+      row.append(hint);
+    });
+    root.querySelectorAll(".an-shopping-section .an-task.done[data-v2-task]").forEach(button=>{
+      if(button.closest("[data-v2-shopping-swipe]"))return;
+      const wrap=document.createElement("div");
+      wrap.className="an-shopping-swipe";
+      wrap.dataset.v2ShoppingSwipe=button.dataset.v2Task;
+      const remove=document.createElement("button");
+      remove.type="button";remove.className="an-shopping-delete";remove.dataset.v2ShoppingDelete=button.dataset.v2Task;remove.textContent="削除";
+      button.parentNode.replaceChild(wrap,button);
+      wrap.append(button,remove);
+    });
+  }
+  function recordInstallStyle(){
+    if(document.getElementById("v2-record-correction-style"))return;
+    const style=document.createElement("style");
+    style.id="v2-record-correction-style";
+    style.textContent=[
+      ".an-checklist .an-habits{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}",
+      ".an-checklist .an-habit{width:100%!important;min-width:0!important;height:58px!important;min-height:58px!important;justify-content:center!important;padding:0 10px!important;gap:8px!important;border-radius:18px!important}",
+      ".an-checklist .an-habit span{min-width:0!important;overflow:hidden!important;white-space:nowrap!important;text-overflow:ellipsis!important;line-height:1!important;font-size:14px!important}",
+      ".an-checklist .an-habit .v2-icon{width:20px!important;height:20px!important;flex:0 0 20px!important}",
+      "@media(min-width:620px){.an-checklist .an-habits{grid-template-columns:repeat(3,minmax(0,1fr))!important}}",
+      ".an-shopping-swipe{position:relative!important;overflow:hidden!important;border-radius:11px!important;touch-action:pan-y!important}",
+      ".an-shopping-swipe .an-task{position:relative!important;z-index:1!important;width:100%!important;transition:transform .18s ease!important}",
+      ".an-shopping-swipe.is-open .an-task{transform:translateX(-84px)!important}",
+      ".an-shopping-delete{position:absolute!important;inset:0 0 0 auto!important;width:84px!important;border:0!important;border-radius:0 11px 11px 0!important;background:#c85e55!important;color:#fffaf0!important;font:inherit!important;font-size:13px!important;font-weight:800!important}",
+      ".mr-activity-row{width:100%!important;appearance:none!important;cursor:pointer!important;text-align:left!important;grid-template-columns:minmax(0,1fr) auto auto!important}",
+      ".mr-activity-row em{color:#85755e!important;font-size:10px!important;font-style:normal!important;font-weight:800!important}",
+      ".v2-record-editor-layer{position:fixed!important;z-index:99999!important;inset:0!important;display:grid!important;place-items:end center!important;padding:20px!important;background:rgba(32,39,35,.38)!important}",
+      ".v2-record-editor{width:min(100%,520px)!important;display:grid!important;gap:12px!important;padding:20px!important;border:1px solid #bba98d!important;border-radius:22px!important;background:#fffaf0!important;color:#21312d!important;box-shadow:0 16px 42px rgba(42,37,28,.22)!important}",
+      ".v2-record-editor h2{margin:0!important;font-family:inherit!important;font-size:20px!important;font-weight:800!important}.v2-record-editor p{margin:0!important;color:#706b60!important;font-size:12px!important;line-height:1.55!important}",
+      ".v2-record-editor-field{display:grid!important;gap:6px!important}.v2-record-editor-field>span{font-size:12px!important;font-weight:800!important}.v2-record-editor-field input,.v2-record-editor-field select{min-height:46px!important;width:100%!important;border:1px solid #cdbfa6!important;border-radius:12px!important;padding:0 12px!important;background:#fffdf8!important;color:#21312d!important;font:inherit!important;font-size:16px!important}",
+      ".v2-record-editor-actions{display:grid!important;grid-template-columns:1fr 1.2fr!important;gap:9px!important}.v2-record-editor-actions button{min-height:48px!important;border-radius:13px!important;font:inherit!important;font-size:14px!important;font-weight:800!important}.v2-record-editor-cancel{border:1px solid #cdbfa6!important;background:#fffaf0!important;color:#5e665f!important}.v2-record-editor-save{border:0!important;background:#4d80ad!important;color:#fff!important}"
+    ].join("\\n");
+    document.head.append(style);
+  }
+  recordInstallStyle();
+  new MutationObserver(recordDecoratePage).observe(root,{childList:true,subtree:true});
+  document.addEventListener("click",event=>{
+    const del=event.target.closest("[data-v2-shopping-delete]");
+    if(del){
+      event.preventDefault();event.stopImmediatePropagation();
+      if(!canWrite())return;
+      S.errands=(S.errands||[]).filter(item=>item.id!==del.dataset.v2ShoppingDelete);
+      save();newAppRender();toast("買い物を削除しました");return;
+    }
+    const edit=event.target.closest("[data-v2-record-edit]");
+    if(edit){
+      event.preventDefault();event.stopImmediatePropagation();
+      recordOpenEditor(edit.dataset.v2RecordEdit);return;
+    }
+    if(Date.now()<recordUiState.ignoreClickUntil&&event.target.closest("[data-v2-shopping-swipe]")){
+      event.preventDefault();event.stopImmediatePropagation();
+    }
+  },true);
+  document.addEventListener("keydown",event=>{
+    const edit=event.target.closest?.("[data-v2-record-edit]");
+    if(edit&&(event.key==="Enter"||event.key===" ")){event.preventDefault();recordOpenEditor(edit.dataset.v2RecordEdit);}
+    if(event.key==="Escape")recordCloseEditor();
+  },true);
+  document.addEventListener("pointerdown",event=>{
+    const wrap=event.target.closest("[data-v2-shopping-swipe]");
+    if(!wrap)return;
+    recordUiState.swipe={wrap,button:wrap.querySelector(".an-task"),x:event.clientX,y:event.clientY,dragging:false};
+  },true);
+  document.addEventListener("pointermove",event=>{
+    const gesture=recordUiState.swipe;
+    if(!gesture)return;
+    const dx=event.clientX-gesture.x,dy=event.clientY-gesture.y;
+    if(Math.abs(dx)<=Math.abs(dy)||dx>=0)return;
+    gesture.dragging=true;
+    gesture.button.style.transform="translateX("+Math.max(-84,dx)+"px)";
+    event.preventDefault();
+  },true);
+  document.addEventListener("pointerup",event=>{
+    const gesture=recordUiState.swipe;
+    if(!gesture)return;
+    const dx=event.clientX-gesture.x;
+    if(gesture.dragging){
+      gesture.wrap.classList.toggle("is-open",dx<-38);
+      gesture.button.style.transform="";
+      recordUiState.ignoreClickUntil=Date.now()+360;
+    }
+    recordUiState.swipe=null;
+  },true);
+  document.addEventListener("pointercancel",()=>{recordUiState.swipe=null;},true);
   newAppRender();
 })();
