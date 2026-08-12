@@ -217,21 +217,38 @@
   function workLogSpan(record){const start=timeValueMinutes(record?.start),end=timeValueMinutes(record?.end);if(start==null||end==null)return null;const span=end>=start?end-start:end+1440-start;return Math.max(0,span);}
   function workLogMinutes(record){const span=workLogSpan(record);if(span==null)return null;return Math.max(0,span-Math.max(0,Number(record?.breakMinutes)||0));}
   function formatWorkMinutes(value){if(value==null)return "未記録";const n=Math.max(0,Math.round(Number(value)||0));return `${Math.floor(n/60)}時間${n%60}分`;}
+  function workLogState(record){
+    const start=record?.start||"",end=record?.end||"",breakMinutes=Math.max(0,Math.min(720,Math.round(Number(record?.breakMinutes)||0))),span=workLogSpan({start,end});
+    if(span==null)return {state:"empty",span:null,breakMinutes,net:null};
+    if(breakMinutes>span)return {state:"invalid",span,breakMinutes,net:null};
+    return {state:"valid",span,breakMinutes,net:workLogMinutes({start,end,breakMinutes})};
+  }
+  function workLogDraftState(){return workLogState({start:document.getElementById("v2WorkStart")?.value||"",end:document.getElementById("v2WorkEnd")?.value||"",breakMinutes:document.getElementById("v2WorkBreak")?.value||""});}
+  function workLogDurationNote(state){return state.state==="invalid"?"休憩分は作業時間以内にしてください":state.state==="valid"?`拘束時間 ${formatWorkMinutes(state.span)} − 休憩 ${state.breakMinutes}分`:"開始・終了・休憩分を入力すると計算します";}
+  function paintWorkLogDraft(){
+    const state=workLogDraftState(),card=document.querySelector("[data-v2-work-duration]"),value=document.querySelector("[data-v2-work-net]"),note=document.querySelector("[data-v2-work-duration-note]");
+    if(!card||!value||!note)return;
+    card.dataset.state=state.state;
+    value.textContent=state.net==null?"未計算":formatWorkMinutes(state.net);
+    note.textContent=workLogDurationNote(state);
+  }
+  function paintWorkLogTime(id){const input=document.getElementById(id),value=root.querySelector(`[data-v2-work-time-value="${id}"]`);if(input&&value)value.textContent=input.value||"--:--";}
   function workLog(){
     const key=workLogDate||ymd(now()),saved=(S.workLogs&&S.workLogs[key])||{},form=workLogFormReset?{}:saved,areas=(S.areas||[]).slice(0,6),checks=new Set(Array.isArray(form.checks)?form.checks:[]);
     const input=(id,label,type,value,placeholder="")=>`<label class="an-work-field"><span>${label}</span><input id="${id}" type="${type}" value="${esc2(value==null?"":value)}"${placeholder?` placeholder="${placeholder}"`:""}></label>`;
+    const timeInput=(id,label,value)=>`<label class="an-work-field an-work-time-field"><span>${label}</span><span class="an-work-time-control"><input id="${id}" type="time" value="${esc2(value==null?"":value)}"><span class="an-work-time-value" data-v2-work-time-value="${id}" aria-hidden="true">${esc2(value||"--:--")}</span></span></label>`;
     const text=(id,label,value,placeholder)=>`<label class="an-work-text"><span>${label}</span><textarea id="${id}" rows="3" placeholder="${placeholder}">${esc2(value||"")}</textarea></label>`;
     const projectChecks=areas.length?areas.map(a=>`<label class="an-work-check"><input type="checkbox" data-v2-work-check value="${esc2(a.id)}" ${checks.has(a.id)?"checked":""}><span>${esc2(a.label)}</span></label>`).join(""): `<p class="an-empty">設定にプロジェクトがありません。</p>`;
-    const summary=Object.keys(saved).length?`<section class="an-work-summary"><h2>保存済みの記録</h2><div class="an-work-summary-stats"><div><small>作業時間</small><b>${formatWorkMinutes(workLogMinutes(saved))}</b></div><div><small>休憩</small><b>${Math.max(0,Number(saved.breakMinutes)||0)}分</b></div></div>${saved.project?`<p><strong>プロジェクト</strong>${esc2(saved.project)}</p>`:""}${saved.implementation?`<p><strong>実装内容</strong>${esc2(saved.implementation)}</p>`:""}${saved.quality?`<p><strong>品質改善</strong>${esc2(saved.quality)}</p>`:""}${saved.design?`<p><strong>設計</strong>${esc2(saved.design)}</p>`:""}${saved.insight?`<p><strong>今日の気づき</strong>${esc2(saved.insight)}</p>`:""}${saved.next?`<p><strong>次回やること</strong>${esc2(saved.next)}</p>`:""}</section>`:"";
-    const dateLabel=String(key).replaceAll("-","/");
-    return analogPage("an-work-log","work","WORK LOG","仕事の記録",`<p class="an-date-note">予定とは別に、仕事の実績と振り返りを残します。</p><section class="an-work-form"><label class="an-work-date"><span>日付</span><span class="an-work-date-control"><input id="v2WorkDate" aria-label="日付" type="date" value="${esc2(key)}"><span class="an-work-date-value" aria-hidden="true">${esc2(dateLabel)}</span></span></label><div class="an-work-time-grid">${input("v2WorkStart","作業開始","time",form.start)}${input("v2WorkEnd","作業終了","time",form.end)}</div>${input("v2WorkBreak","休憩分","number",form.breakMinutes==null?"":form.breakMinutes,"例：60")}${input("v2WorkProject","プロジェクト / 作業","text",form.project,"例：生活管理アプリ")}</section><section class="an-work-section"><h2>プロジェクト・作業チェック</h2><div class="an-work-checks">${projectChecks}</div></section><section class="an-work-section"><h2>日報テンプレート</h2>${text("v2WorkImplementation","実装内容",form.implementation,"何を作ったか")}${text("v2WorkQuality","品質改善",form.quality,"品質・再発防止で行ったこと")}${text("v2WorkDesign","設計",form.design,"設計判断や共通化")}${text("v2WorkInsight","今日の気づき",form.insight,"気づいたこと")}${text("v2WorkNext","次回やること",form.next,"次に続けること")}</section><button type="button" class="an-save blue" data-v2-work-save>日報を保存</button>${summary}`);
+    const summary=Object.keys(saved).length?`<section class="an-work-summary"><h2>保存済みの記録</h2><div class="an-work-summary-stats"><div><small>実作業時間</small><b>${formatWorkMinutes(workLogMinutes(saved))}</b></div><div><small>休憩</small><b>${Math.max(0,Number(saved.breakMinutes)||0)}分</b></div></div>${saved.project?`<p><strong>プロジェクト</strong>${esc2(saved.project)}</p>`:""}${saved.implementation?`<p><strong>実装内容</strong>${esc2(saved.implementation)}</p>`:""}${saved.quality?`<p><strong>品質改善</strong>${esc2(saved.quality)}</p>`:""}${saved.design?`<p><strong>設計</strong>${esc2(saved.design)}</p>`:""}${saved.insight?`<p><strong>今日の気づき</strong>${esc2(saved.insight)}</p>`:""}${saved.next?`<p><strong>次回やること</strong>${esc2(saved.next)}</p>`:""}</section>`:"";
+    const dateLabel=String(key).replaceAll("-","/"),initialState=workLogState(form),initialNet=initialState.net==null?"未計算":formatWorkMinutes(initialState.net);
+    return analogPage("an-work-log","work","WORK LOG","仕事の記録",`<p class="an-date-note">予定とは別に、仕事の実績と振り返りを残します。</p><section class="an-work-form"><label class="an-work-date"><span>日付</span><span class="an-work-date-control"><input id="v2WorkDate" aria-label="日付" type="date" value="${esc2(key)}"><span class="an-work-date-value" aria-hidden="true">${esc2(dateLabel)}</span></span></label><div class="an-work-time-grid">${timeInput("v2WorkStart","作業開始",form.start)}${timeInput("v2WorkEnd","作業終了",form.end)}</div>${input("v2WorkBreak","休憩分","number",form.breakMinutes==null?"":form.breakMinutes,"例：60")}<div class="an-work-duration" data-v2-work-duration data-state="${initialState.state}"><div><small>実作業時間</small><b data-v2-work-net>${initialNet}</b></div><p data-v2-work-duration-note>${workLogDurationNote(initialState)}</p></div>${input("v2WorkProject","プロジェクト / 作業","text",form.project,"例：生活管理アプリ")}</section><section class="an-work-section"><h2>プロジェクト・作業チェック</h2><div class="an-work-checks">${projectChecks}</div></section><section class="an-work-section"><h2>日報テンプレート</h2>${text("v2WorkImplementation","実装内容",form.implementation,"何を作ったか")}${text("v2WorkQuality","品質改善",form.quality,"品質・再発防止で行ったこと")}${text("v2WorkDesign","設計",form.design,"設計判断や共通化")}${text("v2WorkInsight","今日の気づき",form.insight,"気づいたこと")}${text("v2WorkNext","次回やること",form.next,"次に続けること")}</section><button type="button" class="an-save blue" data-v2-work-save>日報を保存</button>${summary}`);
   }
   function healthMetrics(){
     const ds=healthDays();
     return [
       {id:"sleep",label:"睡眠",min:180,max:600,c:"#4d80ad",kind:"bar",vals:ds.map(d=>{const h=S.health[d]||{},v=sleepMin(h.bed,h.wake);return v||null;}),format:v=>fmtSleep(v)},
       {id:"steps",label:"歩数",min:0,max:12000,c:"#4f986f",kind:"bar",vals:ds.map(d=>{const v=(S.health[d]||{}).steps;return v==null?null:+v;}),format:v=>`${(+v).toLocaleString("ja-JP")}歩`},
-      {id:"work",label:"作業時間",min:0,max:720,c:"#80649c",kind:"bar",vals:ds.map(d=>workLogMinutes((S.workLogs||{})[d])),format:v=>formatWorkMinutes(v)},
+      {id:"work",label:"実作業時間",min:0,max:720,c:"#80649c",kind:"bar",vals:ds.map(d=>workLogMinutes((S.workLogs||{})[d])),format:v=>formatWorkMinutes(v)},
       {id:"break",label:"休憩時間",min:0,max:180,c:"#d2a449",kind:"bar",vals:ds.map(d=>{const r=(S.workLogs||{})[d];return r&&workLogSpan(r)!=null?Math.max(0,Number(r.breakMinutes)||0):null;}),format:v=>`${Math.round(Number(v)||0)}分`},
       {id:"body",label:"からだ",min:1,max:5,c:"#796aa8",kind:"line",marker:"circle",vals:ds.map(d=>{const v=+(S.health[d]||{}).body||0;return v||null;}),format:v=>`${v} / 5`},
       {id:"mind",label:"こころ",min:1,max:5,c:"#ca796b",kind:"line",marker:"square",dash:"5 4",vals:ds.map(d=>{const v=+(S.health[d]||{}).mind||0;return v||null;}),format:v=>`${v} / 5`},
@@ -1517,6 +1534,16 @@
   root.addEventListener("focusin",event=>{
     const date=event.target.closest("#v2WorkDate");
     if(date&&page==="workLog"&&!workLogDateViewport)workLogDateViewport=currentViewport();
+  },true);
+  root.addEventListener("input",event=>{
+    if(page!=="workLog")return;
+    if(["v2WorkStart","v2WorkEnd"].includes(event.target.id))paintWorkLogTime(event.target.id);
+    if(["v2WorkStart","v2WorkEnd","v2WorkBreak"].includes(event.target.id))paintWorkLogDraft();
+  },true);
+  root.addEventListener("change",event=>{
+    if(page!=="workLog")return;
+    if(["v2WorkStart","v2WorkEnd"].includes(event.target.id))paintWorkLogTime(event.target.id);
+    if(["v2WorkStart","v2WorkEnd","v2WorkBreak"].includes(event.target.id))paintWorkLogDraft();
   },true);
   root.addEventListener("click",event=>{
     const metric=event.target.closest("[data-v2-metric]");

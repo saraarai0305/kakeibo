@@ -278,20 +278,32 @@ body[data-app-shell="v2"] .wrap{width:100%!important;max-width:390px!important;m
 .v2-money-record.mr-approval-page .mr-record-mark{flex-wrap:wrap!important;margin-bottom:18px!important}.v2-money-record.mr-approval-page .mr-record-mark:after{content:"支出・収入を記録";flex:0 0 100%;margin-top:9px;color:#21312d;font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",system-ui,sans-serif;font-size:24px;font-weight:780;letter-spacing:.01em;line-height:1.25}
 
 /* Work log: an independent record with one shared functional/gothic grammar. */
+.an-work-log{--an-work-space:16px;--an-work-control-height:52px;--an-work-number-size:16px;--an-work-label-gap:7px}
 .an-work-log .an-mark h1,.an-work-log h2,.an-work-log label,.an-work-log input,.an-work-log textarea,.an-work-log button{font-family:var(--a-sans)!important}
 .an-work-log input[type=time],.an-work-log input[type=number],.an-work-summary b,.v2-health-review b{font-variant-numeric:lining-nums tabular-nums;font-feature-settings:"tnum" 1,"lnum" 1}
 .an-work-form,.an-work-section,.an-work-summary{margin:0 0 18px;padding:17px 16px;border:1.5px solid #c8b99f;border-radius:19px;background:rgba(255,252,244,.86);box-shadow:3px 4px 0 rgba(103,82,49,.1)}
 .an-work-form{display:grid;gap:14px}
-.an-work-date,.an-work-field,.an-work-text{display:grid;gap:7px;color:#68726a;font-size:12px;font-weight:800}
-.an-work-date input,.an-work-field input,.an-work-text textarea{width:100%;min-width:0;border:1px solid #af9f87;border-radius:10px;background:#fffaf0;color:#21312d;font-size:16px;font-weight:650;line-height:1.4}
-.an-work-date input,.an-work-field input{height:52px;padding:0 14px}
+.an-work-date,.an-work-field,.an-work-text{display:grid;gap:var(--an-work-label-gap);color:#68726a;font-size:12px;font-weight:800}
+.an-work-date input,.an-work-field input,.an-work-text textarea{width:100%;min-width:0;border:1px solid #af9f87;border-radius:10px;background:#fffaf0;color:#21312d;font-size:var(--an-work-number-size);font-weight:650;line-height:1.4}
+.an-work-date input,.an-work-field input{height:var(--an-work-control-height);padding:0 14px}
 .an-work-text textarea{min-height:82px;padding:11px 14px;resize:vertical}
 .an-work-time-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.an-work-time-control{position:relative;display:grid;place-items:center;min-width:0}
+.an-work-time-control input{grid-area:1/1;color:transparent;text-align:center;caret-color:transparent;padding:0 34px 0 14px;font-variant-numeric:lining-nums tabular-nums;font-feature-settings:"tnum" 1,"lnum" 1}
+.an-work-time-control input::-webkit-calendar-picker-indicator{position:absolute;right:10px;width:17px;height:17px;opacity:.58;cursor:pointer}
+.an-work-time-value{grid-area:1/1;pointer-events:none;color:#21312d;font-size:16px;font-weight:800;line-height:1;font-variant-numeric:lining-nums tabular-nums;font-feature-settings:"tnum" 1,"lnum" 1;letter-spacing:.01em;text-align:center}
+.an-work-duration{display:grid;gap:5px;margin-top:-2px;padding:12px 14px;border:1px dashed #b9a98f;border-radius:11px;background:rgba(255,250,240,.72);color:#68726a}
+.an-work-duration>div{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.an-work-duration small{font-size:11px;font-weight:800}
+.an-work-duration b{color:#21312d;font-size:17px;font-weight:850;font-variant-numeric:lining-nums tabular-nums;font-feature-settings:"tnum" 1,"lnum" 1}
+.an-work-duration p{margin:0;font-size:11px;font-weight:650;line-height:1.35}
+.an-work-duration[data-state="invalid"]{border-color:#ca796b;background:#fff2ed}
+.an-work-duration[data-state="invalid"] b,.an-work-duration[data-state="invalid"] p{color:#b24f45}
 .an-work-date-control{position:relative;display:grid;place-items:center;min-width:0}
 .an-work-date-control input{grid-area:1/1;color:transparent;text-align:center;caret-color:transparent;padding:0 42px;font-variant-numeric:lining-nums tabular-nums;font-feature-settings:"tnum" 1,"lnum" 1}
 .an-work-date-control input::-webkit-calendar-picker-indicator{position:absolute;right:14px;width:18px;height:18px;opacity:.62;cursor:pointer}
 .an-work-date-value{grid-area:1/1;pointer-events:none;color:#21312d;font-size:16px;font-weight:800;line-height:1;font-variant-numeric:lining-nums tabular-nums;font-feature-settings:"tnum" 1,"lnum" 1;letter-spacing:.01em;text-align:center}
-.an-work-section{display:grid;gap:16px}
+.an-work-section{display:grid;gap:var(--an-work-space)}
 .an-work-section h2,.an-work-summary h2{margin:0;color:#21312d;font-size:16px;font-weight:800;line-height:1.25}
 .an-work-checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .an-work-check{display:flex;align-items:center;gap:8px;min-height:44px;padding:8px 10px;border:1px solid #c8b99f;border-radius:11px;background:#fffaf0;color:#21312d;font-size:12px;font-weight:750;line-height:1.2}
