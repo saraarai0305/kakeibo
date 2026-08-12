@@ -287,7 +287,12 @@ body[data-app-shell="v2"] .wrap{width:100%!important;max-width:390px!important;m
 .an-work-date input,.an-work-field input{height:52px;padding:0 14px}
 .an-work-text textarea{min-height:82px;padding:11px 14px;resize:vertical}
 .an-work-time-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.an-work-section h2,.an-work-summary h2{margin:0 0 13px;color:#21312d;font-size:16px;font-weight:800;line-height:1.25}
+.an-work-date-control{position:relative;display:grid;place-items:center;min-width:0}
+.an-work-date-control input{grid-area:1/1;color:transparent;text-align:center;caret-color:transparent;padding:0 42px;font-variant-numeric:lining-nums tabular-nums;font-feature-settings:"tnum" 1,"lnum" 1}
+.an-work-date-control input::-webkit-calendar-picker-indicator{position:absolute;right:14px;width:18px;height:18px;opacity:.62;cursor:pointer}
+.an-work-date-value{grid-area:1/1;pointer-events:none;color:#21312d;font-size:16px;font-weight:800;line-height:1;font-variant-numeric:lining-nums tabular-nums;font-feature-settings:"tnum" 1,"lnum" 1;letter-spacing:.01em;text-align:center}
+.an-work-section{display:grid;gap:16px}
+.an-work-section h2,.an-work-summary h2{margin:0;color:#21312d;font-size:16px;font-weight:800;line-height:1.25}
 .an-work-checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .an-work-check{display:flex;align-items:center;gap:8px;min-height:44px;padding:8px 10px;border:1px solid #c8b99f;border-radius:11px;background:#fffaf0;color:#21312d;font-size:12px;font-weight:750;line-height:1.2}
 .an-work-check input{width:18px;height:18px;flex:none;accent-color:#4d80ad}
