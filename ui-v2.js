@@ -7,7 +7,7 @@
     const button=event.target.closest("[data-v2-health-save]");
     if(!button)return;
     event.preventDefault();event.stopImmediatePropagation();
-    const mode=button.dataset.v2HealthSave,key=ymd(now()),draft=healthDraft||{},saved=Object.assign({},S.health[key]||{}),remaining=Object.assign({},draft);
+    const mode=button.dataset.v2HealthSave,key=healthRecordDate||ymd(now()),draft=healthDraft||{},saved=Object.assign({},S.health[key]||{}),wasSaved=mode==="sleep"?Boolean(saved.bed&&saved.wake):saved[mode]!=null,remaining=Object.assign({},draft);
     const missing=message=>{toast(message);};
     if(mode==="body"||mode==="mind"){
       if(!draft[mode])return missing(`${mode==="body"?"からだ":"こころ"}の調子を選んでください`);
@@ -19,7 +19,15 @@
       if(draft.steps===""||draft.steps==null)return missing("歩数を入力してください");
       saved.steps=Math.max(0,+draft.steps||0);delete remaining.steps;
     }else return;
-    S.health[key]=saved;healthDraft=Object.keys(remaining).length?remaining:null;save();render();successToast(`${mode==="body"?"からだ":mode==="mind"?"こころ":mode==="sleep"?"睡眠":"歩数"}を保存しました`);
+    S.health[key]=saved;healthDraft=Object.keys(remaining).length?remaining:null;save();render();successToast(`${mode==="body"?"からだ":mode==="mind"?"こころ":mode==="sleep"?"睡眠":"歩数"}を${wasSaved?"変更":"保存"}しました`);
+  },true);
+  root.addEventListener("change",event=>{
+    const input=event.target.closest("#v2HealthDate");
+    if(!input)return;
+    event.preventDefault();event.stopImmediatePropagation();
+    healthRecordDate=input.value||ymd(now());
+    healthDraft=null;
+    newAppRender();
   },true);
   if (!root) return;
   document.body.dataset.appShell = "v2";
@@ -28,6 +36,7 @@
   let stack = [];
   let moneyType = "expense";
   let healthDraft = null;
+  let healthRecordDate = ymd(now());
   let calendarMode = "month";
   let calendarLane = "all";
   let flowLaneFilter = "common";
@@ -455,13 +464,17 @@
     const rating=(kind,label,sub)=>`<section class="an-health-rating ${kind}"><div><span>${icon(kind==="body"?"body":"heart")}</span><strong>${label}</strong><small>${sub}</small></div>${dots(kind,h[kind])}</section>`;
     return analogPage("an-health-record","heart","HEALTH LOG","今日の調子を残す",`<p class="an-date-note">${dateLabel(ymd(now()))}</p><section class="an-health-sheet">${rating("body","からだ","体の調子")}${rating("mind","こころ","心の調子")}<div class="an-health-data"><span>${icon("moon")}睡眠</span><strong>${fmtSleep(sm)}</strong><small>設定から自動取り込み</small><details><summary>睡眠時間を編集</summary><div class="an-time-fields"><input id="v2Bed" type="time" value="${esc2(h.bed||"")}" data-v2-health="bed"><input id="v2Wake" type="time" value="${esc2(h.wake||"")}" data-v2-health="wake"></div></details></div><div class="an-health-data"><span>${icon("foot")}歩数</span><strong>${steps}</strong><small>設定から自動取り込み</small></div></section><button class="an-save green" data-v2-health-save>この日の記録を保存</button><button class="an-wide-action green" data-v2-go="healthAnalysis">${icon("chart")}<span>体調の変化を見る</span><b>›</b></button>`);
   }
+  function healthChangeButton(label,kind,saved){
+    const isSaved=kind==="sleep"?Boolean(saved.bed&&saved.wake):saved[kind]!=null;
+    return `<button class="an-health-item-save${isSaved?" is-change":""}" data-v2-health-save="${kind}">${label}${isSaved?"を変更":"を保存"}</button>`;
+  }
   function healthRecord(){
-    const key=ymd(now()),saved=S.health[key]||{},draft=healthDraft||{};
+    const key=healthRecordDate||ymd(now()),saved=S.health[key]||{},draft=healthDraft||{};
     const draftValue=name=>Object.prototype.hasOwnProperty.call(draft,name)?draft[name]:"";
-    const savedRating=(kind,label,sub)=>`<section class="an-health-rating ${kind}"><div><span>${icon(kind==="body"?"body":"heart")}</span><strong>${label}</strong><small>${sub}</small></div>${dots(kind,draftValue(kind))}<p class="an-health-saved">保存済み: ${saved[kind]?`${saved[kind]} / 5`:"—"}</p><button class="an-health-item-save" data-v2-health-save="${kind}">${label}を保存</button></section>`;
+    const savedRating=(kind,label,sub)=>`<section class="an-health-rating ${kind}"><div><span>${icon(kind==="body"?"body":"heart")}</span><strong>${label}</strong><small>${sub}</small></div>${dots(kind,draftValue(kind))}<p class="an-health-saved">保存済み: ${saved[kind]!=null?`${saved[kind]} / 5`:"—"}</p>${healthChangeButton(label,kind,saved)}</section>`;
     const savedSleep=sleepMin(saved.bed,saved.wake);
     const savedSteps=saved.steps!=null?`${(+saved.steps).toLocaleString("ja-JP")}歩`:"—";
-    return analogPage("an-health-record","heart","HEALTH LOG","今日の調子を残す",`<p class="an-date-note">${dateLabel(key)}</p><section class="an-health-sheet">${savedRating("body","からだ","体の調子")}${savedRating("mind","こころ","心の調子")}<section class="an-health-data"><span>${icon("moon")}睡眠</span><strong>${fmtSleep(savedSleep)}</strong><small>保存済みの睡眠時間</small><div class="an-time-fields"><input id="v2Bed" type="time" value="${esc2(draftValue("bed"))}" data-v2-health="bed" aria-label="就寝時刻"><input id="v2Wake" type="time" value="${esc2(draftValue("wake"))}" data-v2-health="wake" aria-label="起床時刻"></div><button class="an-health-item-save" data-v2-health-save="sleep">睡眠を保存</button></section><section class="an-health-data"><span>${icon("foot")}歩数</span><strong>${savedSteps}</strong><small>保存済みの歩数</small><input id="v2Steps" type="number" inputmode="numeric" min="0" value="${esc2(draftValue("steps"))}" placeholder="歩数を入力" data-v2-health="steps"><button class="an-health-item-save" data-v2-health-save="steps">歩数を保存</button></section></section><button class="an-wide-action green" data-v2-go="healthAnalysis">${icon("chart")}<span>体調の変化を見る</span><b>›</b></button>`);
+    return analogPage("an-health-record","heart","HEALTH LOG","今日の調子を残す",`<label class="an-health-date"><span>記録日</span><input id="v2HealthDate" aria-label="記録日" type="date" value="${esc2(key)}"></label><p class="an-date-note">${dateLabel(key)}</p><section class="an-health-sheet">${savedRating("body","からだ","体の調子")}${savedRating("mind","こころ","心の調子")}<section class="an-health-data"><span>${icon("moon")}睡眠</span><strong>${fmtSleep(savedSleep)}</strong><small>保存済みの睡眠時間</small><div class="an-time-fields"><input id="v2Bed" type="time" value="${esc2(draftValue("bed"))}" data-v2-health="bed" aria-label="就寝時刻"><input id="v2Wake" type="time" value="${esc2(draftValue("wake"))}" data-v2-health="wake" aria-label="起床時刻"></div>${healthChangeButton("睡眠","sleep",saved)}</section><section class="an-health-data"><span>${icon("foot")}歩数</span><strong>${savedSteps}</strong><small>保存済みの歩数</small><input id="v2Steps" type="number" inputmode="numeric" min="0" value="${esc2(draftValue("steps"))}" placeholder="歩数を入力" data-v2-health="steps">${healthChangeButton("歩数","steps",saved)}</section></section><button class="an-wide-action green" data-v2-go="healthAnalysis">${icon("chart")}<span>体調の変化を見る</span><b>›</b></button>`);
   }
   function healthAnalysis(){
     const labels=[["sleep","睡眠","#4d80ad"],["steps","歩数","#4f986f"],["body","からだ","#796aa8"],["mind","こころ","#ca796b"],["checklist","毎日の習慣","#d2a449"]];

@@ -639,3 +639,16 @@ body[data-app-shell="v2"]{min-height:100dvh!important}
 .an-summary-row.an-account-row{min-height:42px!important;padding-left:24px!important}
 .an-summary-row.an-account-row i{opacity:.72!important}
 .an-summary-row.an-account-row small{font-size:10px!important}
+
+/* v0.31.10: the selected timeline mode and health edit state use semantic
+   tokens, so the meaning is carried by the shared component rather than a
+   page-specific emergency override. */
+.an-flow{--flow-common-color:#d27f43!important}
+.an-flow .an-flow-filter button[data-v2-flow-filter="work"].on{background:#796aa8!important;color:#fff!important}
+.an-flow .an-flow-filter button[data-v2-flow-filter="life"].on{background:#4f986f!important;color:#fff!important}
+.an-flow .an-flow-filter button[data-v2-flow-filter="common"].on{background:var(--flow-common-color)!important;color:#fff!important}
+.an-flow:has(.an-flow-timeline-shell[data-v2-flow-view="life"]) .an-timeline-section h2 .v2-icon{color:#4f986f!important}
+.an-flow:has(.an-flow-timeline-shell[data-v2-flow-view="common"]) .an-timeline-section h2 .v2-icon{color:var(--flow-common-color)!important}
+.an-health-date{display:grid!important;grid-template-columns:auto minmax(0,1fr)!important;align-items:center!important;gap:10px!important;margin:-6px 0 10px!important;color:#68726a!important;font-size:12px!important;font-weight:800!important}
+.an-health-date input{width:100%!important;min-width:0!important;min-height:38px!important;padding:0 10px!important;border:1px solid #c8b99f!important;border-radius:9px!important;background:#fffaf0!important;color:#21312d!important;font:700 13px/1 var(--board-font-sans)!important;font-variant-numeric:tabular-nums!important}
+.an-health-item-save.is-change{border-color:#c96b62!important;background:#fff0ed!important;color:#b24f4a!important}
