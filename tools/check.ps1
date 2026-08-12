@@ -35,6 +35,9 @@ window.addEventListener("load", () => setTimeout(async () => {
   try {
     tap('[data-v2-go="moneyRecord"]', "home → 支出・収入");
     if (!document.querySelector('#v2Amount')) throw new Error("UI smoke: money form");
+    tap('[data-v2-moneytype="borrowing"]', "money → borrowing");
+    if (!document.querySelector('#v2Borrower') || !document.querySelector('[data-v2-money-save]')?.textContent.includes('借入')) throw new Error("UI smoke: borrowing form");
+    tap('[data-v2-moneytype="expense"]', "borrowing → expense");
     tap('[data-v2-back]', "支出・収入 → home");
     if (document.querySelectorAll('.an-home-group').length !== 3) throw new Error("UI smoke: home groups");
     if (!document.querySelector('.an-home-group.work')?.textContent.includes('仕事') || !document.querySelector('.an-home-group.life')?.textContent.includes('生活') || !document.querySelector('.an-home-group.review')?.textContent.includes('見える化')) throw new Error("UI smoke: group labels");

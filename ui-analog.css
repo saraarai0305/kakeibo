@@ -385,3 +385,8 @@ body[data-app-shell="v2"] .wrap{width:100%!important;max-width:390px!important;m
 /* Device-sync role is a structural setting: keep it in the same control token as inputs. */
 .an-settings select{display:block!important;width:100%!important;height:52px!important;margin:0!important;padding:0 14px!important;border:1px solid #af9f87!important;border-radius:10px!important;background:#fffaf0!important;color:#21312d!important;font:inherit!important;font-size:16px!important;font-weight:650!important}
 .an-sync-note{padding:10px 12px!important;border-left:4px solid #527ca4!important;background:#f1eadc!important;color:#68726a!important;line-height:1.55!important}
+.mr-money-type-tabs{grid-template-columns:repeat(3,1fr)!important}
+.mr-money-type-tabs button.on.borrowing{background:#d2a449!important;color:#fff!important}
+.mr-save.borrowing{background:#d2a449!important;color:#fff!important}
+.mr-borrowing-total{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;margin-top:12px!important;padding-top:11px!important;border-top:1px solid #c6b9a2!important;color:#68726a!important;font-size:12px!important;font-weight:800!important}
+.mr-borrowing-note{margin:0!important;padding:10px 12px!important;border-left:4px solid #d2a449!important;background:#f3ead5!important;color:#68726a!important;line-height:1.5!important}

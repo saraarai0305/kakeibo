@@ -1001,7 +1001,8 @@ body[data-tab="cal"]:not([data-cal-page="check"]) #checklistPage{display:none!im
     </div>
     <div class="outlook-hero"><span>今日使えるお金</span><b id="outlookToday">---</b></div>
     <div class="outlook-rows">
-      <div class="outlook-row"><span>今残っているお金</span><b id="outlookRemaining">---</b></div>
+      <div class="outlook-row"><span>今残っているお金（借入を含む）</span><b id="outlookRemaining">---</b></div>
+      <div class="outlook-row"><span>借入合計</span><b id="outlookBorrowed">---</b></div>
       <div class="outlook-row"><span>今後の支払い予定</span><b id="outlookBills">---</b></div>
       <div class="outlook-row"><span>今後入る予定</span><b id="outlookIncoming">---</b></div>
       <div class="outlook-row"><span>生活を支える収入（手当）</span><b id="outlookBenefit">---</b></div>
@@ -1466,6 +1467,7 @@ function seed(){
     ],
     spends: [],
     incomeLogs: [],      // 実際に受け取った収入の記録
+    borrowings: [],      // 返済義務のある借入 [{id,d,t,amt,lender}]
     plan: {},           // "2026-08-05" -> [{id, from:"13:30", to:"16:30", cat, text}]
     dailyTimeline: [],  // 毎日表示する時間指定の習慣 [{id, from, to, cat, lane, text}]
     subs: [],           // {id, name, amt, cycle:"m"|"y", day}
@@ -1518,7 +1520,7 @@ function seed(){
 function normalize(o){
   const b = seed();
   const s = Object.assign(b, o || {});
-  for(const k of ["accounts","fixed","incomes","spends","incomeLogs","subs","errands","dailyTimeline","workProjects","workItems"])
+  for(const k of ["accounts","fixed","incomes","spends","incomeLogs","borrowings","subs","errands","dailyTimeline","workProjects","workItems"])
     if(!Array.isArray(s[k])) s[k] = b[k];
   // 既存の制作領域は仕事カタログのプロジェクト候補へ移す。生活データは削除しない。
   if(!Array.isArray(o?.workProjects) && Array.isArray(s.areas) && s.areas.length){
@@ -1555,6 +1557,13 @@ function normalize(o){
     if(!Array.isArray(s[k])) s[k] = [];
   for(const k of ["health","workLogs","daily","doneFixed","doneIncome","benefitMonths","plan"])
     if(!s[k] || typeof s[k] !== "object") s[k] = {};
+  s.borrowings = s.borrowings.filter(b=>b && typeof b === "object" && +b.amt > 0).map(b=>({
+    id:typeof b.id === "string" && b.id ? b.id : uid(),
+    d:typeof b.d === "string" && b.d ? b.d : ymd(now()),
+    t:typeof b.t === "string" ? b.t : "",
+    amt:Math.round(+b.amt),
+    lender:typeof b.lender === "string" && b.lender.trim() ? b.lender.trim() : "借入"
+  }));
   for(const k of Object.keys(s.plan)) if(!Array.isArray(s.plan[k])) delete s.plan[k];
   for(const k of ["appt","ui","benefit","lightRule"])
     if(!s[k] || typeof s[k] !== "object") s[k] = b[k];
@@ -1635,6 +1644,7 @@ function calc(){
   const daysLeft = lastDay(d) - today + 1;
 
   const balance = S.accounts.reduce((a,x)=>a + (+x.bal||0), 0);
+  const borrowedTotal = (S.borrowings || []).reduce((a,x)=>a + Math.max(0,+x.amt||0), 0);
 
   let unpaid = 0, overdue = 0;
   for(const f of S.fixed){
@@ -1666,8 +1676,9 @@ function calc(){
 
   const cardProj = cardNow / today * lastDay(d);
 
-  return { mk, today, daysLeft, balance, unpaid, overdue, incoming,
+  return { mk, today, daysLeft, balance, borrowedTotal, unpaid, overdue, incoming,
            pool, perDay, spentToday, left: perDay - spentToday,
+           remaining: balance + borrowedTotal - unpaid - cardNow,
            cardNow, cardProj };
 }
 
@@ -2659,7 +2670,7 @@ function moneyAtGlanceView(){
   const el = document.getElementById("moneyRemainingTop");
   if(!el) return;
   const visible = S.ui.moneyVisible === true;
-  const remaining = c.balance - c.unpaid - c.cardNow;
+  const remaining = c.remaining;
   el.textContent = visible ? yen(remaining) : "---";
   el.classList.toggle("neg", visible && remaining < 0);
   el.classList.toggle("hidden-money", !visible);
@@ -2692,6 +2703,7 @@ function moneyOutlookView(){
   };
   set("outlookToday", c.left, true);
   set("outlookRemaining", remaining, true);
+  set("outlookBorrowed", c.borrowedTotal);
   set("outlookBills", c.unpaid + c.cardNow);
   set("outlookIncoming", c.incoming);
   const benefit = (S.incomes || []).find(x => x.benefit || x.id === "benefit");
@@ -3041,6 +3053,19 @@ function addIncomeLog(amt, cat, method, methodLabel){
   if(a) a.bal = (+a.bal||0) + amt;
   save(); render();
   toast(`${yen(amt)} の収入を記録`);
+}
+
+function addBorrowingLog(amt, lender){
+  if(!canWrite()) return;
+  amt = moneyAmount(amt);
+  lender = String(lender || "").trim();
+  if(!(amt > 0)) return toast("借入金額を入れてください");
+  if(!lender) return toast("借入先を入れてください");
+  const d = now();
+  S.borrowings = Array.isArray(S.borrowings) ? S.borrowings : [];
+  S.borrowings.push({id:uid(), d:ymd(d), t:`${d.getHours()}:${String(d.getMinutes()).padStart(2,"0")}`, amt, lender});
+  save(); render();
+  toast(`${yen(amt)} を「${lender}からの借入」として記録`);
 }
 
 /* ---------- events ---------- */
@@ -3833,6 +3858,7 @@ let syncTimer = null, pullTimer = null, healthPullTimer = null, syncing = false,
 function richness(o){
   return (o.spends || []).length
        + (o.incomeLogs || []).length
+       + (o.borrowings || []).length
        + Object.keys(o.daily || {}).length
        + Object.keys(o.workLogs || {}).length
        + Object.keys(o.health || {}).length
