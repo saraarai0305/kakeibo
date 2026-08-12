@@ -32,12 +32,15 @@
   let calendarLane = "all";
   let calendarDate = ymd(now());
   let flowDate = ymd(now());
-  const metricOn = {sleep:true, steps:true, body:true, mind:true, checklist:true};
+  const metricOn = {sleep:true, steps:true, body:true, mind:true, checklist:true, work:true, break:true};
+  let metricViewport = null;
   let healthChartSelectedPoint = null;
   let healthBarCycle = {};
   let healthAnalysisOpen = false;
   let healthChartView = {scale:1,x:0,y:0};
   let healthChartPointers = new Map();
+  let healthChartGesture = null;
+  let healthChartIgnoreClickUntil = 0;
   const successToast = message => {
     if(S?.ui?.successNotices !== false) toast(message);
   };
@@ -55,6 +58,7 @@
     checklist:["list","今日のやること"],
     theme:["sun","テーマ設定"],
     ideas:["edit","アイデアと目標"],
+    workLog:["work","仕事の記録"],
     calendar:["calendar","こよみ"],
     settings:["settings","設定"]
   });
@@ -140,7 +144,7 @@
   // 記録画面と見通し画面は、見せる／隠すを別々に扱う。
   const privateOutlookMoney = (value, extraClass = "") => S.ui.moneyOutlookVisible !== false ? recordMoney(value, extraClass) : `<b class="v2-muted v2-money-value ${extraClass}">---</b>`;
   const privateMoney = (value, cls = "") => S.ui.moneyVisible ? `<b class="${(+value < 0 ? "v2-negative " : "") + cls}">${money(value)}</b>` : `<b class="v2-muted">---</b>`;
-  const titleFor = p => ({home:"LIFE NOTE",record:"記録する",moneyRecord:"支出・収入を記録",moneyOutlook:"お金の見通し",moneyAnalysis:"お金の分析",healthRecord:"こころとからだ",healthAnalysis:"体調の分析",today:"今日を整える",flow:"一日の流れ",checklist:"チェックリスト",theme:"今日のテーマ",ideas:"アイデアと目標",calendar:"週・月を見る",settings:"設定"}[p] || "LIFE NOTE");
+  const titleFor = p => ({home:"LIFE NOTE",record:"記録する",moneyRecord:"支出・収入を記録",moneyOutlook:"お金の見通し",moneyAnalysis:"お金の分析",healthRecord:"こころとからだ",healthAnalysis:"体調の分析",today:"今日を整える",flow:"一日の流れ",checklist:"チェックリスト",theme:"今日のテーマ",ideas:"アイデアと目標",workLog:"仕事の記録",calendar:"週・月を見る",settings:"設定"}[p] || "LIFE NOTE");
   function top(title, settings = page !== "settings"){
     const isMoneyRecord = page === "moneyRecord";
     return `<header class="v2-top">${stack.length ? `<button class="v2-back" data-v2-back>${icon("back")}<span>戻る</span></button>` : `<span class="v2-top-spacer"></span>`}<h1 class="${isMoneyRecord ? "v2-top-brand" : ""}">${isMoneyRecord ? appBrand() : esc2(title)}</h1>${settings ? `<button class="v2-top-action" data-v2-go="settings">${icon("settings")}<span>設定</span></button>` : `<span class="v2-top-spacer"></span>`}</header><div class="v2-issue"><span>${issueDate()}</span><span>${versionLabel()}</span></div>${pageMasthead()}`;
@@ -156,15 +160,25 @@
     const heads={
       moneyRecord:["money","MONEY LOG","支出・収入を記録"],moneyOutlook:["money","MONEY OUTLOOK","お金の見通し"],moneyAnalysis:["money","MONEY ANALYSIS","直近30日の動き"],
       healthRecord:["heart","HEALTH LOG","今日の調子を残す"],healthAnalysis:["body","HEALTH ANALYSIS","体調の分析"],
-      flow:["calendar","DAILY FLOW","一日の流れ"],checklist:["list","CHECKLIST","今日のやること"],theme:["sun","TODAY'S THEME","今日のテーマ"],calendar:["calendar","CALENDAR","週・月を見る"],settings:["folder","SETTINGS","暮らしの設定"]
+      flow:["calendar","DAILY FLOW","一日の流れ"],checklist:["list","CHECKLIST","今日のやること"],theme:["sun","TODAY'S THEME","今日のテーマ"],workLog:["work","WORK LOG","仕事の記録"],calendar:["calendar","CALENDAR","週・月を見る"],settings:["folder","SETTINGS","暮らしの設定"]
     };
     return heads[page] ? masthead(...heads[page]) : "";
   }
   function choice(to, tone, i, label, sub, index){ return `<button class="v2-choice" data-v2-go="${to}" data-tone="${tone}">${index ? `<em class="v2-choice-index">${esc2(index)}</em>` : ""}<span class="v2-icon-bed">${icon(i)}</span><span><strong>${label}</strong>${sub ? `<small>${sub}</small>` : ""}</span><span class="v2-chevron">›</span></button>`; }
   function resetViewport(){ window.scrollTo(0,0); document.documentElement.scrollTop=0; document.body.scrollTop=0; }
-  function go(next){ if(next === page) return; stack.push(page); page = next; newAppRender(); resetViewport(); }
-  function back(){ const prev = stack.pop(); if(!prev) return; page = prev; newAppRender(); resetViewport(); }
-  function goHome(){ page = "home"; stack = []; newAppRender(); resetViewport(); }
+  function currentViewport(){ return {x:window.scrollX||document.documentElement.scrollLeft||0,y:window.scrollY||document.documentElement.scrollTop||0}; }
+  function restoreViewport(position){
+    if(!position) return;
+    const restore=()=>window.scrollTo(position.x,position.y);
+    restore();
+    requestAnimationFrame(()=>{ restore(); setTimeout(restore,50); });
+  }
+  let workLogDate = ymd(now());
+  let workLogFormReset = false;
+  let workLogDateViewport = null;
+  function go(next){ if(next === page) return; stack.push(page); if(next === "workLog"){workLogDate=flowDate||ymd(now());workLogFormReset=false;} page = next; newAppRender({preserveScroll:false}); resetViewport(); }
+  function back(){ const prev = stack.pop(); if(!prev) return; page = prev; newAppRender({preserveScroll:false}); resetViewport(); }
+  function goHome(){ page = "home"; stack = []; newAppRender({preserveScroll:false}); resetViewport(); }
   // 旧ホームは廃止。入口は homeV2 に一本化する。
   function home(){ return homeV2(); }
   function branch(kind){
@@ -199,11 +213,25 @@
     const taskDone=tasks.filter(t=>t.done).length;
     return Math.round((habitDone+taskDone)/total*100);
   }
+  function timeValueMinutes(value){if(typeof value!=="string"||!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value))return null;const [h,m]=value.split(":").map(Number);return h*60+m;}
+  function workLogSpan(record){const start=timeValueMinutes(record?.start),end=timeValueMinutes(record?.end);if(start==null||end==null)return null;const span=end>=start?end-start:end+1440-start;return Math.max(0,span);}
+  function workLogMinutes(record){const span=workLogSpan(record);if(span==null)return null;return Math.max(0,span-Math.max(0,Number(record?.breakMinutes)||0));}
+  function formatWorkMinutes(value){if(value==null)return "未記録";const n=Math.max(0,Math.round(Number(value)||0));return `${Math.floor(n/60)}時間${n%60}分`;}
+  function workLog(){
+    const key=workLogDate||ymd(now()),saved=(S.workLogs&&S.workLogs[key])||{},form=workLogFormReset?{}:saved,areas=(S.areas||[]).slice(0,6),checks=new Set(Array.isArray(form.checks)?form.checks:[]);
+    const input=(id,label,type,value,placeholder="")=>`<label class="an-work-field"><span>${label}</span><input id="${id}" type="${type}" value="${esc2(value==null?"":value)}"${placeholder?` placeholder="${placeholder}"`:""}></label>`;
+    const text=(id,label,value,placeholder)=>`<label class="an-work-text"><span>${label}</span><textarea id="${id}" rows="3" placeholder="${placeholder}">${esc2(value||"")}</textarea></label>`;
+    const projectChecks=areas.length?areas.map(a=>`<label class="an-work-check"><input type="checkbox" data-v2-work-check value="${esc2(a.id)}" ${checks.has(a.id)?"checked":""}><span>${esc2(a.label)}</span></label>`).join(""): `<p class="an-empty">設定にプロジェクトがありません。</p>`;
+    const summary=Object.keys(saved).length?`<section class="an-work-summary"><h2>保存済みの記録</h2><div class="an-work-summary-stats"><div><small>作業時間</small><b>${formatWorkMinutes(workLogMinutes(saved))}</b></div><div><small>休憩</small><b>${Math.max(0,Number(saved.breakMinutes)||0)}分</b></div></div>${saved.project?`<p><strong>プロジェクト</strong>${esc2(saved.project)}</p>`:""}${saved.implementation?`<p><strong>実装内容</strong>${esc2(saved.implementation)}</p>`:""}${saved.quality?`<p><strong>品質改善</strong>${esc2(saved.quality)}</p>`:""}${saved.design?`<p><strong>設計</strong>${esc2(saved.design)}</p>`:""}${saved.insight?`<p><strong>今日の気づき</strong>${esc2(saved.insight)}</p>`:""}${saved.next?`<p><strong>次回やること</strong>${esc2(saved.next)}</p>`:""}</section>`:"";
+    return analogPage("an-work-log","work","WORK LOG","仕事の記録",`<p class="an-date-note">予定とは別に、仕事の実績と振り返りを残します。</p><section class="an-work-form"><label class="an-work-date"><span>日付</span><input id="v2WorkDate" type="date" value="${esc2(key)}"></label><div class="an-work-time-grid">${input("v2WorkStart","作業開始","time",form.start)}${input("v2WorkEnd","作業終了","time",form.end)}</div>${input("v2WorkBreak","休憩分","number",form.breakMinutes==null?"":form.breakMinutes,"例：60")}${input("v2WorkProject","プロジェクト / 作業","text",form.project,"例：生活管理アプリ")}</section><section class="an-work-section"><h2>プロジェクト・作業チェック</h2><div class="an-work-checks">${projectChecks}</div></section><section class="an-work-section"><h2>日報テンプレート</h2>${text("v2WorkImplementation","実装内容",form.implementation,"何を作ったか")}${text("v2WorkQuality","品質改善",form.quality,"品質・再発防止で行ったこと")}${text("v2WorkDesign","設計",form.design,"設計判断や共通化")}${text("v2WorkInsight","今日の気づき",form.insight,"気づいたこと")}${text("v2WorkNext","次回やること",form.next,"次に続けること")}</section><button type="button" class="an-save blue" data-v2-work-save>日報を保存</button>${summary}`);
+  }
   function healthMetrics(){
     const ds=healthDays();
     return [
       {id:"sleep",label:"睡眠",min:180,max:600,c:"#4d80ad",kind:"bar",vals:ds.map(d=>{const h=S.health[d]||{},v=sleepMin(h.bed,h.wake);return v||null;}),format:v=>fmtSleep(v)},
       {id:"steps",label:"歩数",min:0,max:12000,c:"#4f986f",kind:"bar",vals:ds.map(d=>{const v=(S.health[d]||{}).steps;return v==null?null:+v;}),format:v=>`${(+v).toLocaleString("ja-JP")}歩`},
+      {id:"work",label:"作業時間",min:0,max:720,c:"#80649c",kind:"bar",vals:ds.map(d=>workLogMinutes((S.workLogs||{})[d])),format:v=>formatWorkMinutes(v)},
+      {id:"break",label:"休憩時間",min:0,max:180,c:"#d2a449",kind:"bar",vals:ds.map(d=>{const r=(S.workLogs||{})[d];return r&&workLogSpan(r)!=null?Math.max(0,Number(r.breakMinutes)||0):null;}),format:v=>`${Math.round(Number(v)||0)}分`},
       {id:"body",label:"からだ",min:1,max:5,c:"#796aa8",kind:"line",marker:"circle",vals:ds.map(d=>{const v=+(S.health[d]||{}).body||0;return v||null;}),format:v=>`${v} / 5`},
       {id:"mind",label:"こころ",min:1,max:5,c:"#ca796b",kind:"line",marker:"square",dash:"5 4",vals:ds.map(d=>{const v=+(S.health[d]||{}).mind||0;return v||null;}),format:v=>`${v} / 5`},
       {id:"checklist",label:"毎日の習慣",min:0,max:100,c:"#d2a449",kind:"line",marker:"triangle",dash:"2 5",vals:ds.map(checklistProgress),format:v=>`${v}%`}
@@ -229,7 +257,7 @@
     const picked=healthChartSelectedPoint&&ds[healthChartSelectedPoint.index]?healthChartSelectedPoint:null;
     const pickedMetric=picked&&healthMetrics().find(m=>m.id===picked.metric), pickedValue=pickedMetric?.vals[picked.index];
     const detail=(!pickedMetric||pickedValue==null)?"":`<p class="an-health-detail" style="--health-detail:${pickedMetric.c}"><strong>${pickedMetric.label} ${pickedMetric.format(pickedValue)}</strong></p>`;
-    return `<div class="v2-health-viewport" data-v2-health-viewport><div class="v2-health-stage" data-v2-health-stage style="--health-chart-scale:${healthChartView.scale};--health-chart-x:${healthChartView.x}px;--health-chart-y:${healthChartView.y}px"><svg class="v2-line-chart v2-health-compare" viewBox="0 0 ${W} ${H}" role="img" aria-label="睡眠と歩数の棒グラフ、からだ・こころ・毎日の習慣の折れ線を重ねた一週間の比較グラフ"><title>一週間の体調比較</title>${grid}${bars}${barHits}${lines}<line x1="${gx}" y1="${base}" x2="${gx+gw}" y2="${base}" stroke="rgba(39,55,68,.4)"></line>${ds.map((d,i)=>`<text x="${x(i)}" y="${H-10}" text-anchor="middle">${"日月火水木金土"[new Date(d+"T00:00:00").getDay()]}</text>`).join("")}</svg></div></div>${detail}`;
+    return `<div class="v2-health-viewport" data-v2-health-viewport><div class="v2-health-stage" data-v2-health-stage style="--health-chart-scale:${healthChartView.scale};--health-chart-x:${healthChartView.x}px;--health-chart-y:${healthChartView.y}px"><svg class="v2-line-chart v2-health-compare" viewBox="0 0 ${W} ${H}" role="img" aria-label="睡眠・歩数・作業時間・休憩時間の棒グラフ、からだ・こころ・毎日の習慣の折れ線を重ねた一週間の比較グラフ"><title>一週間の体調比較</title>${grid}${bars}${barHits}${lines}<line x1="${gx}" y1="${base}" x2="${gx+gw}" y2="${base}" stroke="rgba(39,55,68,.4)"></line>${ds.map((d,i)=>`<text x="${x(i)}" y="${H-10}" text-anchor="middle">${"日月火水木金土"[new Date(d+"T00:00:00").getDay()]}</text>`).join("")}</svg></div></div>${detail}`;
   }
   function healthAnalysis(){const labels=[["sleep","睡眠","#376b91"],["steps","歩数","#39785d"],["body","からだ","#7263a8"],["mind","こころ","#c86655"]];return `<section class="v2-page v2-health-analysis">${top(titleFor(page))}<p class="v2-kicker">${icon("chart")}HEALTH ANALYSIS</p><h2 class="v2-page-lead">一週間の相関</h2><div class="v2-chart-block"><h2>睡眠・歩数・調子の変化</h2><div class="v2-metric-toggle">${labels.map(([id,l,c])=>`<button class="${metricOn[id]?"":"off"}" data-v2-metric="${id}"><i style="background:${c}"></i>${l}</button>`).join("")}</div>${healthChart()}</div><div class="v2-chart-block"><h2>振り返り</h2><div class="v2-outline-row"><i>${icon("moon")}</i><span>睡眠が短い日<small>5時間未満の日</small></span><strong>${healthDays().filter(d=>(sleepMin((S.health[d]||{}).bed,(S.health[d]||{}).wake)||0)<360).length}日</strong></div><div class="v2-outline-row"><i>${icon("foot")}</i><span>よく歩いた日<small>8,000歩以上の日</small></span><strong class="v2-green">${healthDays().filter(d=>+(S.health[d]||{}).steps>=8000).length}日</strong></div></div></section>`;}
   function flow(){
@@ -306,7 +334,7 @@
   function branch(kind){
     const record = kind === "record";
     const today = kind === "today";
-    const data = record ? [["moneyRecord","blue","money","支出・収入","金額、方法、カテゴリーを記録"],["healthRecord","green","heart","こころとからだ","今日の調子を記録"]] : today ? [["flow","purple","calendar","一日の流れ","予定と現在時刻を見る"],["theme","yellow","sun","テーマ設定","今日の軸をひとことで"],["ideas","blue","edit","アイデアと目標","プラグイン・映像・今月の目標"]] : [["moneyAnalysis","blue","money","お金の分析","支払い方法とカテゴリーの傾向"],["healthAnalysis","green","body","体調の分析","睡眠・歩数・こころ・からだ"]];
+    const data = record ? [["moneyRecord","blue","money","支出・収入","金額、方法、カテゴリーを記録"],["healthRecord","green","heart","こころとからだ","今日の調子を記録"]] : today ? [["flow","purple","calendar","一日の流れ","予定と現在時刻を見る"],["workLog","blue","work","仕事の記録","作業・休憩・日報を残す"],["theme","yellow","sun","テーマ設定","今日の軸をひとことで"],["ideas","blue","edit","アイデアと目標","プラグイン・映像・今月の目標"]] : [["moneyAnalysis","blue","money","お金の分析","支払い方法とカテゴリーの傾向"],["healthAnalysis","green","body","体調の分析","睡眠・歩数・こころ・からだ"]];
     const head = record ? ["edit","RECORD","記録する"] : today ? ["sun","TODAY","今日を整える"] : ["chart","REVIEW","見える化する"];
     return analogPage("an-branch",head[0],head[1],head[2],`<div class="an-choice-list">${data.map(x=>analogChoice(...x)).join("")}</div>`);
   }
@@ -445,7 +473,7 @@
   function calendar(){const base=new Date(calendarDate+"T00:00:00"),mon=new Date(base);mon.setDate(base.getDate()-((base.getDay()+6)%7));let content="";if(calendarMode==="week"){content=`<div class="v2-week">${Array.from({length:7},(_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);const key=ymd(d),bs=allBlocks(key);return `<button class="v2-week-day ${key===ymd(now())?"today":""}" data-v2-cal-date="${key}"><span>${"月火水木金土日"[i]}</span><b>${d.getDate()}</b>${bs.slice(0,3).map(b=>`<i class="v2-cal-dot" style="background:${esc2(b.color||catOf(b.cat).color)}"></i>`).join("")}</button>`}).join("")}</div>`;}else{const y=base.getFullYear(),m=base.getMonth(),days=new Date(y,m+1,0).getDate(),off=(new Date(y,m,1).getDay()+6)%7;content=`<div class="v2-month">${Array.from({length:off},()=>"<span></span>").join("")}${Array.from({length:days},(_,i)=>{const d=i+1,key=`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`,has=allBlocks(key).length;return `<button class="${key===ymd(now())?"today ":""}${has?"has":""}" data-v2-cal-date="${key}">${d}</button>`}).join("")}</div>`;}const period=calendarMode==="week"?`${mon.getMonth()+1}月${mon.getDate()}日からの1週間`:`${base.getFullYear()}年${base.getMonth()+1}月`;return analogPage("an-calendar","calendar","CALENDAR",period,`<div class="an-calendar-switch"><button class="${calendarMode==="week"?"on":""}" data-v2-cal-mode="week">1週間</button><button class="${calendarMode==="month"?"on":""}" data-v2-cal-mode="month">1か月</button></div>${content}<p class="an-empty">日付をタップすると、その日の時間割を開きます。</p>`);}
   function settingsV2(){const cfg=syncCfg();return analogPage("an-settings","settings","SETTINGS","くらしの設定",`<div class="an-settings v2-settings">${[["refresh","同期・歩数／睡眠",cfg.token&&cfg.gistId?"同期済み・アプリを開くと更新します":"未接続",`<p>歩数と睡眠は、設定済みのiPhoneショートカット／同期から読み込みます。</p><label>GitHubトークン</label><input id="v2SyncToken" type="password" autocomplete="off" placeholder="初回設定時のみ入力"><label>Gist ID</label><input id="v2SyncGist" value="${esc2(cfg.gistId||"")}" placeholder="2台目のみ入力"><button class="an-small-action" data-v2-sync-start>同期を設定・開始</button><button class="an-small-action" data-v2-sync>今すぐ同期する</button><button class="an-small-action" data-v2-role>${cfg.role==="ro"?"記録する端末にする":"見るだけの端末にする"}</button>`],["list","毎日の習慣","今日の流れに表示する項目",`<div class="an-habits">${habitList().map(h=>`<span class="an-habit">${habitIcon(h)}<span>${esc2(h.label)}</span></span>`).join("")}</div><label>習慣の名前</label><input id="v2HabitLabel" placeholder="例：ストレッチ"><button class="an-small-action" data-v2-habit-add>習慣を追加</button>`],["wallet","お金の初期設定","カード上限・方法・カテゴリー",`<label>カードの上限</label><input id="v2CardCap" type="text" inputmode="numeric" value="${(+S.cardCap||0).toLocaleString("ja-JP")}"><button class="an-small-action" data-v2-card-cap>上限を保存</button><label>支出の方法</label><input id="v2MethodAdd" placeholder="例：交通系IC"><button class="an-small-action" data-v2-method-add>方法を追加</button><label>支出のカテゴリー</label><input id="v2CategoryAdd" placeholder="例：医療費"><button class="an-small-action" data-v2-category-add>カテゴリーを追加</button><label>収入の受け取り方法</label><input id="v2IncomeMethodAdd" placeholder="例：PayPay"><button class="an-small-action" data-v2-income-method-add>方法を追加</button><label>収入のカテゴリー</label><input id="v2IncomeCategoryAdd" placeholder="例：傷病手当"><button class="an-small-action" data-v2-income-category-add>カテゴリーを追加</button>`],["calendar","カレンダー連携","予定の取り込みと表示",`<p>予定は「一日の流れ」から確認・追加できます。</p>`],["download","バックアップ","この端末のデータを保存",`<p>端末の記録を書き出して保管できます。</p><button class="an-small-action" data-v2-export>データを書き出す</button>`]].map(([i,t,s,b])=>`<details><summary><i>${icon(i)}</i><span><strong>${t}</strong><small>${s}</small></span><b>›</b></summary><div class="an-settings-body">${b}</div></details>`).join("")}</div>`,{settings:false});}
   function homeReturn(){ return analogReturn(); }
-  window.newAppRender = function(){const view={home:homeV2,record:()=>branch("record"),today:()=>branch("today"),visualize:()=>branch("visualize"),moneyRecord,moneyOutlook,moneyAnalysis,healthRecord,healthAnalysis,flow,checklist:checklistV2,theme,ideas:ideaNote,calendar,settings:settingsV2}[page]||homeV2;root.innerHTML=view();document.body.dataset.v2Scroll=["home","record","today","visualize"].includes(page)?"locked":"auto";};
+  window.newAppRender = function(){const view={home:homeV2,record:()=>branch("record"),today:()=>branch("today"),visualize:()=>branch("visualize"),moneyRecord,moneyOutlook,moneyAnalysis,healthRecord,healthAnalysis,flow,checklist:checklistV2,theme,ideas:ideaNote,workLog,calendar,settings:settingsV2}[page]||homeV2;root.innerHTML=view();document.body.dataset.v2Scroll=["home","record","today","visualize"].includes(page)?"locked":"auto";};
   function syncStatusLabel(cfg){
     if(!(cfg.token&&cfg.gistId)) return "未接続";
     if(cfg.lastSyncError) return "接続エラー（確認が必要）";
@@ -453,7 +481,8 @@
     return "同期設定済み（通信未確認）";
   }
   const baseNewAppRender = window.newAppRender;
-  window.newAppRender = function(){
+  window.newAppRender = function(options={}){
+    const position=options.preserveScroll===false?null:currentViewport();
     baseNewAppRender();
     if(page === "settings"){
       const status=root.querySelector(".an-settings details:first-child summary small");
@@ -463,8 +492,7 @@
       const sleepCard=root.querySelector(".v2-health-paper-item:nth-child(3)"), sleepEdit=root.querySelector(".v2-sleep-edit");
       if(sleepCard && sleepEdit) sleepCard.appendChild(sleepEdit);
     }
-    resetViewport();
-    requestAnimationFrame(resetViewport);
+    restoreViewport(position);
   };
   // 画面遷移を待たず、ホームの時計と時間割の現在線を毎秒更新する。
   function paintLiveClock(){
@@ -1089,8 +1117,8 @@
   const settingsV2WithBrand=settingsV2;
   settingsV2=function(){return settingsV2WithBrand().replaceAll("暮らしの設定","くらしの設定");};
   const renderWithSeparatedSync=window.newAppRender;
-  window.newAppRender=function(){
-    renderWithSeparatedSync();
+  window.newAppRender=function(options={}){
+    renderWithSeparatedSync(options);
     if(page==="settings"){
       root.querySelector('[data-v2-sync-status="refresh"]')?.replaceChildren(deviceSyncStatus(syncCfg()));
       root.querySelector('[data-v2-sync-status="health"]')?.replaceChildren(healthSyncStatus(healthSyncCfg()));
@@ -1475,15 +1503,112 @@
   function healthMean(values){const x=values.filter(v=>v!=null);return x.length?x.reduce((a,b)=>a+b,0)/x.length:0;}
   function healthCorr(a,b){const pairs=a.map((v,i)=>[v,b[i]]).filter(([x,y])=>x!=null&&y!=null);if(pairs.length<3)return null;const ax=healthMean(pairs.map(p=>p[0])),ay=healthMean(pairs.map(p=>p[1]));const n=pairs.reduce((s,[x,y])=>s+(x-ax)*(y-ay),0),dx=Math.sqrt(pairs.reduce((s,[x])=>s+(x-ax)**2,0)),dy=Math.sqrt(pairs.reduce((s,[,y])=>s+(y-ay)**2,0));return dx&&dy?n/(dx*dy):null;}
   healthAnalysis=function(){
-    const ms=healthMetrics(),by=id=>ms.find(m=>m.id===id),sleep=by("sleep"),steps=by("steps"),body=by("body"),mind=by("mind"),checks=by("checklist");const sleepAvg=healthMean(sleep.vals),stepAvg=healthMean(steps.vals),kcal=Math.round(stepAvg*.038);const corr=healthCorr(sleep.vals,mind.vals);const insight=healthAnalysisOpen?`<article class="v2-health-ai"><strong>${corr==null?"記録をためると傾向を出せます":corr>.3?"睡眠とこころに同じ方向の動きがあります":"今週は睡眠とこころの強い連動は見えていません"}</strong><p>これは端末内の記録から算出した目安です。医療上の判断には使わず、気になる変化は専門家に相談してください。</p></article>`:"";
-    return analogPage("an-health-analysis","body","HEALTH ANALYSIS","体調の分析",`<section class="an-chart-section"><h2>睡眠・歩数・調子の変化</h2><div class="an-metric-toggle">${ms.map(m=>`<button class="${metricOn[m.id]?"":"off"}" data-v2-metric="${m.id}"><i style="background:${m.c}"></i>${m.label}</button>`).join("")}</div>${healthChart()}</section><section class="an-chart-section"><h2>振り返り</h2><div class="v2-health-review"><div><small>平均睡眠</small><b>${fmtSleep(Math.round(sleepAvg))}</b></div><div><small>平均歩数</small><b>${Math.round(stepAvg).toLocaleString("ja-JP")}歩</b></div><div><small>推定消費</small><b>${kcal} kcal</b></div><div><small>毎日の習慣</small><b>${Math.round(healthMean(checks.vals))}%</b></div></div><button type="button" class="an-wide-action" data-v2-health-analysis>${icon("chart")}<span>記録から分析する</span><b>›</b></button>${insight}</section>`);
+    const ms=healthMetrics(),by=id=>ms.find(m=>m.id===id),sleep=by("sleep"),steps=by("steps"),mind=by("mind"),checks=by("checklist"),work=by("work"),breaks=by("break");const sleepAvg=healthMean(sleep.vals),stepAvg=healthMean(steps.vals),workAvg=work.vals.some(v=>v!=null)?healthMean(work.vals):null,breakAvg=breaks.vals.some(v=>v!=null)?healthMean(breaks.vals):null,kcal=Math.round(stepAvg*.038);const corr=healthCorr(sleep.vals,mind.vals);const insight=healthAnalysisOpen?`<article class="v2-health-ai"><strong>${corr==null?"記録をためると傾向を出せます":corr>.3?"睡眠とこころに同じ方向の動きがあります":"今週は睡眠とこころの強い連動は見えていません"}</strong><p>これは端末内の記録から算出した目安です。医療上の判断には使わず、気になる変化は専門家に相談してください。</p></article>`:"";
+    return analogPage("an-health-analysis","body","HEALTH ANALYSIS","体調の分析",`<section class="an-chart-section"><h2>睡眠・歩数・調子・仕事の変化</h2><div class="an-metric-toggle">${ms.map(m=>`<button class="${metricOn[m.id]?"":"off"}" data-v2-metric="${m.id}"><i style="background:${m.c}"></i>${m.label}</button>`).join("")}</div>${healthChart()}</section><section class="an-chart-section"><h2>振り返り</h2><div class="v2-health-review"><div><small>平均睡眠</small><b>${fmtSleep(Math.round(sleepAvg))}</b></div><div><small>平均歩数</small><b>${Math.round(stepAvg).toLocaleString("ja-JP")}歩</b></div><div><small>平均作業</small><b>${formatWorkMinutes(workAvg==null?null:Math.round(workAvg))}</b></div><div><small>平均休憩</small><b>${breakAvg==null?"未記録":`${Math.round(breakAvg)}分`}</b></div><div><small>推定消費</small><b>${kcal} kcal</b></div><div><small>毎日の習慣</small><b>${Math.round(healthMean(checks.vals))}%</b></div></div><button type="button" class="an-wide-action" data-v2-health-analysis>${icon("chart")}<span>記録から分析する</span><b>›</b></button>${insight}</section>`);
   };
   root.addEventListener("click",event=>{const button=event.target.closest("[data-v2-health-analysis]");if(!button)return;event.stopImmediatePropagation();healthAnalysisOpen=!healthAnalysisOpen;newAppRender();},true);
-  root.addEventListener("click",event=>{const hit=event.target.closest("[data-v2-health-bars]");if(!hit)return;event.stopImmediatePropagation();const i=+hit.dataset.v2HealthBarIndex,ids=hit.dataset.v2HealthBars.split(",");healthBarCycle[i]=(healthBarCycle[i]||0)%ids.length;healthChartSelectedPoint={index:i,metric:ids[healthBarCycle[i]++]};newAppRender();},true);
-  root.addEventListener("click",event=>{const line=event.target.closest("[data-v2-health-line]");if(!line)return;event.stopImmediatePropagation();const svg=line.closest("svg"),r=svg.getBoundingClientRect(),i=Math.max(0,Math.min(healthDays().length-1,Math.round(((event.clientX-r.left)/r.width*360-34)/(314/Math.max(1,healthDays().length-1)))));healthChartSelectedPoint={index:i,metric:line.dataset.v2HealthLine};newAppRender();},true);
-  root.addEventListener("pointerdown",event=>{const vp=event.target.closest("[data-v2-health-viewport]");if(!vp)return;healthChartPointers.set(event.pointerId,{x:event.clientX,y:event.clientY});if(healthChartPointers.size===2){const a=[...healthChartPointers.values()];vp._v2Pinch={d:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y),s:healthChartView.scale};event.preventDefault();}},true);
-  root.addEventListener("pointermove",event=>{const vp=event.target.closest("[data-v2-health-viewport]");if(!vp||!healthChartPointers.has(event.pointerId))return;healthChartPointers.set(event.pointerId,{x:event.clientX,y:event.clientY});if(healthChartPointers.size<2||!vp._v2Pinch)return;const a=[...healthChartPointers.values()],d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);healthChartView.scale=Math.max(.85,Math.min(2.6,vp._v2Pinch.s*d/vp._v2Pinch.d));vp.querySelector("[data-v2-health-stage]")?.style.setProperty("--health-chart-scale",healthChartView.scale);event.preventDefault();},true);
-  root.addEventListener("pointerup",event=>{healthChartPointers.delete(event.pointerId);},true);
+  root.addEventListener("pointerdown",event=>{
+    const date=event.target.closest("#v2WorkDate");
+    if(date&&page==="workLog")workLogDateViewport=currentViewport();
+    const metric=event.target.closest("[data-v2-metric]");
+    if(metric)metricViewport=currentViewport();
+  },true);
+  root.addEventListener("click",event=>{
+    const metric=event.target.closest("[data-v2-metric]");
+    if(!metric)return;
+    event.stopImmediatePropagation();
+    const position=metricViewport||currentViewport();
+    metricOn[metric.dataset.v2Metric]=!metricOn[metric.dataset.v2Metric];
+    newAppRender({preserveScroll:false});
+    metricViewport=null;
+    restoreViewport(position);
+  },true);
+  root.addEventListener("change",event=>{
+    const date=event.target.closest("#v2WorkDate");
+    if(!date||!date.value)return;
+    const position=workLogDateViewport||currentViewport();
+    workLogDate=date.value;workLogFormReset=false;newAppRender({preserveScroll:false});
+    workLogDateViewport=null;
+    restoreViewport(position);
+  },true);
+  root.addEventListener("click",event=>{
+    const button=event.target.closest("[data-v2-work-save]");
+    if(!button)return;
+    event.stopImmediatePropagation();
+    if(!canWrite())return;
+    const date=document.getElementById("v2WorkDate")?.value||workLogDate||ymd(now()),start=document.getElementById("v2WorkStart")?.value||"",end=document.getElementById("v2WorkEnd")?.value||"",breakMinutes=Math.max(0,Math.min(720,Math.round(Number(document.getElementById("v2WorkBreak")?.value)||0))),span=workLogSpan({start,end});
+    if(span==null)return toast("作業開始と作業終了を入力してください");
+    if(breakMinutes>span)return toast("休憩分は作業時間以内にしてください");
+    S.workLogs=S.workLogs&&typeof S.workLogs==="object"?S.workLogs:{};
+    S.workLogs[date]={id:S.workLogs[date]?.id||uid(),start,end,breakMinutes,project:document.getElementById("v2WorkProject")?.value.trim()||"",checks:Array.from(root.querySelectorAll("[data-v2-work-check]:checked")).map(x=>x.value),implementation:document.getElementById("v2WorkImplementation")?.value.trim()||"",quality:document.getElementById("v2WorkQuality")?.value.trim()||"",design:document.getElementById("v2WorkDesign")?.value.trim()||"",insight:document.getElementById("v2WorkInsight")?.value.trim()||"",next:document.getElementById("v2WorkNext")?.value.trim()||""};
+    workLogDate=date;workLogFormReset=true;save();newAppRender();successToast("仕事の記録を保存しました");
+  },true);
+  function healthChartBounds(vp){
+    const rect=vp.getBoundingClientRect(), scale=Math.max(1,healthChartView.scale||1);
+    return {x:Math.max(0,(rect.width*(scale-1))/2),y:Math.max(0,(rect.height*(scale-1))/2)};
+  }
+  function syncHealthChartView(vp){
+    if(healthChartView.scale<=1.001){ healthChartView={scale:1,x:0,y:0}; }
+    const bounds=healthChartBounds(vp);
+    healthChartView.x=Math.max(-bounds.x,Math.min(bounds.x,healthChartView.x));
+    healthChartView.y=Math.max(-bounds.y,Math.min(bounds.y,healthChartView.y));
+    const stage=vp.querySelector("[data-v2-health-stage]");
+    if(!stage) return;
+    stage.style.setProperty("--health-chart-scale",healthChartView.scale);
+    stage.style.setProperty("--health-chart-x",`${healthChartView.x}px`);
+    stage.style.setProperty("--health-chart-y",`${healthChartView.y}px`);
+  }
+  root.addEventListener("click",event=>{if(Date.now()<healthChartIgnoreClickUntil)return;const hit=event.target.closest("[data-v2-health-bars]");if(!hit)return;event.stopImmediatePropagation();const i=+hit.dataset.v2HealthBarIndex,ids=hit.dataset.v2HealthBars.split(",");healthBarCycle[i]=(healthBarCycle[i]||0)%ids.length;healthChartSelectedPoint={index:i,metric:ids[healthBarCycle[i]++]};newAppRender();},true);
+  root.addEventListener("click",event=>{if(Date.now()<healthChartIgnoreClickUntil)return;const line=event.target.closest("[data-v2-health-line]");if(!line)return;event.stopImmediatePropagation();const svg=line.closest("svg"),r=svg.getBoundingClientRect(),i=Math.max(0,Math.min(healthDays().length-1,Math.round(((event.clientX-r.left)/r.width*360-34)/(314/Math.max(1,healthDays().length-1)))));healthChartSelectedPoint={index:i,metric:line.dataset.v2HealthLine};newAppRender();},true);
+  root.addEventListener("pointerdown",event=>{
+    const vp=event.target.closest("[data-v2-health-viewport]");
+    if(!vp || (event.pointerType==="mouse"&&event.button!==0)) return;
+    healthChartPointers.set(event.pointerId,{x:event.clientX,y:event.clientY});
+    vp.setPointerCapture?.(event.pointerId);
+    if(healthChartPointers.size===1){
+      healthChartGesture={vp,pointerId:event.pointerId,mode:healthChartView.scale>1.001?"pan":"idle",startX:event.clientX,startY:event.clientY,baseX:healthChartView.x,baseY:healthChartView.y,moved:false};
+      return;
+    }
+    if(healthChartPointers.size===2){
+      const points=[...healthChartPointers.values()];
+      healthChartGesture={vp,mode:"pinch",startDistance:Math.hypot(points[0].x-points[1].x,points[0].y-points[1].y),startScale:healthChartView.scale,moved:false};
+      event.preventDefault();
+    }
+  },true);
+  root.addEventListener("pointermove",event=>{
+    if(!healthChartPointers.has(event.pointerId)) return;
+    const gesture=healthChartGesture, vp=gesture?.vp||event.target.closest("[data-v2-health-viewport]");
+    if(!vp) return;
+    healthChartPointers.set(event.pointerId,{x:event.clientX,y:event.clientY});
+    if(healthChartPointers.size>=2 && gesture?.mode==="pinch"){
+      const points=[...healthChartPointers.values()], distance=Math.hypot(points[0].x-points[1].x,points[0].y-points[1].y);
+      healthChartView.scale=Math.max(1,Math.min(2.6,gesture.startScale*distance/Math.max(1,gesture.startDistance)));
+      gesture.moved=true;
+      syncHealthChartView(vp);
+      event.preventDefault();
+      return;
+    }
+    if(gesture?.mode==="pan" && gesture.pointerId===event.pointerId){
+      const dx=event.clientX-gesture.startX,dy=event.clientY-gesture.startY;
+      if(Math.hypot(dx,dy)>2){
+        gesture.moved=true;
+        healthChartView.x=gesture.baseX+dx;
+        healthChartView.y=gesture.baseY+dy;
+        syncHealthChartView(vp);
+        event.preventDefault();
+      }
+    }
+  },{capture:true,passive:false});
+  function finishHealthChartPointer(event){
+    const gesture=healthChartGesture;
+    if(gesture?.moved) healthChartIgnoreClickUntil=Date.now()+280;
+    const vp=gesture?.vp||event.target.closest?.("[data-v2-health-viewport]");
+    vp?.releasePointerCapture?.(event.pointerId);
+    healthChartPointers.delete(event.pointerId);
+    if(healthChartPointers.size<2) healthChartGesture=null;
+  }
+  root.addEventListener("pointerup",finishHealthChartPointer,true);
+  root.addEventListener("pointercancel",finishHealthChartPointer,true);
   /*
    * Record correction + completed-shopping swipe actions.
    * These are kept here, inside the UI closure, so they use the same data
