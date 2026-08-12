@@ -357,7 +357,7 @@ body[data-app-shell="v2"] .wrap{width:100%!important;max-width:390px!important;m
 @media(max-width:420px){.an-work-select-grid{grid-template-columns:1fr}.an-work-time-grid{gap:8px}.an-work-time-value{font-size:15px}}
 
 /* Shared time axis: the lane filter changes the view without creating separate schedules. */
-.an-flow-filter{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;margin:0 0 7px;padding:4px;border:1px solid #c8b99f;border-radius:12px;background:#eee4d3}
+.an-flow-filter{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:4px;margin:0 0 7px;padding:4px;border:1px solid #c8b99f;border-radius:12px;background:#eee4d3}
 .an-flow-filter button{min-width:0;min-height:40px;padding:0 4px;border:0;border-radius:8px;background:transparent;color:#68726a;font-family:var(--a-sans);font-size:12px;font-weight:800;line-height:1;white-space:nowrap}
 .an-flow-filter button.on{background:#796aa8;color:#fff}
 .an-flow-filter-note{margin:0 0 13px;color:#68726a;font-size:11px;font-weight:700;line-height:1.35;text-align:center}

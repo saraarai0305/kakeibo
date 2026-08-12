@@ -80,8 +80,23 @@ window.addEventListener("load", () => setTimeout(async () => {
     if (!workEvent) throw new Error("UI smoke: editable work event");
     workEvent.click();
     await pause(100);
+    if (!document.querySelector('[data-v2-event-work-item-id].is-selected') || document.querySelectorAll('.v2-event.is-selected .v2-event-resize').length !== 2 || !document.querySelector('.v2-event.is-selected [data-v2-event-edit]')?.textContent.includes('予定を編集') || document.querySelector('.an-flow-edit-toolbar') || document.querySelector('[data-v2-event-sheet-layer]')) throw new Error("UI smoke: event select handles");
+    document.querySelector('.an-flow-filter').click();
+    await pause(100);
+    if (document.querySelector('.v2-event.is-selected')) throw new Error("UI smoke: outside tap clears selection");
+    const selectedWorkEvent = Array.from(document.querySelectorAll('[data-v2-event-work-item-id]')).find(el => el.textContent.includes('UI smoke work'));
+    if (!selectedWorkEvent) throw new Error("UI smoke: reselect work event");
+    selectedWorkEvent.click();
+    await pause(80);
+    document.querySelector('[data-v2-event-work-item-id].is-selected [data-v2-event-edit]')?.click();
+    await pause(100);
     if (!document.querySelector('#v2EventPriority') || !document.querySelector('#v2EventStatus')) throw new Error("UI smoke: event priority/status edit");
-    tap('[data-v2-event-close]', "close event editor");
+    tap('[data-v2-event-save]', "save selected event");
+    await pause(100);
+    if (!document.querySelector('[data-v2-flow-undo]')) throw new Error("UI smoke: event undo available");
+    tap('[data-v2-flow-undo]', "undo selected event change");
+    await pause(100);
+    if (document.querySelector('[data-v2-flow-undo]')) throw new Error("UI smoke: event undo consumed");
     tap('[data-v2-plan-open]', "open existing work planner");
     selectValue('#v2TimelineKind', 'work-existing', "existing work catalog kind");
     const existingWork = document.querySelector('#v2TimelineExistingWork option:not([value=""])');
@@ -118,6 +133,9 @@ window.addEventListener("load", () => setTimeout(async () => {
     if (!dailyEvent) throw new Error("UI smoke: recurring event");
     dailyEvent.click();
     await pause(80);
+    if (!document.querySelector('.v2-event.is-selected') || document.querySelectorAll('.v2-event.is-selected .v2-event-resize').length !== 2) throw new Error("UI smoke: recurring event select");
+    document.querySelector('.v2-event.is-selected [data-v2-event-edit]')?.click();
+    await pause(80);
     if (!document.querySelector('[data-v2-event-delete]')?.textContent.includes('毎日の予定から削除')) throw new Error("UI smoke: recurring delete label");
     tap('[data-v2-event-close]', "close recurring editor");
     tap('[data-v2-back]', "flow → home after work catalog");
@@ -141,14 +159,27 @@ window.addEventListener("load", () => setTimeout(async () => {
     if (!linkedPriorityEvent || !linkedPriorityEvent.getAttribute('style')?.includes('#c85d54')) throw new Error("UI smoke: linked priority color update");
     tap('[data-v2-back]', "flow → home before linked work log");
     tap('[data-v2-go="workLog"]', "today → linked work log");
-    if (!document.querySelector('[data-v2-work-project]') || !document.querySelector('[data-v2-work-item-for-project]') || document.querySelectorAll('.an-work-check').length) throw new Error("UI smoke: linked work catalog");
+    if (!document.querySelector('#v2WorkProjectAdd') || !document.querySelector('[data-v2-work-project-row]') || !document.querySelector('[data-v2-work-item-for-project]') || document.querySelectorAll('.an-work-check').length || document.querySelectorAll('input[type="checkbox"][data-v2-work-project]').length) throw new Error("UI smoke: linked work catalog");
     if (!Array.from(document.querySelectorAll('[data-v2-work-item-for-project] option')).some(o => o.textContent.includes('UI smoke work'))) throw new Error("UI smoke: linked work item option");
-    if (document.querySelectorAll('[data-v2-work-project]').length < 2) throw new Error("UI smoke: multiple work projects");
+    if (document.querySelectorAll('[data-v2-work-project-row]').length < 2) {
+      const projectAdd = document.querySelector('#v2WorkProjectAdd');
+      const nextProject = Array.from(projectAdd?.options || []).find(option => option.value);
+      if (!nextProject) throw new Error("UI smoke: second work project option");
+      selectValue('#v2WorkProjectAdd', nextProject.value, "add second work project");
+      await pause(80);
+    }
+    if (document.querySelectorAll('[data-v2-work-project-row]').length < 2 || !Array.from(document.querySelectorAll('[data-v2-work-project-row]')).every(row => row.textContent.trim())) throw new Error("UI smoke: multiple work projects");
     tap('[data-v2-back]', "linked work log → today");
     tap('[data-v2-go="flow"]', "today → flow after linked work log");
     tap('[data-v2-go="calendar"]', "flow → calendar");
     tap('[data-v2-cal-mode="month"]', "calendar month mode");
-    if (!document.querySelector('.v2-month')) throw new Error("UI smoke: month calendar");
+    if (!document.querySelector('.an-calendar-month-grid') || !document.querySelector('[data-v2-cal-nav="-1"]') || !document.querySelector('[data-v2-cal-today]')) throw new Error("UI smoke: month calendar controls");
+    if (!document.querySelector('.an-calendar-month-summary') || !document.querySelector('.an-calendar-upcoming-list')) throw new Error("UI smoke: month calendar overview");
+    tap('[data-v2-cal-mode="week"]', "calendar week mode");
+    if (document.querySelectorAll('.an-calendar-week-spot').length !== 7 || document.querySelectorAll('.an-calendar-day-card').length !== 7) throw new Error("UI smoke: week calendar agenda");
+    tap('[data-v2-cal-lane="work"]', "calendar work filter");
+    if (document.querySelector('.an-calendar-filter button.on')?.dataset.v2CalLane !== 'work') throw new Error("UI smoke: calendar lane filter");
+    tap('[data-v2-cal-lane="common"]', "calendar common filter");
     tap('[data-v2-back]', "calendar → flow");
     tap('[data-v2-back]', "flow → home");
     tap('[data-v2-go="healthRecord"]', "home → health record");
@@ -191,6 +222,13 @@ $uiV2 = Get-Content "$root\ui-v2.js" -Raw -Encoding UTF8
 if ([regex]::Matches($uiV2, 'window\.newAppRender\s*=').Count -ne 1) { Write-Error "newAppRender の入口が複数あります" }
 if ($uiV2 -match 'baseNewAppRender|renderWithSeparatedSync') { Write-Error "旧レンダーラッパーが残っています" }
 "OK  レンダー入口は単一"
+
+if ($uiV2 -notmatch 'press\.timer\s*=\s*setTimeout') { Write-Error "予定中央の長押しタイマーがありません" }
+"OK  予定中央の長押しタイマーあり"
+if ($uiV2 -notmatch 'flowDragClickGuard' -or $uiV2 -notmatch 'flowDragClickGuard=true' -or $uiV2 -notmatch 'flowDragClickGuard=false') { Write-Error "ドラッグ後クリック抑制がありません" }
+"OK  ドラッグ後クリック抑制あり"
+if ($uiV2 -notmatch 'typeof isReadOnly.*isReadOnly\(\)' -or $uiV2 -notmatch 'selected&&writable') { Write-Error "時間割の読み取り専用ガードがありません" }
+"OK  時間割の読み取り専用ガードあり"
 
 # PWAが古いCSS/JSをキャッシュすると、公開URLとホーム画面アプリの表示が食い違う。
 # 画面側とService Worker側の主要資産は、BUILDと同じクエリ版を必ず持たせる。
@@ -236,6 +274,8 @@ if ($bad) { $bad | ForEach-Object { Write-Host $_ -ForegroundColor Red }; Remove
 
 $html = Get-Content $dom -Raw -Encoding UTF8
 if ($html -notmatch 'data-ui-smoke="ok"') {
+  $smokeState = [regex]::Match($html, 'data-ui-smoke="([^"]+)"').Groups[1].Value
+  if ($smokeState) { Write-Host "SMOKE $smokeState" -ForegroundColor Red }
   Remove-Item $test -Force
   Write-Error "画面遷移のスモークテストに失敗しました"
 }

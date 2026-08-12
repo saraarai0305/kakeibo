@@ -145,6 +145,7 @@ body[data-app-shell="v2"]{min-height:100dvh!important}
 .an-flow-timeline-shell>.an-flow-lane-guide,.an-flow-timeline-shell>.v2-timeline{width:100%!important;box-sizing:border-box!important}
 .an-flow-lane-guide{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
 .an-flow-lane-guide span{gap:5px!important}
+.an-flow-lane-guide span:first-child{position:relative!important;border-right:0!important}
 .an-flow-lane-guide .v2-icon{width:16px!important;height:16px!important;flex:none!important;color:#796aa8!important}
 .an-flow-lane-guide span:last-child .v2-icon{color:#4f986f!important}
 .an-flow .v2-timeline:after{left:50%!important;transform:translateX(-.5px)!important}
@@ -250,12 +251,17 @@ body[data-app-shell="v2"]{min-height:100dvh!important}
    User-created plans are buttons so their full title can be inspected in a sheet;
    the timeline itself stays readable and keeps its paper rhythm. */
 .an-flow .v2-event{appearance:none!important;border:0!important;text-align:left!important;font:inherit!important;cursor:pointer!important}
-.an-flow .v2-event[data-v2-event-editable="true"]{touch-action:none!important;cursor:grab!important;user-select:none!important;-webkit-user-select:none!important}
+.an-flow .v2-event[data-v2-event-editable="true"]{touch-action:none!important;cursor:pointer!important;user-select:none!important;-webkit-user-select:none!important}
+.an-flow .v2-event.is-selected{z-index:7!important;outline:2px solid #315674!important;outline-offset:2px!important;box-shadow:4px 5px 0 rgba(73,56,36,.2)!important;overflow:visible!important}
 .an-flow .v2-event.is-dragging{z-index:6!important;opacity:.94!important;cursor:grabbing!important;box-shadow:4px 5px 0 rgba(73,56,36,.2)!important;transition:none!important}
 .an-flow .v2-event.is-resizing{z-index:6!important;opacity:.96!important;box-shadow:4px 5px 0 rgba(73,56,36,.2)!important;transition:none!important}
-.an-flow .v2-event-resize{position:absolute!important;z-index:4!important;right:0!important;left:0!important;display:block!important;height:18px!important;touch-action:none!important}
-.an-flow .v2-event-resize-start{top:0!important;cursor:n-resize!important}
-.an-flow .v2-event-resize-end{bottom:0!important;cursor:s-resize!important}
+.an-flow .v2-event-resize{position:absolute!important;z-index:8!important;left:50%!important;display:block!important;width:48px!important;height:13px!important;transform:translateX(-50%)!important;border:1.5px solid #315674!important;border-radius:999px!important;background:#fffaf0!important;box-shadow:0 2px 0 rgba(73,56,36,.18)!important;touch-action:none!important;pointer-events:auto!important;cursor:ns-resize!important}
+.an-flow .v2-event-resize-start{top:-9.5px!important}
+.an-flow .v2-event-resize-end{bottom:-6.5px!important}
+.an-flow .v2-event-edit-action{position:absolute!important;z-index:9!important;top:50%!important;right:7px!important;display:grid!important;place-items:center!important;min-width:64px!important;height:22px!important;margin:0!important;padding:0 6px!important;border:1px solid #315674!important;border-radius:999px!important;background:#fffaf0!important;color:#315674!important;font:800 10px/1 var(--board-font-sans)!important;white-space:nowrap!important;transform:translateY(-50%)!important;box-shadow:1px 2px 0 rgba(73,56,36,.16)!important;cursor:pointer!important;pointer-events:auto!important}
+.an-flow .v2-event.is-selected.is-writable .v2-event-content{padding-right:76px!important}
+.an-flow .v2-event:not(.is-selected) .v2-event-resize{display:none!important;pointer-events:none!important}
+.an-flow-undo{display:block!important;width:100%!important;min-height:35px!important;margin:0 0 12px!important;padding:0 6px!important;border:1px solid #c95f54!important;border-radius:8px!important;background:#fff0ed!important;color:#a8443c!important;font:800 11px/1 inherit!important}
 .an-flow .v2-now b{display:inline-grid!important;place-items:center!important;min-height:30px!important;padding:4px 10px!important;border:1.5px solid #c95f54!important;border-radius:999px!important;background:#fffaf0!important;color:#c95f54!important;line-height:1!important;box-shadow:2px 2px 0 rgba(157,73,62,.12)!important}
 .an-event-sheet-layer{position:fixed!important;z-index:10020!important;inset:0!important;display:grid!important;align-items:end!important;padding:18px!important;background:rgba(33,49,45,.28)!important;animation:an-sheet-in .18s ease-out!important}
 .an-event-sheet{position:relative!important;width:min(100%,520px)!important;margin:0 auto!important;padding:25px 20px 19px!important;border:1.5px solid #bbaa8d!important;border-radius:20px!important;background:#fffaf0!important;color:#21312d!important;box-shadow:0 -8px 30px rgba(50,39,23,.18)!important;animation:an-sheet-up .2s ease-out!important}
@@ -701,3 +707,312 @@ body[data-app-shell="v2"]{min-height:100dvh!important}
 .an-flow .v2-time{height:var(--flow-hour-height)!important}
 .an-flow .v2-event{max-width:100%!important;box-sizing:border-box!important}
 .an-flow .v2-event strong,.an-flow .v2-event span{min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important}
+
+/* v0.31.22: field shells own the visible frame; native controls are only the
+   interaction layer.  This keeps the frame present when Safari hides native
+   date/time text and prevents PC/mobile from choosing different borders. */
+.an-work-time-control,.an-work-date-control,.an-health-date-control,.an-native-time-control{
+  box-sizing:border-box!important;
+  border:1px solid #af9f87!important;
+  border-radius:10px!important;
+  background:#fffaf0!important;
+  overflow:hidden!important;
+}
+.an-work-time-control{display:grid!important;place-items:center!important;width:100%!important;min-height:var(--native-control-height)!important}
+.an-work-date-control{width:100%!important;min-height:var(--native-control-height)!important}
+.an-health-date-control{min-height:38px!important}
+.an-native-time-control{min-height:38px!important}
+.an-work-time-control input,.an-work-date-control input,.an-health-date-control input,.an-native-time-control input{background:transparent!important;border:0!important;border-radius:0!important}
+
+/* The timeline frame contains both the time rail and event area.  Labels are
+   never positioned outside a clipped parent, so the same axis survives at
+   desktop and 390px widths. */
+.an-flow .an-timeline-section{
+  box-sizing:border-box!important;
+  overflow:hidden!important;
+  border:1.5px solid #c8b99f!important;
+  border-radius:19px!important;
+  background:#fffaf0!important;
+  box-shadow:3px 4px 0 rgba(103,82,49,.1)!important;
+}
+.an-flow-timeline-shell{
+  --flow-time-rail:45px!important;
+  box-sizing:border-box!important;
+  min-width:0!important;
+  overflow:hidden!important;
+}
+.an-flow .v2-timeline{
+  position:relative!important;
+  box-sizing:border-box!important;
+  padding-left:var(--flow-time-rail)!important;
+  overflow:hidden!important;
+}
+.an-flow .v2-time{
+  left:0!important;
+  width:var(--flow-time-rail)!important;
+  box-sizing:border-box!important;
+  padding-left:2px!important;
+  text-align:left!important;
+  z-index:2!important;
+}
+.an-flow-timeline-shell[data-v2-flow-view="work"] .v2-event,
+.an-flow-timeline-shell[data-v2-flow-view="life"] .v2-event{
+  left:var(--flow-time-rail)!important;
+  right:auto!important;
+  width:calc(100% - var(--flow-time-rail))!important;
+}
+.an-flow-timeline-shell[data-v2-flow-view="common"] .v2-event{
+  left:calc(var(--event-left,0px) + var(--flow-time-rail))!important;
+  width:calc(var(--event-width,100%) - var(--flow-time-rail))!important;
+  right:auto!important;
+}
+.an-flow .v2-event{max-width:calc(100% - var(--flow-time-rail))!important}
+
+/* v0.31.22: timeline cards have one shared content layer.  The outer button
+   owns position and interaction; title/time stay top-aligned regardless of
+   card height, so long events cannot look as if they start late. */
+.an-flow-timeline-shell{--flow-card-min-height:50px!important}
+.an-flow .v2-event{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+  justify-content:flex-start!important;
+  min-height:var(--flow-card-min-height)!important;
+  padding:8px 11px!important;
+  text-align:left!important;
+}
+.an-flow .v2-event-content{
+  display:block!important;
+  min-width:0!important;
+  margin:0!important;
+  padding:0!important;
+  color:inherit!important;
+  line-height:1!important;
+}
+.an-flow .v2-event-content>strong{
+  display:block!important;
+  min-width:0!important;
+  margin:0!important;
+  line-height:1.2!important;
+}
+.an-flow .v2-event-content>.v2-event-time{
+  display:block!important;
+  min-width:0!important;
+  margin:3px 0 0!important;
+  color:#68726a!important;
+  font-size:11px!important;
+  font-weight:750!important;
+  line-height:1.2!important;
+}
+.an-flow .v2-event-resize{flex:none!important}
+
+/* v0.31.22: keep the time rail and event area as separate coordinate systems.
+   Common-view lane percentages must never be recombined with nested calc(). */
+.an-flow-timeline-shell{
+  padding-left:0!important;
+}
+.an-flow .v2-timeline{
+  padding-left:0!important;
+  border-left:0!important;
+}
+.an-flow .an-flow-time-rail{
+  position:absolute!important;
+  z-index:2!important;
+  top:0!important;
+  bottom:0!important;
+  left:0!important;
+  width:var(--flow-time-rail)!important;
+  min-width:var(--flow-time-rail)!important;
+  pointer-events:none!important;
+}
+.an-flow .an-flow-time-rail .v2-time{
+  left:0!important;
+  right:auto!important;
+  width:100%!important;
+  box-sizing:border-box!important;
+  padding:0 4px 0 0!important;
+  text-align:right!important;
+  white-space:nowrap!important;
+}
+.an-flow .an-flow-event-layer{
+  position:relative!important;
+  z-index:1!important;
+  width:calc(100% - var(--flow-time-rail))!important;
+  min-width:0!important;
+  margin-left:var(--flow-time-rail)!important;
+}
+.an-flow-timeline-shell[data-v2-flow-view] .an-flow-event-layer .v2-event{
+  left:var(--event-left,0)!important;
+  right:auto!important;
+  width:var(--event-width,100%)!important;
+  max-width:100%!important;
+}
+.an-flow .v2-timeline:after{display:none!important}
+.an-flow-timeline-shell[data-v2-flow-view="common"] .v2-timeline:after{
+  content:"";
+  position:absolute;
+  z-index:0;
+  top:0;
+  bottom:0;
+  left:50%;
+  border-left:1px dashed rgba(133,117,94,.45);
+  pointer-events:none;
+  display:block!important;
+}
+
+/* v0.31.22: work/life are split inside the card area, not inside the full
+   frame that also contains the time rail.  The guide keeps the rail as an
+   empty leading column; the divider is owned by the event layer. */
+.an-flow .an-flow-lane-guide{
+  box-sizing:border-box!important;
+  padding-left:var(--flow-time-rail)!important;
+}
+.an-flow-timeline-shell[data-v2-flow-view="common"] .v2-timeline:after{
+  display:none!important;
+}
+.an-flow-timeline-shell[data-v2-flow-view="common"] .an-flow-event-layer:after{
+  content:"";
+  position:absolute;
+  z-index:0;
+  top:0;
+  bottom:0;
+  left:50%;
+  border-left:1px dashed rgba(133,117,94,.45);
+  display:block!important;
+  pointer-events:none;
+}
+
+/* The guide and the timeline divider must paint the same pixel.  Both use a
+   left border owned by the right edge of the work half; border-right here
+   would paint the opposite pixel even when the geometric X is identical. */
+.an-flow-timeline-shell[data-v2-flow-view="common"] .an-flow-lane-guide span:first-child:after{
+  content:"";
+  position:absolute;
+  z-index:1;
+  top:0;
+  bottom:0;
+  left:100%;
+  border-left:1px dashed rgba(133,117,94,.45);
+  pointer-events:none;
+}
+
+/* v0.31.22: the calendar is a planning surface, not only a dot grid.  Week
+   view compares load by day; month view keeps the overview compact and adds
+   a small upcoming agenda. */
+.an-flow .an-flow-actions [data-v2-go="checklist"]{display:none!important}
+.an-calendar-nav{display:grid!important;grid-template-columns:40px minmax(0,1fr) 48px 40px!important;align-items:center!important;gap:6px!important;margin:0 0 14px!important;padding:7px!important;border:1.5px solid #c8b99f!important;border-radius:14px!important;background:#fffaf0!important;box-shadow:2px 2px 0 rgba(103,82,49,.08)!important}
+.an-calendar-nav>button{display:grid!important;place-items:center!important;min-width:0!important;min-height:38px!important;padding:0!important;border:1px solid #c8b99f!important;border-radius:10px!important;background:#f6efe1!important;color:#315674!important;font:800 16px/1 inherit!important}
+.an-calendar-nav>button[data-v2-cal-today]{font-size:11px!important}
+.an-calendar-nav>div{display:grid!important;min-width:0!important;gap:2px!important;text-align:center!important}
+.an-calendar-nav strong{overflow:hidden!important;color:#21312d!important;font-size:14px!important;line-height:1.2!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+.an-calendar-nav small{overflow:hidden!important;color:#85755e!important;font-size:10px!important;line-height:1.2!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+.an-calendar .an-calendar-switch{display:grid!important;grid-template-columns:1fr 1fr!important;margin:0 0 10px!important;border:1px solid #c8b99f!important;border-radius:12px!important;overflow:hidden!important;background:#f6efe1!important}
+.an-calendar .an-calendar-switch button{min-height:43px!important;border:0!important;background:transparent!important;color:#68726a!important;font:800 13px/1 inherit!important}
+.an-calendar .an-calendar-switch button.on{background:#796aa8!important;color:#fffaf0!important}
+.an-calendar-filter{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important;margin:0 0 14px!important}
+.an-calendar-filter button{display:flex!important;align-items:center!important;justify-content:center!important;gap:4px!important;min-width:0!important;min-height:38px!important;padding:0 5px!important;border:1px solid #c8b99f!important;border-radius:11px!important;background:#fffaf0!important;color:#68726a!important;font:800 12px/1 inherit!important}
+.an-calendar-filter button.on{border-color:#796aa8!important;background:#e7e1f0!important;color:#3f3465!important}
+.an-calendar-filter .v2-icon{width:15px!important;height:15px!important;flex:none!important}
+.an-calendar-week-strip{display:grid!important;grid-template-columns:repeat(7,minmax(0,1fr))!important;gap:4px!important;margin:0 0 18px!important}
+.an-calendar-week-spot{display:grid!important;place-items:center!important;gap:3px!important;min-width:0!important;min-height:65px!important;padding:7px 2px!important;border:1px solid #d0c2ab!important;border-radius:9px!important;background:#fffaf0!important;color:#68726a!important;font:inherit!important}
+.an-calendar-week-spot.today{border-color:#796aa8!important;background:#e7e1f0!important;color:#3f3465!important;box-shadow:inset 0 0 0 1px #796aa8!important}
+.an-calendar-week-spot span{font-size:10px!important;font-weight:800!important}
+.an-calendar-week-spot b{font-size:15px!important;font-variant-numeric:tabular-nums!important}
+.an-calendar-week-spot small{font-size:9px!important;font-weight:800!important;white-space:nowrap!important}
+.an-calendar-purpose{margin:0 0 14px!important}
+.an-calendar-agenda{display:grid!important;gap:8px!important;margin:0!important}
+.an-calendar-agenda>header,.an-calendar-upcoming-list>header{display:flex!important;align-items:center!important;justify-content:space-between!important;padding:0 0 5px!important;border-bottom:1px solid #c8b99f!important}
+.an-calendar-agenda h2{margin:0!important;color:#21312d!important;font-size:16px!important}
+.an-calendar-agenda>header>span,.an-calendar-upcoming-list>header>span{color:#85755e!important;font-size:11px!important;font-weight:800!important}
+.an-calendar-day-card{display:grid!important;gap:5px!important;padding:9px!important;border:1px solid #d0c2ab!important;border-radius:11px!important;background:#fffaf0!important}
+.an-calendar-day-head{display:flex!important;align-items:center!important;justify-content:space-between!important;min-width:0!important;padding:0!important;border:0!important;background:transparent!important;color:#21312d!important;font:inherit!important;text-align:left!important}
+.an-calendar-day-head span{font-size:13px!important;font-weight:800!important}
+.an-calendar-day-head b{color:#85755e!important;font-size:11px!important;white-space:nowrap!important}
+.an-calendar-day-items{display:grid!important;gap:4px!important;min-width:0!important}
+.an-calendar-day-items>p,.an-calendar-upcoming-list>p{margin:0!important;color:#85755e!important;font-size:11px!important}
+.an-calendar-item{display:grid!important;grid-template-columns:8px minmax(0,1fr)!important;gap:7px!important;align-items:start!important;min-width:0!important}
+.an-calendar-item>i{width:8px!important;height:8px!important;margin-top:5px!important;border-radius:50%!important}
+.an-calendar-item>span{display:grid!important;min-width:0!important;gap:2px!important}
+.an-calendar-item strong{overflow:hidden!important;color:#21312d!important;font-size:12px!important;line-height:1.25!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+.an-calendar-item small{color:#85755e!important;font-size:10px!important;line-height:1.25!important;white-space:nowrap!important}
+.an-calendar-repeat{display:inline-block!important;margin-left:5px!important;padding:1px 4px!important;border-radius:5px!important;background:#e7e1f0!important;color:#5b4e86!important;font-size:9px!important;font-weight:800!important}
+.an-calendar-more{color:#85755e!important;font-size:10px!important}
+.an-calendar-weekday-row{display:grid!important;grid-template-columns:repeat(7,minmax(0,1fr))!important;gap:3px!important;margin:0 0 4px!important}
+.an-calendar-weekday-row span{color:#85755e!important;font-size:10px!important;font-weight:800!important;text-align:center!important}
+.an-calendar-month-grid{display:grid!important;grid-template-columns:repeat(7,minmax(0,1fr))!important;gap:3px!important}
+.an-calendar-empty-cell{aspect-ratio:1!important;min-width:0!important}
+.an-calendar-month-day{display:grid!important;grid-template-rows:auto auto 1fr!important;align-content:start!important;gap:3px!important;min-width:0!important;aspect-ratio:1!important;padding:5px 4px!important;border:1px solid #d0c2ab!important;border-radius:8px!important;background:#fffaf0!important;color:#21312d!important;font:inherit!important;text-align:left!important}
+.an-calendar-month-day.today{border-color:#796aa8!important;background:#e7e1f0!important;box-shadow:inset 0 0 0 1px #796aa8!important}
+.an-calendar-month-day b{font-size:13px!important;font-variant-numeric:tabular-nums!important}
+.an-calendar-month-day small{min-height:10px!important;color:#85755e!important;font-size:9px!important;font-weight:800!important;line-height:1!important;white-space:nowrap!important}
+.an-calendar-month-day>span{display:flex!important;flex-wrap:wrap!important;align-content:start!important;gap:3px!important;min-width:0!important;margin-top:1px!important}
+.an-calendar-month-day i{width:6px!important;height:6px!important;border-radius:50%!important}
+.an-calendar-month-summary{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:6px!important;margin:12px 0 18px!important}
+.an-calendar-month-summary>div{display:grid!important;gap:2px!important;min-width:0!important;padding:9px 4px!important;border:1px solid #d0c2ab!important;border-radius:9px!important;background:#fffaf0!important;text-align:center!important}
+.an-calendar-month-summary strong{color:#21312d!important;font-size:18px!important;font-variant-numeric:tabular-nums!important;line-height:1!important}
+.an-calendar-month-summary span{color:#85755e!important;font-size:9px!important;font-weight:800!important;white-space:nowrap!important}
+.an-calendar-upcoming-list{margin-top:0!important}
+.an-calendar-upcoming{display:grid!important;grid-template-columns:42px minmax(0,1fr)!important;gap:6px!important;align-items:start!important;padding:6px 0!important;border-bottom:1px dashed #d0c2ab!important}
+.an-calendar-upcoming>span{color:#85755e!important;font-size:11px!important;font-weight:800!important;font-variant-numeric:tabular-nums!important}
+
+/* Native time inputs are the interaction layer only.  They must occupy the
+   same grid cell as the visible value; otherwise CSS grid creates a second
+   row and the time text sits at the top of the field. */
+.an-native-time-control>input{
+  grid-area:1/1!important;
+  width:100%!important;
+  height:100%!important;
+  min-height:0!important;
+  margin:0!important;
+  padding:0!important;
+}
+.an-event-time-grid .an-native-time-control{
+  width:100%!important;
+  height:42px!important;
+  min-height:42px!important;
+  display:grid!important;
+  place-items:center!important;
+}
+.an-event-time-grid .an-native-time-control>span{
+  grid-area:1/1!important;
+  align-self:center!important;
+  justify-self:center!important;
+}
+
+/* Compact health controls use their own height token instead of the larger
+   work-log input token. Saved health numbers use the same numeric grammar. */
+.an-health-date-control{
+  height:52px!important;
+  min-height:52px!important;
+}
+.an-health-date-control input{
+  height:100%!important;
+  min-height:0!important;
+}
+.an-health-data .an-time-fields .an-native-time-control{
+  height:38px!important;
+  min-height:38px!important;
+  align-self:start!important;
+}
+.an-health-data .an-time-fields .an-native-time-control input{
+  height:100%!important;
+  min-height:0!important;
+}
+.an-health-data>strong{
+  color:#21312d!important;
+  font:800 16px/1 var(--board-font-sans)!important;
+  font-variant-numeric:lining-nums tabular-nums!important;
+  font-feature-settings:"tnum" 1,"lnum" 1!important;
+  letter-spacing:.01em!important;
+  white-space:nowrap!important;
+}
+
+/* v0.31.22: selected projects are an additive catalog, not a checkbox grid. */
+.an-work-project-add{display:grid!important;gap:6px!important;margin:0 0 10px!important;color:#68726a!important;font-size:11px!important;font-weight:800!important}
+.an-work-project-add select{width:100%!important;min-width:0!important;min-height:44px!important;padding:0 10px!important;border:1px solid #af9f87!important;border-radius:9px!important;background:#fffdf7!important;color:#21312d!important;font:inherit!important;font-size:13px!important;font-weight:650!important}
+.an-work-project-selected{display:grid!important;gap:10px!important}
+.an-work-project-row{display:grid!important;gap:8px!important;padding:11px!important;border:1px solid #d3c6b0!important;border-radius:12px!important;background:#fffaf0!important}
+.an-work-project-head{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:10px!important;min-width:0!important}
+.an-work-project-head strong{min-width:0!important;overflow-wrap:anywhere!important;color:#21312d!important;font-size:14px!important;font-weight:800!important}
+.an-work-project-remove{flex:none!important;min-height:30px!important;padding:0 10px!important;border:1px solid #c96b62!important;border-radius:8px!important;background:#fff0ed!important;color:#b24f4a!important;font:inherit!important;font-size:11px!important;font-weight:800!important}
+.an-work-project-empty{margin:0!important;padding:12px!important;border:1px dashed #c8b99f!important;border-radius:10px!important;color:#85755e!important;font-size:12px!important;font-weight:700!important;text-align:center!important}
