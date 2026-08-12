@@ -141,8 +141,9 @@ window.addEventListener("load", () => setTimeout(async () => {
     if (!linkedPriorityEvent || !linkedPriorityEvent.getAttribute('style')?.includes('#c85d54')) throw new Error("UI smoke: linked priority color update");
     tap('[data-v2-back]', "flow → home before linked work log");
     tap('[data-v2-go="workLog"]', "today → linked work log");
-    if (!document.querySelector('#v2WorkProject') || !document.querySelector('#v2WorkItem') || document.querySelectorAll('.an-work-check').length) throw new Error("UI smoke: linked work dropdowns");
-    if (!Array.from(document.querySelector('#v2WorkItem').options).some(o => o.textContent.includes('UI smoke work'))) throw new Error("UI smoke: linked work item option");
+    if (!document.querySelector('[data-v2-work-project]') || !document.querySelector('[data-v2-work-item-for-project]') || document.querySelectorAll('.an-work-check').length) throw new Error("UI smoke: linked work catalog");
+    if (!Array.from(document.querySelectorAll('[data-v2-work-item-for-project] option')).some(o => o.textContent.includes('UI smoke work'))) throw new Error("UI smoke: linked work item option");
+    if (document.querySelectorAll('[data-v2-work-project]').length < 2) throw new Error("UI smoke: multiple work projects");
     tap('[data-v2-back]', "linked work log → today");
     tap('[data-v2-go="flow"]', "today → flow after linked work log");
     tap('[data-v2-go="calendar"]', "flow → calendar");

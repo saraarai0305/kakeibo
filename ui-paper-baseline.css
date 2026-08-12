@@ -672,3 +672,32 @@ body[data-app-shell="v2"]{min-height:100dvh!important}
 .an-work-import.is-empty{padding:14px 16px}
 .an-work-import.is-empty h2{margin:0}
 @media (max-width:620px){.an-work-import-row{grid-template-columns:minmax(0,1fr) 1fr;}.an-work-import-row>.an-work-import-check{grid-column:1/-1}.an-work-import-row label:not(.an-work-import-check){font-size:9px}.an-work-import-row select{font-size:10px}}
+
+/* v0.31.20: shared mobile-safe input and time-axis primitives.  Native
+   date/time chrome remains the interaction layer; the visible value is owned
+   by the app so Safari cannot shift it with its internal padding. */
+.an-work-log,.an-health-record,.an-flow{--flow-hour-height:49px;--native-control-height:52px}
+.an-work-time-control input,.an-work-date-control input,.an-health-date-control input,.an-native-time-control input{opacity:0!important;color:transparent!important;caret-color:transparent!important;-webkit-appearance:none!important;appearance:none!important}
+.an-work-time-control input,.an-work-date-control input,.an-health-date-control input,.an-native-time-control input{position:relative!important;z-index:2!important;width:100%!important;height:100%!important;min-height:var(--native-control-height)!important;margin:0!important;padding:0!important}
+.an-work-time-control:focus-within,.an-work-date-control:focus-within,.an-health-date-control:focus-within,.an-native-time-control:focus-within{outline:2px solid rgba(77,128,173,.55)!important;outline-offset:2px!important;border-radius:10px!important}
+.an-native-time-control{position:relative!important;display:grid!important;place-items:center!important;min-width:0!important;min-height:38px!important}
+.an-native-time-control>span{grid-area:1/1;pointer-events:none!important;color:#21312d!important;font:800 16px/1 var(--board-font-sans)!important;font-variant-numeric:lining-nums tabular-nums!important;letter-spacing:.01em!important;text-align:center!important;white-space:nowrap!important}
+.an-work-date-control,.an-health-date-control{position:relative!important;display:grid!important;place-items:center!important;min-width:0!important}
+.an-work-date-control>span,.an-health-date-value{grid-area:1/1;pointer-events:none!important;color:#21312d!important;font:800 16px/1 var(--board-font-sans)!important;font-variant-numeric:lining-nums tabular-nums!important;letter-spacing:.01em!important;text-align:center!important;white-space:nowrap!important}
+.an-health-date-control{width:100%!important;min-height:38px!important}
+.an-work-project-list{display:grid!important;gap:10px!important}
+.an-work-project-row{display:grid!important;gap:8px!important;padding:10px!important;border:1px solid #d3c6b0!important;border-radius:12px!important;background:#fffaf0!important}
+.an-work-project-check{display:flex!important;align-items:center!important;gap:8px!important;min-width:0!important;color:#21312d!important;font-size:13px!important;font-weight:800!important;line-height:1.2!important}
+.an-work-project-check input{width:18px!important;height:18px!important;flex:none!important;accent-color:#796aa8!important}
+.an-work-project-row .an-work-field{gap:5px!important}
+.an-work-project-row select{width:100%!important;min-width:0!important;height:44px!important;padding:0 10px!important;border:1px solid #af9f87!important;border-radius:9px!important;background:#fffdf7!important;color:#21312d!important;font:inherit!important;font-size:13px!important;font-weight:650!important}
+.an-work-project-row select:disabled{opacity:.48!important;background:#eee4d3!important}
+.an-work-catalog-help{margin:-7px 0 0!important;color:#68726a!important;font-size:11px!important;font-weight:650!important;line-height:1.45!important}
+.an-work-template .an-work-entry{display:grid!important;gap:7px!important;padding-bottom:4px!important;border-bottom:1px dashed #d3c6b0!important}
+.an-work-template .an-work-entry:last-child{padding-bottom:0!important;border-bottom:0!important}
+.an-work-entry textarea{width:100%!important;min-width:0!important;min-height:72px!important;box-sizing:border-box!important;padding:10px 12px!important;border:1px solid #af9f87!important;border-radius:10px!important;background:#fffaf0!important;color:#21312d!important;font:650 14px/1.45 var(--board-font-sans)!important;resize:vertical!important}
+.an-work-entry textarea[hidden]{display:none!important}
+.an-flow .v2-timeline{overflow:hidden!important}
+.an-flow .v2-time{height:var(--flow-hour-height)!important}
+.an-flow .v2-event{max-width:100%!important;box-sizing:border-box!important}
+.an-flow .v2-event strong,.an-flow .v2-event span{min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important}
