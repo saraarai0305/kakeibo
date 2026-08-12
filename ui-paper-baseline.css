@@ -212,6 +212,28 @@ body[data-app-shell="v2"]{min-height:100dvh!important}
 .an-timeline-section h2{color:#21312d!important}
 .an-outlook-privacy{display:flex!important;align-items:center!important;justify-content:space-between!important;margin:0 0 8px!important;color:#68726a!important;font-size:12px!important;font-weight:800!important}
 .an-outlook-privacy button{min-height:34px!important;padding:0 11px!important;border:1px solid #c8b99f!important;border-radius:9px!important;background:#fffaf0!important;color:#315674!important;font:inherit!important;font-size:12px!important;font-weight:800!important}
+.an-benefit-flip{--benefit-flip-height:128px;perspective:900px!important;margin:0 0 12px!important;min-height:var(--benefit-flip-height)!important}
+.an-benefit-flip-inner{position:relative!important;min-height:var(--benefit-flip-height)!important;transition:transform .36s ease!important;transform-style:preserve-3d!important}
+.an-benefit-flip.is-back .an-benefit-flip-inner{transform:rotateY(180deg)!important}
+.an-benefit-face{position:absolute!important;inset:0!important;box-sizing:border-box!important;border:1px solid #c8b99f!important;border-radius:14px!important;background:#fffaf0!important;backface-visibility:hidden!important;-webkit-backface-visibility:hidden!important;cursor:pointer!important}
+.an-benefit-front{padding:10px 52px 10px 12px!important;color:#21312d!important}
+.an-benefit-front-content{display:grid!important;grid-template-columns:25px minmax(0,1fr) auto!important;align-items:center!important;gap:10px!important;width:100%!important;height:100%!important}
+.an-benefit-front-content>i{display:grid!important;place-items:center!important;color:#4d80ad!important}
+.an-benefit-front-content>i .v2-icon{width:21px!important;height:21px!important}
+.an-benefit-front-content>span{display:grid!important;gap:3px!important;min-width:0!important}
+.an-benefit-front-content strong{font-size:14px!important;font-weight:800!important;line-height:1.15!important}
+.an-benefit-front-content small{color:#68726a!important;font-size:11px!important;font-weight:650!important;line-height:1.2!important}
+.an-benefit-front-content .an-summary-value{font-size:24px!important;color:#4f986f!important;font-variant-numeric:lining-nums tabular-nums!important;white-space:nowrap!important}
+.an-benefit-privacy{position:absolute!important;top:8px!important;right:10px!important;min-height:24px!important;padding:0 5px!important;border:0!important;background:transparent!important;color:#315674!important;font:800 11px/1 inherit!important;text-decoration:underline!important}
+.an-benefit-back{transform:rotateY(180deg)!important;padding:12px 14px!important;color:#21312d!important}
+.an-benefit-back-head{display:flex!important;align-items:baseline!important;justify-content:space-between!important;gap:10px!important;margin:0 0 8px!important}
+.an-benefit-back-head strong{font-size:14px!important;font-weight:800!important}
+.an-benefit-back-head span{color:#68726a!important;font-size:10px!important;font-weight:700!important}
+.an-benefit-back dl{display:grid!important;grid-template-columns:1fr 1fr!important;gap:7px 12px!important;margin:0!important}
+.an-benefit-back dl div{display:grid!important;gap:2px!important;min-width:0!important}
+.an-benefit-back dt{color:#68726a!important;font-size:10px!important;font-weight:750!important}
+.an-benefit-back dd{margin:0!important;color:#21312d!important;font-size:12px!important;font-weight:800!important;font-variant-numeric:tabular-nums!important}
+.an-flow-actions [data-v2-daily-end]{border-left-color:#ca6258!important;color:#a84d46!important}
 
 /* IDEA NOTE: a local-first freeform sheet for goals, notes and reference images. */
 .an-board-goal,.an-board-composer{display:grid!important;gap:10px!important;margin:0 0 14px!important;padding:15px!important;border:1.5px solid #c8b99f!important;border-radius:17px!important;background:#fffaf0!important;box-shadow:3px 3px 0 rgba(103,82,49,.1)!important}
@@ -251,7 +273,7 @@ body[data-app-shell="v2"]{min-height:100dvh!important}
    User-created plans are buttons so their full title can be inspected in a sheet;
    the timeline itself stays readable and keeps its paper rhythm. */
 .an-flow .v2-event{appearance:none!important;border:0!important;text-align:left!important;font:inherit!important;cursor:pointer!important}
-.an-flow .v2-event[data-v2-event-editable="true"]{touch-action:none!important;cursor:pointer!important;user-select:none!important;-webkit-user-select:none!important}
+.an-flow .v2-event[data-v2-event-editable="true"]{touch-action:pan-y!important;cursor:pointer!important;user-select:none!important;-webkit-user-select:none!important}
 .an-flow .v2-event.is-selected{z-index:7!important;outline:2px solid #315674!important;outline-offset:2px!important;box-shadow:4px 5px 0 rgba(73,56,36,.2)!important;overflow:visible!important}
 .an-flow .v2-event.is-dragging{z-index:6!important;opacity:.94!important;cursor:grabbing!important;box-shadow:4px 5px 0 rgba(73,56,36,.2)!important;transition:none!important}
 .an-flow .v2-event.is-resizing{z-index:6!important;opacity:.96!important;box-shadow:4px 5px 0 rgba(73,56,36,.2)!important;transition:none!important}
@@ -655,7 +677,9 @@ body[data-app-shell="v2"]{min-height:100dvh!important}
 .an-flow .an-flow-filter button[data-v2-flow-filter="common"].on{background:var(--flow-common-color)!important;color:#fff!important}
 .an-flow:has(.an-flow-timeline-shell[data-v2-flow-view="life"]) .an-timeline-section h2 .v2-icon{color:#4f986f!important}
 .an-flow:has(.an-flow-timeline-shell[data-v2-flow-view="common"]) .an-timeline-section h2 .v2-icon{color:var(--flow-common-color)!important}
-.an-health-date{display:grid!important;grid-template-columns:auto minmax(0,1fr)!important;align-items:center!important;gap:10px!important;margin:-6px 0 10px!important;color:#68726a!important;font-size:12px!important;font-weight:800!important}
+.an-health-date{--health-date-side-space:clamp(40px,13%,138px);display:flex!important;position:relative!important;align-items:center!important;justify-content:center!important;gap:10px!important;margin:-6px 0 10px!important;color:#68726a!important;font-size:12px!important;font-weight:800!important}
+.an-health-date>span:first-child{position:absolute!important;left:0!important;top:50%!important;z-index:1!important;transform:translateY(-50%)!important;white-space:nowrap!important}
+.an-health-date-control{width:calc(100% - var(--health-date-side-space) - var(--health-date-side-space))!important}
 .an-health-date input{width:100%!important;min-width:0!important;min-height:38px!important;padding:0 10px!important;border:1px solid #c8b99f!important;border-radius:9px!important;background:#fffaf0!important;color:#21312d!important;font:700 13px/1 var(--board-font-sans)!important;font-variant-numeric:tabular-nums!important}
 .an-health-item-save.is-change{border-color:#c96b62!important;background:#fff0ed!important;color:#b24f4a!important}
 
@@ -720,7 +744,7 @@ body[data-app-shell="v2"]{min-height:100dvh!important}
 }
 .an-work-time-control{display:grid!important;place-items:center!important;width:100%!important;min-height:var(--native-control-height)!important}
 .an-work-date-control{width:100%!important;min-height:var(--native-control-height)!important}
-.an-health-date-control{min-height:38px!important}
+.an-health-date-control{width:calc(100% - var(--health-date-side-space) - var(--health-date-side-space))!important;min-height:38px!important}
 .an-native-time-control{min-height:38px!important}
 .an-work-time-control input,.an-work-date-control input,.an-health-date-control input,.an-native-time-control input{background:transparent!important;border:0!important;border-radius:0!important}
 

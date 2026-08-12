@@ -227,8 +227,16 @@ if ($uiV2 -notmatch 'press\.timer\s*=\s*setTimeout') { Write-Error "予定中央
 "OK  予定中央の長押しタイマーあり"
 if ($uiV2 -notmatch 'flowDragClickGuard' -or $uiV2 -notmatch 'flowDragClickGuard=true' -or $uiV2 -notmatch 'flowDragClickGuard=false') { Write-Error "ドラッグ後クリック抑制がありません" }
 "OK  ドラッグ後クリック抑制あり"
+if ($uiV2 -notmatch 'syncEventTimePreview' -or $uiV2 -notmatch 'syncEventTimePreview\(e\.target\)' -or $uiV2 -notmatch 'addEventListener\("change"') { Write-Error "時間ピッカーの表示同期がinput/change共通処理になっていません" }
+"OK  時間ピッカー表示同期あり"
 if ($uiV2 -notmatch 'typeof isReadOnly.*isReadOnly\(\)' -or $uiV2 -notmatch 'selected&&writable') { Write-Error "時間割の読み取り専用ガードがありません" }
 "OK  時間割の読み取り専用ガードあり"
+
+$paper = Get-Content "$root\ui-paper-baseline.css" -Raw -Encoding UTF8
+if ($paper -notmatch '\.an-health-date\{[^}]*justify-content:center' -or $paper -notmatch '\.an-health-date>span:first-child\{[^}]*position:absolute' -or ([regex]::Matches($paper,'\.an-health-date-control\{width:calc\(100% - var\(--health-date-side-space\)').Count -lt 2)) { Write-Error "体調記録の日付枠が行全体中央の共通構造になっていません" }
+"OK  体調記録の日付枠中央配置あり"
+if ($uiV2 -notmatch 'benefitOverview' -or $uiV2 -notmatch 'data-v2-benefit-flip' -or $uiV2 -notmatch 'data-v2-benefit-save' -or $uiV2 -notmatch 'v2BenefitNextStart' -or $uiV2 -notmatch 'data-v2-daily-end' -or $src -notmatch 'dailyTimelineIsVisibleOn' -or $src -notmatch 'dailyTimelineEndDate') { Write-Error "毎日の予定終了日または傷病手当パネルの導線がありません" }
+"OK  毎日の予定終了日と傷病手当パネルあり"
 
 # PWAが古いCSS/JSをキャッシュすると、公開URLとホーム画面アプリの表示が食い違う。
 # 画面側とService Worker側の主要資産は、BUILDと同じクエリ版を必ず持たせる。

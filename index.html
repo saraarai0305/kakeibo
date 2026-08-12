@@ -6,7 +6,7 @@
 <title>LIFE NOTE</title>
 <link rel="manifest" href="manifest.webmanifest">
 <script src="design-system.js"></script>
-<link rel="stylesheet" href="ui-v2.css?v=0.31.33">
+<link rel="stylesheet" href="ui-v2.css?v=0.31.44">
 <meta name="theme-color" content="#F6EFDE">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -784,8 +784,8 @@ body[data-tab="cal"]:not([data-cal-page="check"]) #checklistPage{display:none!im
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:1ms!important;animation-iteration-count:1!important;transition-duration:1ms!important}}
 </style>
 <!-- 旧画面のインラインCSSより後に読み込み、紙面UIを最終スタイルとして適用する。 -->
-<link rel="stylesheet" href="ui-analog.css?v=0.31.33">
-<link rel="stylesheet" href="ui-paper-baseline.css?v=0.31.33">
+<link rel="stylesheet" href="ui-analog.css?v=0.31.44">
+<link rel="stylesheet" href="ui-paper-baseline.css?v=0.31.44">
 <link rel="stylesheet" href="design-foundation.css">
 </head>
 <body data-tab="home">
@@ -1421,7 +1421,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.31.33";         // version.txt と一致させること
+const BUILD = "0.31.44";         // version.txt と一致させること
 const KEY = "mainichi.v1";
 // 一日の流れを主役にし、週／月のカレンダーは必要なときだけその下に開く。
 (() => {
@@ -1470,6 +1470,7 @@ function seed(){
     borrowings: [],      // 返済義務のある借入 [{id,d,t,amt,lender}]
     plan: {},           // "2026-08-05" -> [{id, from:"13:30", to:"16:30", cat, text}]
     dailyTimeline: [],  // 毎日表示する時間指定の習慣 [{id, from, to, cat, lane, text}]
+    dailyTimelineEndDate: "", // この日まで毎日表示。明後日以降終了などの境界を保存する
     subs: [],           // {id, name, amt, cycle:"m"|"y", day}
     appt: { date:"", time:"", place:"", alias:"", memo:"" },
     icsAmount: false,   // カレンダーに金額を入れるか
@@ -1510,7 +1511,7 @@ function seed(){
     doneIncome: {},     // "incomeId:2026-08" -> true（入金した月）
     // 支給対象の月。入金月とはずれるので、入金記録とは別に持つ
     benefitMonths: {},
-    benefit: { start:"2026-01", units:18 },
+    benefit: { start:"2026-01", units:18, nextApplicationStart:"2026-08-01", applicationMonths:"", applicationDays:"" },
     savedAt: null
   };
 }
@@ -1547,6 +1548,13 @@ function normalize(o){
     if(typeof item.note !== "string") item.note="";
   }
   if(!s.ui || typeof s.ui !== "object") s.ui = b.ui;
+  if(typeof s.dailyTimelineEndDate !== "string") s.dailyTimelineEndDate = "";
+  if(!s.benefit || typeof s.benefit !== "object") s.benefit = Object.assign({},b.benefit);
+  if(typeof s.benefit.start !== "string" || !/^\d{4}-\d{2}$/.test(s.benefit.start)) s.benefit.start = b.benefit.start;
+  if(!Number.isFinite(+s.benefit.units) || +s.benefit.units < 1) s.benefit.units = b.benefit.units;
+  if(typeof s.benefit.nextApplicationStart !== "string" || !s.benefit.nextApplicationStart) s.benefit.nextApplicationStart = b.benefit.nextApplicationStart;
+  if(typeof s.benefit.applicationMonths !== "string" && typeof s.benefit.applicationMonths !== "number") s.benefit.applicationMonths = "";
+  if(typeof s.benefit.applicationDays !== "string" && typeof s.benefit.applicationDays !== "number") s.benefit.applicationDays = "";
   if(!["expense","income"].includes(s.ui.entryType)) s.ui.entryType = "expense";
   if(typeof s.ui.pay !== "string" || !s.ui.pay) s.ui.pay = "cash";
   if(typeof s.ui.incomeMethod !== "string" || !s.ui.incomeMethod) s.ui.incomeMethod = "bank";
@@ -2302,8 +2310,12 @@ function errandsOn(key){
 }
 
 const planOf = key => (S.plan && S.plan[key]) ? S.plan[key] : [];
+function dailyTimelineIsVisibleOn(key){
+  const end=String(S.dailyTimelineEndDate||"");
+  return !end || !/^\d{4}-\d{2}-\d{2}$/.test(end) || key<=end;
+}
 function allBlocks(key){
-  const daily = Array.isArray(S.dailyTimeline) ? S.dailyTimeline : [];
+  const daily = dailyTimelineIsVisibleOn(key) && Array.isArray(S.dailyTimeline) ? S.dailyTimeline : [];
   const tagged = (items, origin) => items.map(item => Object.assign({_v2Origin:origin}, item));
   const sourceKey = p => `${p._v2Origin}:${p.id || ""}:${p.from || p.a || ""}:${p.to || p.b || ""}:${p.text || ""}`;
   const overrides = S.flowOverrides && S.flowOverrides[key] ? S.flowOverrides[key] : {};
@@ -4454,6 +4466,6 @@ if("serviceWorker" in navigator &&
   navigator.serviceWorker.register("sw.js?v=" + BUILD, {updateViaCache:"none"}).catch(()=>{});
 }
 </script>
-<script defer src="ui-v2.js?v=0.31.33"></script>
+<script defer src="ui-v2.js?v=0.31.44"></script>
 </body>
 </html>
