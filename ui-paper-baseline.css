@@ -720,8 +720,8 @@ body[data-app-shell="v2"]{min-height:100dvh!important}
 .an-work-project-check{display:flex!important;align-items:center!important;gap:8px!important;min-width:0!important;color:#21312d!important;font-size:13px!important;font-weight:800!important;line-height:1.2!important}
 .an-work-project-check input{width:18px!important;height:18px!important;flex:none!important;accent-color:#796aa8!important}
 .an-work-project-row .an-work-field{gap:5px!important}
-.an-work-project-row select{width:100%!important;min-width:0!important;height:44px!important;padding:0 10px!important;border:1px solid #af9f87!important;border-radius:9px!important;background:#fffdf7!important;color:#21312d!important;font:inherit!important;font-size:13px!important;font-weight:650!important}
-.an-work-project-row select:disabled{opacity:.48!important;background:#eee4d3!important}
+.an-work-project-row select,.an-work-project-row input,.an-work-project-row textarea{width:100%!important;min-width:0!important;min-height:44px!important;padding:10px!important;border:1px solid #af9f87!important;border-radius:9px!important;background:#fffdf7!important;color:#21312d!important;font:inherit!important;font-size:13px!important;font-weight:650!important;line-height:1.45!important;resize:vertical!important}
+.an-work-project-row select:disabled,.an-work-project-row input:disabled{opacity:.48!important;background:#eee4d3!important}
 .an-work-catalog-help{margin:-7px 0 0!important;color:#68726a!important;font-size:11px!important;font-weight:650!important;line-height:1.45!important}
 .an-work-template .an-work-entry{display:grid!important;gap:7px!important;padding-bottom:4px!important;border-bottom:1px dashed #d3c6b0!important}
 .an-work-template .an-work-entry:last-child{padding-bottom:0!important;border-bottom:0!important}
@@ -918,6 +918,18 @@ body[data-app-shell="v2"]{min-height:100dvh!important}
   left:100%;
   border-left:1px dashed rgba(133,117,94,.45);
   pointer-events:none;
+}
+
+/* v0.31.45: the time label is centered inside the single shared rail.  The
+   event layer and the guide keep using the same rail token, so centering the
+   label cannot move the work/life divider or card geometry. */
+.an-flow .an-flow-time-rail .v2-time{
+  display:flex!important;
+  align-items:flex-start!important;
+  justify-content:center!important;
+  padding:0!important;
+  text-align:center!important;
+  transform:none!important;
 }
 
 /* v0.31.22: the calendar is a planning surface, not only a dot grid.  Week
