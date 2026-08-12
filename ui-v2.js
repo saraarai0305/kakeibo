@@ -620,14 +620,14 @@
     return S.flowOverrides[key];
   }
   function flowEventStore(event){
-    if(event.origin==="plan"){
-      const list=S.plan[event.key]||[];
+    if(event.origin==="plan"||event.origin==="daily"){
+      const list=event.origin==="daily"?(Array.isArray(S.dailyTimeline)?S.dailyTimeline:[]):(S.plan[event.key]||[]);
       return {list,item:list.find(x=>x.id===event.id),override:false};
     }
     const map=flowOverrideMap(event.key),source=event.sourceKey;
     let item=map[source];
     if(!item || item.deleted){
-      item={id:`override_${uid()}`,text:event.text,a:event.a,b:event.b,from:toHHMM(event.a%1440),to:toHHMM(event.b%1440),cat:event.cat||"custom",lane:event.lane||"life",color:event.color||""};
+      item={id:`override_${uid()}`,text:event.text,a:event.a,b:event.b,from:toHHMM(event.a%1440),to:toHHMM(event.b%1440),cat:event.cat||"custom",lane:event.lane||"life",color:event.color||"",workItemId:event.workItemId||"",priorityGroup:event.priorityGroup||"next",priority:event.priority||"b",status:event.status||"todo"};
       map[source]=item;
     }
     return {map,item,override:true,source};
@@ -638,8 +638,35 @@
       if(index>=0) list.splice(index,1);
       return;
     }
+    if(event.origin==="daily"){
+      const list=Array.isArray(S.dailyTimeline)?S.dailyTimeline:[],index=list.findIndex(x=>x.id===event.id);
+      if(index>=0) list.splice(index,1);
+      return;
+    }
     const map=flowOverrideMap(event.key);
     map[event.sourceKey]=Object.assign({},map[event.sourceKey]||{}, {deleted:true});
+  }
+  function flowWorkMeta(block){
+    const item=workItemOf(block?.workItemId);
+    return {item,priority:workPriorityId(item||block),status:item?.status||block?.status||"todo"};
+  }
+  function timelineLayout(blocks){
+    const out=[];
+    for(let i=0;i<blocks.length;){
+      let end=blocks[i].b,j=i;
+      while(j+1<blocks.length&&blocks[j+1].a<end){j++;end=Math.max(end,blocks[j].b);}
+      const active=[],group=[];
+      for(let k=i;k<=j;k++){
+        const block=blocks[k];
+        for(let c=0;c<active.length;c++)if(active[c]<=block.a)active[c]=0;
+        let col=active.findIndex(x=>x===0);if(col<0){col=active.length;active.push(0);}
+        active[col]=block.b;group.push({block,col});
+      }
+      const cols=Math.max(1,Math.min(3,active.length));
+      group.forEach(({block,col})=>out.push(Object.assign({},block,{_v2Col:col%cols,_v2Cols:cols})));
+      i=j+1;
+    }
+    return out;
   }
   function chooseHealthChartPoint(target){
     const index=Number(target?.dataset?.v2HealthPoint), metric=target?.dataset?.v2HealthMetric;
@@ -692,6 +719,7 @@
     if(del){
       event.stopImmediatePropagation();
       if(!canWrite()||!activeFlowEvent) return;
+      if(activeFlowEvent.origin==="daily"&&!window.confirm("これは毎日表示される予定です。全日付から削除しますか？")) return;
       deleteFlowEvent(activeFlowEvent);
       activeFlowEvent=null; save(); newAppRender(); successToast("予定を削除しました");
       return;
@@ -704,11 +732,18 @@
       const from=document.getElementById("v2EventFrom")?.value||"";
       const to=document.getElementById("v2EventTo")?.value||"";
       const lane=document.getElementById("v2EventLane")?.value||"life";
+      const priorityGroup=document.getElementById("v2EventPriority")?.value||activeFlowEvent.priorityGroup||"next";
+      const status=document.getElementById("v2EventStatus")?.value||activeFlowEvent.status||"todo";
       const a=toMin(from),b=toMin(to);
       if(!text||a==null||b==null||b<=a) return toast("予定・開始時刻・終了時刻を確認してください");
       const found=flowEventStore(activeFlowEvent);
       if(!found.item) return;
       Object.assign(found.item,{text,from,to,a:onTl(a),b:onTl(b),lane});
+      if(lane==="work"){
+        Object.assign(found.item,{priorityGroup,priority:WORK_PRIORITY_LEGACY[priorityGroup]||"b",status});
+        const linked=workItemOf(activeFlowEvent.workItemId||found.item.workItemId);
+        if(linked) Object.assign(linked,{priorityGroup,priority:WORK_PRIORITY_LEGACY[priorityGroup]||"b",status});
+      }
       activeFlowEvent=null; save(); newAppRender(); successToast("予定を保存しました");
       return;
     }
@@ -721,7 +756,8 @@
      const visibleBlocks=flowVisibleBlocks(flowDate);
     const found=visibleBlocks[Number(card.dataset.v2EventIndex)];
     if(!found) return;
-    activeFlowEvent={id:found.id,origin:found._v2Origin,key:flowDate,sourceKey:found._v2SourceKey,text:found.text,a:found.a,b:found.b,lane:flowLane(found),cat:found.cat,color:found.color};
+    const workMeta=flowWorkMeta(found);
+    activeFlowEvent={id:found.id,origin:found._v2Origin,key:flowDate,sourceKey:found._v2SourceKey,text:found.text,a:found.a,b:found.b,lane:flowLane(found),cat:found.cat,color:found.color,workItemId:found.workItemId||"",priorityGroup:workMeta.priority,status:workMeta.status};
     newAppRender();
   },true);
   root.addEventListener("pointerdown",event=>{
@@ -1091,12 +1127,13 @@
   function flowEventSheet(){
     if(!activeFlowEvent) return "";
     const e=activeFlowEvent;
-      return `<div class="an-event-sheet-layer" data-v2-event-sheet-layer><section class="an-event-sheet" role="dialog" aria-modal="true" aria-labelledby="v2EventTitle"><button type="button" class="an-event-sheet-close" data-v2-event-close aria-label="閉じる">${icon("close")}</button><small>この日の予定を編集</small><h2 id="v2EventTitle">${esc2(e.text)}</h2><div class="an-event-form"><label>予定の名前<input id="v2EventText" value="${esc2(e.text)}" maxlength="80"></label><div><label>開始<input id="v2EventFrom" type="time" value="${toHHMM(e.a%1440)}"></label><label>終了<input id="v2EventTo" type="time" value="${toHHMM(e.b%1440)}"></label></div><label>区分<select id="v2EventLane"><option value="work" ${e.lane==="work"?"selected":""}>仕事</option><option value="life" ${e.lane==="life"?"selected":""}>生活</option><option value="common" ${e.lane==="common"?"selected":""}>共通</option></select></label></div><p class="an-event-sheet-note">長押しで上下に動かすと、30分ごとに移動できます。上端をドラッグすると開始を早め、下端をドラッグすると終了を遅くできます。取り込んだ予定も、この日だけ編集できます。</p><div class="an-event-sheet-actions"><button type="button" class="danger" data-v2-event-delete>予定を削除</button><button type="button" class="primary" data-v2-event-save>保存</button></div></section></div>`;
+    const isWork=e.lane==="work",isDaily=e.origin==="daily";
+    return `<div class="an-event-sheet-layer" data-v2-event-sheet-layer><section class="an-event-sheet" role="dialog" aria-modal="true" aria-labelledby="v2EventTitle"><button type="button" class="an-event-sheet-close" data-v2-event-close aria-label="閉じる">${icon("close")}</button><small>この日の予定を編集</small><h2 id="v2EventTitle">${esc2(e.text)}</h2><div class="an-event-form"><label>予定の名前<input id="v2EventText" value="${esc2(e.text)}" maxlength="80"></label><div><label>開始<input id="v2EventFrom" type="time" value="${toHHMM(e.a%1440)}"></label><label>終了<input id="v2EventTo" type="time" value="${toHHMM(e.b%1440)}"></label></div><label>区分<select id="v2EventLane"><option value="work" ${e.lane==="work"?"selected":""}>仕事</option><option value="life" ${e.lane==="life"?"selected":""}>生活</option><option value="common" ${e.lane==="common"?"selected":""}>共通</option></select></label>${isWork?`<div class="an-event-work-fields"><label>優先順位<select id="v2EventPriority">${workOptions(WORK_PRIORITY_OPTIONS,e.priorityGroup)}</select></label><label>状態<select id="v2EventStatus">${workOptions(WORK_STATUS_OPTIONS,e.status)}</select></label></div>`:""}</div><p class="an-event-sheet-note">長押しで上下に動かすと、30分ごとに移動できます。上端をドラッグすると開始を早め、下端をドラッグすると終了を遅くできます。${isDaily?"これは毎日表示される予定です。削除すると全日付から消えます。":"取り込んだ予定も、この日だけ編集できます。"}</p><div class="an-event-sheet-actions"><button type="button" class="danger" data-v2-event-delete>${isDaily?"毎日の予定から削除":"予定を削除"}</button><button type="button" class="primary" data-v2-event-save>保存</button></div></section></div>`;
   }
   function flow(){
     const key=flowDate,rec=S.daily[key]||{},blocks=flowVisibleBlocks(key),start=typeof TL_START==="number"?TL_START:4*60,end=typeof TL_END==="number"?TL_END:27*60,h=Math.round(((end-start)/60)*28),slots=[];
     for(let m=start;m<end;m+=60)slots.push(`<span class="v2-time" style="top:${(m-start)/(end-start)*h}px">${toHHMM(m%1440)}</span>`);
-    const events=blocks.map((b,index)=>{const a=Math.max(start,b.a),z=Math.min(end,b.b),work=workItemOf(b.workItemId),project=work?workProjectOf(work.projectId):null,label=work?.name||b.text,meta=work?` ・ ${project?.name||""} ・ 優先 ${workPriorityLabel(work)} ・ ${workStatusLabel(work.status)}`:"";return z<=a?"":`<button type="button" class="v2-event an-flow-event an-lane-${flowLane(b)}" data-v2-event-id="${esc2(b.id||"")}" data-v2-event-index="${index}" data-v2-event-source="${esc2(b._v2SourceKey||"")}" data-v2-event-origin="${esc2(b._v2Origin||"auto")}" data-v2-event-key="${esc2(key)}" data-v2-event-work-item-id="${esc2(b.workItemId||"")}" data-v2-event-editable="true" style="--event:${esc2(b.color||catOf(b.cat).color)};top:${(a-start)/(end-start)*h}px;height:${Math.max(42,(z-a)/(end-start)*h-3)}px"><span class="v2-event-resize v2-event-resize-start" data-v2-event-resize="start" aria-hidden="true"></span><strong>${esc2(label)}</strong><span>${toHHMM(a%1440)} - ${toHHMM(z%1440)}${b.repeat?" ・ 毎日":""}${esc2(meta)}</span><span class="v2-event-resize v2-event-resize-end" data-v2-event-resize="end" aria-hidden="true"></span></button>`}).join("");
+    const events=timelineLayout(blocks).map((b,index)=>{const a=Math.max(start,b.a),z=Math.min(end,b.b),work=workItemOf(b.workItemId),project=work?workProjectOf(work.projectId):null,label=work?.name||b.text,meta=work?` ・ ${project?.name||""} ・ 優先 ${workPriorityLabel(work)} ・ ${workStatusLabel(work.status)}`:"",left=`calc(${(b._v2Col||0)*100/b._v2Cols}% + 10px)`,width=`calc(${100/b._v2Cols}% - 12px)`;return z<=a?"":`<button type="button" class="v2-event an-flow-event an-lane-${flowLane(b)}" data-v2-event-id="${esc2(b.id||"")}" data-v2-event-index="${index}" data-v2-event-source="${esc2(b._v2SourceKey||"")}" data-v2-event-origin="${esc2(b._v2Origin||"auto")}" data-v2-event-key="${esc2(key)}" data-v2-event-work-item-id="${esc2(b.workItemId||"")}" data-v2-event-editable="true" style="--event:${esc2(b.color||catOf(b.cat).color)};--event-left:${left};--event-width:${width};left:${left};width:${width};right:auto;top:${(a-start)/(end-start)*h}px;height:${Math.max(42,(z-a)/(end-start)*h-3)}px"><span class="v2-event-resize v2-event-resize-start" data-v2-event-resize="start" aria-hidden="true"></span><strong>${esc2(label)}</strong><span>${toHHMM(a%1440)} - ${toHHMM(z%1440)}${b.repeat?" ・ 毎日":""}${esc2(meta)}</span><span class="v2-event-resize v2-event-resize-end" data-v2-event-resize="end" aria-hidden="true"></span></button>`}).join("");
     const n=now(),rawNowM=n.getHours()*60+n.getMinutes(),nowM=rawNowM<start?rawNowM+1440:rawNowM,isToday=key===ymd(n),nowline=isToday&&nowM>=start&&nowM<=end?`<div class="v2-now" data-v2-now-line data-v2-start="${start}" data-v2-end="${end}" style="top:${(nowM-start)/(end-start)*h}px"><b data-v2-now-label>いま ${toHHMM(rawNowM)}</b></div>`:"";
     const filterLabel={all:"すべて",work:"仕事",life:"生活",common:"共通"}[flowLaneFilter]||"すべて";
     const addLabel=flowLaneFilter==="work"?"仕事内容を追加する":flowLaneFilter==="life"?"生活の予定を足す":"予定を足す";

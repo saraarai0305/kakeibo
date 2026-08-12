@@ -390,3 +390,4 @@ body[data-app-shell="v2"] .wrap{width:100%!important;max-width:390px!important;m
 .mr-save.borrowing{background:#d2a449!important;color:#fff!important}
 .mr-borrowing-total{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;margin-top:12px!important;padding-top:11px!important;border-top:1px solid #c6b9a2!important;color:#68726a!important;font-size:12px!important;font-weight:800!important}
 .mr-borrowing-note{margin:0!important;padding:10px 12px!important;border-left:4px solid #d2a449!important;background:#f3ead5!important;color:#68726a!important;line-height:1.5!important}
+.an-flow .v2-event{left:var(--event-left,0)!important;width:var(--event-width,100%)!important;right:auto!important}
