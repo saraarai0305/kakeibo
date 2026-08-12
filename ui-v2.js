@@ -329,6 +329,39 @@
       {id:"checklist",label:"毎日の習慣",min:0,max:100,c:"#d2a449",kind:"line",marker:"triangle",dash:"2 5",vals:ds.map(checklistProgress),format:v=>`${v}%`}
     ];
   }
+  function legacyWorkCandidates(){
+    const registered=new Set(workItems().map(item=>`${item.projectId||""}::${String(item.name||"").trim()}`));
+    const candidates=new Map();
+    const add=(projectId,name,source)=>{
+      const clean=String(name||"").trim();
+      if(!clean)return;
+      const key=`${projectId||""}::${clean}`;
+      if(registered.has(key)||candidates.has(key))return;
+      candidates.set(key,{key,projectId:projectId||workProjects()[0]?.id||"",name:clean,source});
+    };
+    workProjects().forEach(project=>add(project.id,project.name,"既存プロジェクト"));
+    for(const list of Object.values(S.plan||{})) for(const event of Array.isArray(list)?list:[]){
+      if(event && (event.lane==="work"||event.cat==="work"||event.cat==="make")) add(event.projectId,event.text,"時間割の仕事予定");
+    }
+    for(const event of Array.isArray(S.dailyTimeline)?S.dailyTimeline:[]){
+      if(event && event.lane==="work") add(event.projectId,event.text,"毎日の仕事予定");
+    }
+    return [...candidates.values()].sort((a,b)=>String(a.name).localeCompare(String(b.name),"ja"));
+  }
+  function linkWorkCatalogItem(item){
+    const matches=(event)=>event && !event.workItemId && String(event.text||"").trim()===item.name && (event.lane==="work"||event.cat==="work"||event.cat==="make"||event.projectId===item.projectId);
+    for(const list of Object.values(S.plan||{})) for(const event of Array.isArray(list)?list:[]){
+      if(matches(event)){event.workItemId=item.id;event.projectId=item.projectId;event.lane="work";event.cat="work";}
+    }
+    for(const event of Array.isArray(S.dailyTimeline)?S.dailyTimeline:[]){
+      if(matches(event)){event.workItemId=item.id;event.projectId=item.projectId;event.lane="work";event.cat="work";}
+    }
+    for(const record of Object.values(S.workLogs||{})){
+      if(record && !record.workItemId && (record.workItem===item.name || record.projectId===item.projectId || record.project===workProjectOf(item.projectId)?.name)){
+        record.workItemId=item.id;record.projectId=item.projectId;
+      }
+    }
+  }
   function healthChart(){
     const ds=healthDays(), metrics=healthMetrics().filter(m=>metricOn[m.id]);
     const W=360,H=238,L=34,R=12,T=33,B=34,gx=L,gw=W-L-R,base=H-B;
@@ -1165,12 +1198,15 @@
     return analogPage("an-calendar","calendar","CALENDAR",period,`<div class="an-calendar-switch"><button class="${calendarMode==="week"?"on":""}" data-v2-cal-mode="week">1週間</button><button class="${calendarMode==="month"?"on":""}" data-v2-cal-mode="month">1か月</button></div><div class="an-calendar-filter"><button class="${calendarLane==="all"?"on":""}" data-v2-cal-lane="all">すべて</button><button class="${calendarLane==="work"?"on":""}" data-v2-cal-lane="work">${icon("work")}仕事</button><button class="${calendarLane==="life"?"on":""}" data-v2-cal-lane="life">${icon("life")}生活</button><button class="${calendarLane==="common"?"on":""}" data-v2-cal-lane="common">共通</button></div>${purpose}${content}${legend}<p class="an-empty">日付をタップすると、その日の時間割を開きます。</p>`);
   }
   function workBoard(){
+    const candidates=legacyWorkCandidates();
     const groups=WORK_PRIORITY_OPTIONS.map(group=>{
       const items=workItems().filter(item=>workPriorityId(item)===group.id).sort((a,b)=>String(a.name).localeCompare(String(b.name),"ja"));
       const rows=items.length?items.map(item=>{const project=workProjectOf(item.projectId);return `<article class="an-work-item"><div class="an-work-item-copy"><strong>${esc2(item.name)}</strong><small>${esc2(project?.name||"プロジェクト未設定")}</small></div><span class="an-work-status ${esc2(item.status||"todo")}">${esc2(workStatusLabel(item.status))}</span><label class="an-work-priority-label">優先度<select data-v2-work-priority="${esc2(item.id)}">${workOptions(WORK_PRIORITY_OPTIONS,workPriorityId(item))}</select></label></article>`}).join(""):`<p class="an-empty">この分類の仕事はありません。</p>`;
       return `<section class="an-work-group ${esc2(group.id)}"><header><h2>${esc2(group.label)}</h2><span>${items.length}件</span></header><div class="an-work-items">${rows}</div></section>`;
     }).join("");
-    return analogPage("an-work-board","list","WORK BOARD","仕事の一覧",`<p class="an-date-note">次に何をするかを優先度で整理します。状態（未着手・進行中・待ち・完了）とは別に管理します。</p>${groups}`);
+    const candidateRows=candidates.map(candidate=>`<article class="an-work-import-row"><label class="an-work-import-check"><input type="checkbox" data-v2-work-import="${esc2(candidate.key)}"><span><strong>${esc2(candidate.name)}</strong><small>${esc2(candidate.source)} ・ ${esc2(workProjectOf(candidate.projectId)?.name||"プロジェクト未設定")}</small></span></label><label>優先度<select data-v2-work-import-priority="${esc2(candidate.key)}">${workOptions(WORK_PRIORITY_OPTIONS,"next")}</select></label><label>状態<select data-v2-work-import-status="${esc2(candidate.key)}">${workOptions(WORK_STATUS_OPTIONS,"todo")}</select></label></article>`).join("");
+    const importBox=candidates.length?`<section class="an-work-import"><header><div><h2>既存の仕事を登録</h2><p>登録した仕事だけを一覧・時間割・日報で同じIDとして管理します。元の予定とプロジェクトは削除しません。</p></div><span>${candidates.length}件</span></header><div class="an-work-import-list">${candidateRows}</div><button type="button" class="an-save blue" data-v2-work-import-save>選択した仕事を登録</button></section>`:`<section class="an-work-import is-empty"><h2>既存の仕事を登録</h2><p>未登録の既存仕事はありません。時間割から「仕事内容を追加する」と、ここへ同じカタログで追加できます。</p></section>`;
+    return analogPage("an-work-board","list","WORK BOARD","仕事の一覧",`<p class="an-date-note">次に何をするかを優先度で整理します。状態（未着手・進行中・待ち・完了）とは別に管理します。</p>${importBox}${groups}`);
   }
   let activeFlowEvent=null;
   function flowEventSheet(){
@@ -1235,6 +1271,28 @@
       if(habit && text) text.value=habit.label;
     }
   });
+  root.addEventListener("click", event => {
+    const button=event.target.closest("[data-v2-work-import-save]");
+    if(!button)return;
+    event.stopImmediatePropagation();
+    if(!canWrite())return;
+    const candidates=legacyWorkCandidates(),selected=[...root.querySelectorAll("[data-v2-work-import]:checked")];
+    if(!selected.length)return toast("登録する仕事を選んでください");
+    S.workProjects=Array.isArray(S.workProjects)?S.workProjects:[];
+    S.workItems=Array.isArray(S.workItems)?S.workItems:[];
+    let added=0;
+    for(const checkbox of selected){
+      const candidate=candidates.find(x=>x.key===checkbox.dataset.v2WorkImport);
+      if(!candidate)continue;
+      const duplicate=S.workItems.find(item=>item&&item.projectId===candidate.projectId&&String(item.name||"").trim()===candidate.name);
+      if(duplicate){linkWorkCatalogItem(duplicate);continue;}
+      const priorityGroup=root.querySelector(`[data-v2-work-import-priority="${CSS.escape(candidate.key)}"]`)?.value||"next";
+      const status=root.querySelector(`[data-v2-work-import-status="${CSS.escape(candidate.key)}"]`)?.value||"todo";
+      const item={id:uid(),projectId:candidate.projectId,name:candidate.name,priorityGroup,priority:WORK_PRIORITY_LEGACY[priorityGroup]||"b",status,note:""};
+      S.workItems.push(item);linkWorkCatalogItem(item);added++;
+    }
+    save();newAppRender();successToast(`${added}件の仕事を登録しました`);
+  },true);
   root.addEventListener("click", event => {
     const closer=event.target.closest("[data-v2-plan-close]");
     if(!closer) return;
