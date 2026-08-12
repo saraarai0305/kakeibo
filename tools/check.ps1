@@ -19,6 +19,12 @@ window.addEventListener("load", () => setTimeout(() => {
     if (!el) throw new Error("UI smoke: " + label);
     el.click();
   };
+  const setValue = (selector, value, label) => {
+    const el = document.querySelector(selector);
+    if (!el) throw new Error("UI smoke: " + label);
+    el.value = value;
+    el.dispatchEvent(new Event("input", {bubbles:true}));
+  };
   try {
     tap('[data-v2-go="record"]', "home → record");
     tap('[data-v2-go="moneyRecord"]', "record → money");
@@ -26,6 +32,14 @@ window.addEventListener("load", () => setTimeout(() => {
     tap('[data-v2-back]', "money → record");
     tap('[data-v2-back]', "record → home");
     tap('[data-v2-go="today"]', "home → today");
+    tap('[data-v2-go="workLog"]', "today → work log");
+    setValue('#v2WorkStart', '09:00', "work start");
+    setValue('#v2WorkEnd', '18:00', "work end");
+    setValue('#v2WorkBreak', '60', "work break");
+    if (document.querySelector('[data-v2-work-net]')?.textContent !== "8時間0分") {
+      throw new Error("UI smoke: net work duration");
+    }
+    tap('[data-v2-back]', "work log → today");
     tap('[data-v2-go="flow"]', "today → flow");
     if (!document.querySelector('.v2-timeline')) throw new Error("UI smoke: flow timeline");
     tap('[data-v2-go="calendar"]', "flow → calendar");
@@ -37,6 +51,8 @@ window.addEventListener("load", () => setTimeout(() => {
     tap('[data-v2-go="visualize"]', "home → visualize");
     tap('[data-v2-go="healthAnalysis"]', "visualize → health analysis");
     if (!document.querySelector('.v2-line-chart')) throw new Error("UI smoke: health chart");
+    if (!document.querySelector('[data-v2-metric="work"]')) throw new Error("UI smoke: work metric");
+    if (!document.querySelector('[data-v2-metric="break"]')) throw new Error("UI smoke: break metric");
     tap('[data-v2-back]', "health analysis → visualize");
     tap('[data-v2-go="moneyAnalysis"]', "visualize → money analysis");
     if (!document.querySelector('.v2-chart-block')) throw new Error("UI smoke: money analysis");
@@ -55,6 +71,12 @@ $build = [regex]::Match($src, 'const BUILD = "([^"]+)"').Groups[1].Value
 $ver = (Get-Content "$root\version.txt" -Raw -Encoding UTF8).Trim()
 if ($build -ne $ver) { Write-Error "BUILD($build) と version.txt($ver) が違います" }
 "OK  版 $build"
+
+# レンダー入口が再び多重ラップされると、画面位置と設定表示が画面ごとにずれる。
+$uiV2 = Get-Content "$root\ui-v2.js" -Raw -Encoding UTF8
+if ([regex]::Matches($uiV2, 'window\.newAppRender\s*=').Count -ne 1) { Write-Error "newAppRender の入口が複数あります" }
+if ($uiV2 -match 'baseNewAppRender|renderWithSeparatedSync') { Write-Error "旧レンダーラッパーが残っています" }
+"OK  レンダー入口は単一"
 
 # PWAが古いCSS/JSをキャッシュすると、公開URLとホーム画面アプリの表示が食い違う。
 # 画面側とService Worker側の主要資産は、BUILDと同じクエリ版を必ず持たせる。

@@ -176,6 +176,22 @@
   let workLogDate = ymd(now());
   let workLogFormReset = false;
   let workLogDateViewport = null;
+  // iOS/Safari can scroll a focused date input into view before `focusin`.
+  // Keep a short history so a date change can restore the viewport from before
+  // that browser-managed scroll, including keyboard and automation-like paths.
+  const viewportHistory=[];
+  function rememberViewport(){
+    const current=currentViewport(),last=viewportHistory[viewportHistory.length-1];
+    if(!last||last.x!==current.x||last.y!==current.y)viewportHistory.push({x:current.x,y:current.y,time:Date.now()});
+    while(viewportHistory.length>8)viewportHistory.shift();
+  }
+  function viewportBeforeFocus(){
+    const latest=viewportHistory[viewportHistory.length-1],prior=viewportHistory[viewportHistory.length-2];
+    if(latest&&prior&&Date.now()-latest.time<700&&(latest.x!==prior.x||latest.y!==prior.y))return {x:prior.x,y:prior.y};
+    return currentViewport();
+  }
+  window.addEventListener("scroll",rememberViewport,{passive:true});
+  rememberViewport();
   function go(next){ if(next === page) return; stack.push(page); if(next === "workLog"){workLogDate=flowDate||ymd(now());workLogFormReset=false;} page = next; newAppRender({preserveScroll:false}); resetViewport(); }
   function back(){ const prev = stack.pop(); if(!prev) return; page = prev; newAppRender({preserveScroll:false}); resetViewport(); }
   function goHome(){ page = "home"; stack = []; newAppRender({preserveScroll:false}); resetViewport(); }
@@ -491,27 +507,24 @@
   function calendar(){const base=new Date(calendarDate+"T00:00:00"),mon=new Date(base);mon.setDate(base.getDate()-((base.getDay()+6)%7));let content="";if(calendarMode==="week"){content=`<div class="v2-week">${Array.from({length:7},(_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);const key=ymd(d),bs=allBlocks(key);return `<button class="v2-week-day ${key===ymd(now())?"today":""}" data-v2-cal-date="${key}"><span>${"月火水木金土日"[i]}</span><b>${d.getDate()}</b>${bs.slice(0,3).map(b=>`<i class="v2-cal-dot" style="background:${esc2(b.color||catOf(b.cat).color)}"></i>`).join("")}</button>`}).join("")}</div>`;}else{const y=base.getFullYear(),m=base.getMonth(),days=new Date(y,m+1,0).getDate(),off=(new Date(y,m,1).getDay()+6)%7;content=`<div class="v2-month">${Array.from({length:off},()=>"<span></span>").join("")}${Array.from({length:days},(_,i)=>{const d=i+1,key=`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`,has=allBlocks(key).length;return `<button class="${key===ymd(now())?"today ":""}${has?"has":""}" data-v2-cal-date="${key}">${d}</button>`}).join("")}</div>`;}const period=calendarMode==="week"?`${mon.getMonth()+1}月${mon.getDate()}日からの1週間`:`${base.getFullYear()}年${base.getMonth()+1}月`;return analogPage("an-calendar","calendar","CALENDAR",period,`<div class="an-calendar-switch"><button class="${calendarMode==="week"?"on":""}" data-v2-cal-mode="week">1週間</button><button class="${calendarMode==="month"?"on":""}" data-v2-cal-mode="month">1か月</button></div>${content}<p class="an-empty">日付をタップすると、その日の時間割を開きます。</p>`);}
   function settingsV2(){const cfg=syncCfg();return analogPage("an-settings","settings","SETTINGS","くらしの設定",`<div class="an-settings v2-settings">${[["refresh","同期・歩数／睡眠",cfg.token&&cfg.gistId?"同期済み・アプリを開くと更新します":"未接続",`<p>歩数と睡眠は、設定済みのiPhoneショートカット／同期から読み込みます。</p><label>GitHubトークン</label><input id="v2SyncToken" type="password" autocomplete="off" placeholder="初回設定時のみ入力"><label>Gist ID</label><input id="v2SyncGist" value="${esc2(cfg.gistId||"")}" placeholder="2台目のみ入力"><button class="an-small-action" data-v2-sync-start>同期を設定・開始</button><button class="an-small-action" data-v2-sync>今すぐ同期する</button><button class="an-small-action" data-v2-role>${cfg.role==="ro"?"記録する端末にする":"見るだけの端末にする"}</button>`],["list","毎日の習慣","今日の流れに表示する項目",`<div class="an-habits">${habitList().map(h=>`<span class="an-habit">${habitIcon(h)}<span>${esc2(h.label)}</span></span>`).join("")}</div><label>習慣の名前</label><input id="v2HabitLabel" placeholder="例：ストレッチ"><button class="an-small-action" data-v2-habit-add>習慣を追加</button>`],["wallet","お金の初期設定","カード上限・方法・カテゴリー",`<label>カードの上限</label><input id="v2CardCap" type="text" inputmode="numeric" value="${(+S.cardCap||0).toLocaleString("ja-JP")}"><button class="an-small-action" data-v2-card-cap>上限を保存</button><label>支出の方法</label><input id="v2MethodAdd" placeholder="例：交通系IC"><button class="an-small-action" data-v2-method-add>方法を追加</button><label>支出のカテゴリー</label><input id="v2CategoryAdd" placeholder="例：医療費"><button class="an-small-action" data-v2-category-add>カテゴリーを追加</button><label>収入の受け取り方法</label><input id="v2IncomeMethodAdd" placeholder="例：PayPay"><button class="an-small-action" data-v2-income-method-add>方法を追加</button><label>収入のカテゴリー</label><input id="v2IncomeCategoryAdd" placeholder="例：傷病手当"><button class="an-small-action" data-v2-income-category-add>カテゴリーを追加</button>`],["calendar","カレンダー連携","予定の取り込みと表示",`<p>予定は「一日の流れ」から確認・追加できます。</p>`],["download","バックアップ","この端末のデータを保存",`<p>端末の記録を書き出して保管できます。</p><button class="an-small-action" data-v2-export>データを書き出す</button>`]].map(([i,t,s,b])=>`<details><summary><i>${icon(i)}</i><span><strong>${t}</strong><small>${s}</small></span><b>›</b></summary><div class="an-settings-body">${b}</div></details>`).join("")}</div>`,{settings:false});}
   function homeReturn(){ return analogReturn(); }
-  window.newAppRender = function(){const view={home:homeV2,record:()=>branch("record"),today:()=>branch("today"),visualize:()=>branch("visualize"),moneyRecord,moneyOutlook,moneyAnalysis,healthRecord,healthAnalysis,flow,checklist:checklistV2,theme,ideas:ideaNote,workLog,calendar,settings:settingsV2}[page]||homeV2;root.innerHTML=view();document.body.dataset.v2Scroll=["home","record","today","visualize"].includes(page)?"locked":"auto";};
-  function syncStatusLabel(cfg){
-    if(!(cfg.token&&cfg.gistId)) return "未接続";
-    if(cfg.lastSyncError) return "接続エラー（確認が必要）";
-    if(cfg.lastSync) return "接続確認済み";
-    return "同期設定済み（通信未確認）";
-  }
-  const baseNewAppRender = window.newAppRender;
-  window.newAppRender = function(options={}){
+  // 画面描画の唯一の入口。通常の再描画は表示位置を保持し、画面遷移だけが明示的に先頭へ戻す。
+  // 保存・選択・削除・ドラッグの各操作は、この入口を経由しても同じ復元契約を使う。
+  function renderV2(options={}){
     const position=options.preserveScroll===false?null:currentViewport();
-    baseNewAppRender();
+    const view={home:homeV2,record:()=>branch("record"),today:()=>branch("today"),visualize:()=>branch("visualize"),moneyRecord,moneyOutlook,moneyAnalysis,healthRecord,healthAnalysis,flow,checklist:checklistV2,theme,ideas:ideaNote,workLog,calendar,settings:settingsV2}[page]||homeV2;
+    root.innerHTML=view();
+    document.body.dataset.v2Scroll=["home","record","today","visualize"].includes(page)?"locked":"auto";
     if(page === "settings"){
-      const status=root.querySelector(".an-settings details:first-child summary small");
-      if(status) status.textContent=syncStatusLabel(syncCfg());
+      root.querySelector('[data-v2-sync-status="refresh"]')?.replaceChildren(deviceSyncStatus(syncCfg()));
+      root.querySelector('[data-v2-sync-status="health"]')?.replaceChildren(healthSyncStatus(healthSyncCfg()));
     }
     if(page === "healthRecord"){
       const sleepCard=root.querySelector(".v2-health-paper-item:nth-child(3)"), sleepEdit=root.querySelector(".v2-sleep-edit");
       if(sleepCard && sleepEdit) sleepCard.appendChild(sleepEdit);
     }
     restoreViewport(position);
-  };
+  }
+  window.newAppRender = renderV2;
   // 画面遷移を待たず、ホームの時計と時間割の現在線を毎秒更新する。
   function paintLiveClock(){
     const d=now(), raw=d.getHours()*60+d.getMinutes(), text=toHHMM(raw);
@@ -1134,14 +1147,6 @@
   /* ブランド表記はアプリ名に合わせて、設定画面も「くらし」で統一する。 */
   const settingsV2WithBrand=settingsV2;
   settingsV2=function(){return settingsV2WithBrand().replaceAll("暮らしの設定","くらしの設定");};
-  const renderWithSeparatedSync=window.newAppRender;
-  window.newAppRender=function(options={}){
-    renderWithSeparatedSync(options);
-    if(page==="settings"){
-      root.querySelector('[data-v2-sync-status="refresh"]')?.replaceChildren(deviceSyncStatus(syncCfg()));
-      root.querySelector('[data-v2-sync-status="health"]')?.replaceChildren(healthSyncStatus(healthSyncCfg()));
-    }
-  };
   root.addEventListener("click",event=>{
     const toggle=event.target.closest("[data-v2-success-notices]");
     if(!toggle) return;
@@ -1520,6 +1525,7 @@
   root.addEventListener("pointercancel",()=>{const scrollAnchor=freeBoardUI.gestureScroll;freeBoardUI.pointers.clear();if(freeBoardUI.gesture)clearTimeout(freeBoardUI.gesture.timer);freeBoardUI.gesture=null;freeBoardUI.gestureScroll=null;freeBoardUI.marquee=null;fbRestoreScroll(scrollAnchor);},true);
   function healthMean(values){const x=values.filter(v=>v!=null);return x.length?x.reduce((a,b)=>a+b,0)/x.length:0;}
   function healthCorr(a,b){const pairs=a.map((v,i)=>[v,b[i]]).filter(([x,y])=>x!=null&&y!=null);if(pairs.length<3)return null;const ax=healthMean(pairs.map(p=>p[0])),ay=healthMean(pairs.map(p=>p[1]));const n=pairs.reduce((s,[x,y])=>s+(x-ax)*(y-ay),0),dx=Math.sqrt(pairs.reduce((s,[x])=>s+(x-ax)**2,0)),dy=Math.sqrt(pairs.reduce((s,[,y])=>s+(y-ay)**2,0));return dx&&dy?n/(dx*dy):null;}
+  // 体調分析の現行正本。仕事の記録は実作業時間、休憩時間をここへ渡す。
   healthAnalysis=function(){
     const ms=healthMetrics(),by=id=>ms.find(m=>m.id===id),sleep=by("sleep"),steps=by("steps"),mind=by("mind"),checks=by("checklist"),work=by("work"),breaks=by("break");const sleepAvg=healthMean(sleep.vals),stepAvg=healthMean(steps.vals),workAvg=work.vals.some(v=>v!=null)?healthMean(work.vals):null,breakAvg=breaks.vals.some(v=>v!=null)?healthMean(breaks.vals):null,kcal=Math.round(stepAvg*.038);const corr=healthCorr(sleep.vals,mind.vals);const insight=healthAnalysisOpen?`<article class="v2-health-ai"><strong>${corr==null?"記録をためると傾向を出せます":corr>.3?"睡眠とこころに同じ方向の動きがあります":"今週は睡眠とこころの強い連動は見えていません"}</strong><p>これは端末内の記録から算出した目安です。医療上の判断には使わず、気になる変化は専門家に相談してください。</p></article>`:"";
     return analogPage("an-health-analysis","body","HEALTH ANALYSIS","体調の分析",`<section class="an-chart-section"><h2>睡眠・歩数・調子・仕事の変化</h2><div class="an-metric-toggle">${ms.map(m=>`<button class="${metricOn[m.id]?"":"off"}" data-v2-metric="${m.id}"><i style="background:${m.c}"></i>${m.label}</button>`).join("")}</div>${healthChart()}</section><section class="an-chart-section"><h2>振り返り</h2><div class="v2-health-review"><div><small>平均睡眠</small><b>${fmtSleep(Math.round(sleepAvg))}</b></div><div><small>平均歩数</small><b>${Math.round(stepAvg).toLocaleString("ja-JP")}歩</b></div><div><small>平均作業</small><b>${formatWorkMinutes(workAvg==null?null:Math.round(workAvg))}</b></div><div><small>平均休憩</small><b>${breakAvg==null?"未記録":`${Math.round(breakAvg)}分`}</b></div><div><small>推定消費</small><b>${kcal} kcal</b></div><div><small>毎日の習慣</small><b>${Math.round(healthMean(checks.vals))}%</b></div></div><button type="button" class="an-wide-action" data-v2-health-analysis>${icon("chart")}<span>記録から分析する</span><b>›</b></button>${insight}</section>`);
@@ -1533,7 +1539,7 @@
   },true);
   root.addEventListener("focusin",event=>{
     const date=event.target.closest("#v2WorkDate");
-    if(date&&page==="workLog"&&!workLogDateViewport)workLogDateViewport=currentViewport();
+    if(date&&page==="workLog"&&!workLogDateViewport)workLogDateViewport=viewportBeforeFocus();
   },true);
   root.addEventListener("input",event=>{
     if(page!=="workLog")return;
