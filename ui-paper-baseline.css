@@ -1,4 +1,8 @@
-/* Shared paper baseline. This file intentionally loads after ui-analog.css. */
+/*
+ * Final shared layer. This file intentionally loads after ui-analog.css.
+ * Keep only tokens, typography/centering contracts, responsive guards and
+ * cross-screen interaction rules here; do not grow another screen-specific UI.
+ */
 :root{--paper-base:#f6efe1;--paper-dot:rgba(96,76,49,.17)}
 
 html,body,body[data-app-shell="v2"]{

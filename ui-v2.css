@@ -1,4 +1,8 @@
-/* LIFE NOTE v2 — the approved, purpose-first application shell. */
+/*
+ * Compatibility layer: legacy V2 shell tokens and classes.
+ * New screen styles belong in ui-analog.css; shared final contracts belong
+ * in ui-paper-baseline.css. Do not add new screen-specific rules here.
+ */
 :root{
   --v2-bg:#09111c;--v2-surface:#132234;--v2-surface-2:#182a3c;--v2-line:#2a4058;
   --v2-text:#f6f8fc;--v2-muted:#91a6bd;--v2-blue:#75bcf3;--v2-green:#60d59d;
