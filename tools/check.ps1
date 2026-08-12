@@ -13,7 +13,7 @@ if (-not (Test-Path $chrome)) { Write-Error "Chromeが見つかりません: $ch
 $src = Get-Content "$root\index.html" -Raw -Encoding UTF8
 $smoke = @'
 <script>
-window.addEventListener("load", () => setTimeout(() => {
+window.addEventListener("load", () => setTimeout(async () => {
   const tap = (selector, label) => {
     const el = document.querySelector(selector);
     if (!el) throw new Error("UI smoke: " + label);
@@ -25,39 +25,73 @@ window.addEventListener("load", () => setTimeout(() => {
     el.value = value;
     el.dispatchEvent(new Event("input", {bubbles:true}));
   };
+  const selectValue = (selector, value, label) => {
+    const el = document.querySelector(selector);
+    if (!el) throw new Error("UI smoke: " + label);
+    el.value = value;
+    el.dispatchEvent(new Event("change", {bubbles:true}));
+  };
+  const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
   try {
-    tap('[data-v2-go="record"]', "home → record");
-    tap('[data-v2-go="moneyRecord"]', "record → money");
+    tap('[data-v2-go="moneyRecord"]', "home → 支出・収入");
     if (!document.querySelector('#v2Amount')) throw new Error("UI smoke: money form");
-    tap('[data-v2-back]', "money → record");
-    tap('[data-v2-back]', "record → home");
-    tap('[data-v2-go="today"]', "home → today");
-    tap('[data-v2-go="workLog"]', "today → work log");
+    tap('[data-v2-back]', "支出・収入 → home");
+    if (document.querySelectorAll('.an-home-group').length !== 3) throw new Error("UI smoke: home groups");
+    if (!document.querySelector('.an-home-group.work')?.textContent.includes('仕事') || !document.querySelector('.an-home-group.life')?.textContent.includes('生活') || !document.querySelector('.an-home-group.review')?.textContent.includes('見える化')) throw new Error("UI smoke: group labels");
+    tap('[data-v2-go="workLog"]', "home → work log");
     setValue('#v2WorkStart', '09:00', "work start");
     setValue('#v2WorkEnd', '18:00', "work end");
     setValue('#v2WorkBreak', '60', "work break");
     if (document.querySelector('[data-v2-work-net]')?.textContent !== "8時間0分") {
       throw new Error("UI smoke: net work duration");
     }
-    tap('[data-v2-back]', "work log → today");
+    tap('[data-v2-back]', "work log → home");
     tap('[data-v2-go="flow"]', "today → flow");
     if (!document.querySelector('.v2-timeline')) throw new Error("UI smoke: flow timeline");
+    if (document.querySelectorAll('[data-v2-flow-filter]').length !== 4) throw new Error("UI smoke: flow filters");
+    if (!document.querySelector('.an-flow-filter-note')?.textContent.includes('仕事')) throw new Error("UI smoke: work flow filter");
+    tap('[data-v2-flow-filter="common"]', "flow → common filter");
+    if (!document.querySelector('.an-flow-filter-note')?.textContent.includes('共通')) throw new Error("UI smoke: common flow filter");
+    tap('[data-v2-flow-filter="work"]', "common → work filter");
+    if (!document.querySelector('[data-v2-plan-open]')?.textContent.includes('仕事内容を追加する')) throw new Error("UI smoke: work add label");
+    tap('[data-v2-plan-open]', "flow → add work");
+    selectValue('#v2TimelineKind', 'work', "work catalog kind");
+    setValue('#v2TimelineNewProject', 'UI smoke project', "new work project");
+    setValue('#v2TimelineWorkName', 'UI smoke work', "new work item");
+    setValue('#v2PlanFrom', '14:00', "work plan start");
+    setValue('#v2PlanTo', '15:00', "work plan end");
+    tap('[data-v2-timeline-save]', "save work catalog");
+    await pause(100);
+    if (!Array.from(document.querySelectorAll('.v2-event strong')).some(el => el.textContent.includes('UI smoke work'))) throw new Error("UI smoke: work catalog event");
+    tap('[data-v2-back]', "flow → home after work catalog");
+    tap('[data-v2-go="workBoard"]', "home → work board");
+    if (!document.querySelector('.an-work-group.next') || !document.querySelector('.an-work-group.now') || !document.querySelector('.an-work-group.someday') || !document.querySelector('.an-work-group.waiting')) throw new Error("UI smoke: work priority groups");
+    if (!document.querySelector('.an-work-group')?.textContent.includes('UI smoke work')) throw new Error("UI smoke: work board item");
+    selectValue('[data-v2-work-priority]', 'now', "work priority change");
+    await pause(100);
+    if (!document.querySelector('.an-work-group.now')?.textContent.includes('UI smoke work')) throw new Error("UI smoke: work priority regroup");
+    tap('[data-v2-back]', "work board → home");
+    tap('[data-v2-go="flow"]', "home → flow after work board");
+    tap('[data-v2-back]', "flow → home before linked work log");
+    tap('[data-v2-go="workLog"]', "today → linked work log");
+    if (!document.querySelector('#v2WorkProject') || !document.querySelector('#v2WorkItem') || document.querySelectorAll('.an-work-check').length) throw new Error("UI smoke: linked work dropdowns");
+    if (!Array.from(document.querySelector('#v2WorkItem').options).some(o => o.textContent.includes('UI smoke work'))) throw new Error("UI smoke: linked work item option");
+    tap('[data-v2-back]', "linked work log → today");
+    tap('[data-v2-go="flow"]', "today → flow after linked work log");
     tap('[data-v2-go="calendar"]', "flow → calendar");
     tap('[data-v2-cal-mode="month"]', "calendar month mode");
     if (!document.querySelector('.v2-month')) throw new Error("UI smoke: month calendar");
     tap('[data-v2-back]', "calendar → flow");
-    tap('[data-v2-back]', "flow → today");
-    tap('[data-v2-back]', "today → home");
-    tap('[data-v2-go="visualize"]', "home → visualize");
-    tap('[data-v2-go="healthAnalysis"]', "visualize → health analysis");
+    tap('[data-v2-back]', "flow → home");
+    tap('[data-v2-go="healthAnalysis"]', "home → health analysis");
     if (!document.querySelector('.v2-line-chart')) throw new Error("UI smoke: health chart");
     if (!document.querySelector('[data-v2-metric="work"]')) throw new Error("UI smoke: work metric");
     if (!document.querySelector('[data-v2-metric="break"]')) throw new Error("UI smoke: break metric");
-    tap('[data-v2-back]', "health analysis → visualize");
+    tap('[data-v2-back]', "health analysis → home");
     tap('[data-v2-go="moneyAnalysis"]', "visualize → money analysis");
     if (!document.querySelector('.v2-chart-block')) throw new Error("UI smoke: money analysis");
-    tap('[data-v2-back]', "money analysis → visualize");
-    tap('[data-v2-go="settings"]', "visualize → settings");
+    tap('[data-v2-back]', "money analysis → home");
+    tap('[data-v2-go="settings"]', "home → settings");
     if (!document.querySelector('.v2-settings')) throw new Error("UI smoke: settings");
     document.documentElement.dataset.uiSmoke = "ok";
   } catch (error) {

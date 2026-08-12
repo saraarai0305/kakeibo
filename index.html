@@ -1474,6 +1474,13 @@ function seed(){
     cardCap: 0,         // 今月カードで使ってよい上限
     health: {},         // "2026-08-02" -> {steps, bed:"23:40", wake:"07:30"}
     workLogs: {},       // "2026-08-02" -> 日報。予定とは別の仕事の記録
+    workProjects: [     // 仕事カタログのプロジェクト。旧areasから移行可能
+      {id:"plugin", name:"プラグイン開発", color:"#F0A868", note:""},
+      {id:"app", name:"生活管理アプリ", color:"#7AA7F0", note:""},
+      {id:"motion", name:"ワンモーション", color:"#E28FC8", note:""},
+      {id:"env", name:"PC・環境の整備", color:"#8E9AB2", note:""}
+    ],
+    workItems: [],       // [{id, projectId, name, priorityGroup, priority, status, note}]
     daily: {},          // "2026-08-03" -> {habits:{med_m:true,...}, tasks:[{id,text,done}]}
     habits: null,       // null なら既定。設定で編集すると配列になる
     lightRule: { steps:12000, sleepH:5 },
@@ -1511,8 +1518,31 @@ function seed(){
 function normalize(o){
   const b = seed();
   const s = Object.assign(b, o || {});
-  for(const k of ["accounts","fixed","incomes","spends","incomeLogs","subs","errands","dailyTimeline"])
+  for(const k of ["accounts","fixed","incomes","spends","incomeLogs","subs","errands","dailyTimeline","workProjects","workItems"])
     if(!Array.isArray(s[k])) s[k] = b[k];
+  // 既存の制作領域は仕事カタログのプロジェクト候補へ移す。生活データは削除しない。
+  if(!Array.isArray(o?.workProjects) && Array.isArray(s.areas) && s.areas.length){
+    s.workProjects=s.areas.map(a=>({id:a.id||uid(),name:a.label||a.name||"名称未設定",color:a.color||"#7AA7F0",note:a.note||""}));
+  }
+  const projectFallback=s.workProjects[0]?.id||"";
+  for(const p of s.workProjects){
+    if(!p || typeof p !== "object") continue;
+    if(typeof p.id !== "string" || !p.id) p.id=uid();
+    if(typeof p.name !== "string") p.name=typeof p.label === "string" ? p.label : "名称未設定";
+    if(typeof p.color !== "string" || !p.color) p.color="#7AA7F0";
+    if(typeof p.note !== "string") p.note="";
+  }
+  for(const item of s.workItems){
+    if(!item || typeof item !== "object") continue;
+    if(typeof item.id !== "string" || !item.id) item.id=uid();
+    if(typeof item.projectId !== "string" || !item.projectId || !s.workProjects.some(p=>p&&p.id===item.projectId)) item.projectId=projectFallback;
+    if(typeof item.name !== "string") item.name=typeof item.text === "string" ? item.text : "名称未設定";
+    if(!["a","b","c","d"].includes(item.priority)) item.priority="c";
+    const legacyPriorityGroup={a:"now",b:"next",c:"someday",d:"someday"};
+    if(!["next","now","someday","waiting"].includes(item.priorityGroup)) item.priorityGroup=legacyPriorityGroup[item.priority]||"someday";
+    if(!["todo","doing","waiting","done"].includes(item.status)) item.status="todo";
+    if(typeof item.note !== "string") item.note="";
+  }
   if(!s.ui || typeof s.ui !== "object") s.ui = b.ui;
   if(!["expense","income"].includes(s.ui.entryType)) s.ui.entryType = "expense";
   if(typeof s.ui.pay !== "string" || !s.ui.pay) s.ui.pay = "cash";
@@ -1542,7 +1572,7 @@ function normalize(o){
   for(const k of Object.keys(s.workLogs)){
     const w = s.workLogs[k];
     if(!w || typeof w !== "object"){ delete s.workLogs[k]; continue; }
-    for(const field of ["start","end","project","implementation","quality","design","insight","next"])
+    for(const field of ["start","end","project","projectId","workItemId","workItem","implementation","quality","design","insight","next","done","statusNote","todo","trial","delivery"])
       if(typeof w[field] !== "string") w[field] = "";
     w.breakMinutes = Math.max(0, Math.min(720, Number(w.breakMinutes) || 0));
     if(!Array.isArray(w.checks)) w.checks = [];
@@ -3827,7 +3857,7 @@ function setHealthSyncCfg(c){ localStorage.setItem(HEALTH_SYNC_KEY, JSON.stringi
 const isReadOnly = () => syncCfg().role === "ro";
 function canWrite(){
   if(!isReadOnly()) return true;
-  toast("見るだけの端末です。設定の「同期・歩数連携」から切り替えてください");
+  toast("見るだけの端末です。設定の「端末データ同期」から切り替えてください");
   return false;
 }
 function rolePaint(){
@@ -3847,7 +3877,7 @@ function syncPaint(state, msg){
   dot.className = "syncdot" + (state ? " " + state : "");
   document.getElementById("syncMsg").textContent = msg;
   const c = syncCfg(), on = !!(c.token && c.gistId);
-  document.getElementById("syncState").textContent = !on ? "未接続" : c.lastSyncError ? "接続エラー" : c.lastSync ? "接続確認済み" : "同期設定済み";
+  document.getElementById("syncState").textContent = !on ? "未接続" : c.lastSyncError ? "接続エラー" : c.lastSync ? (c.role === "ro" ? "読み取り専用・接続確認済み" : "接続確認済み") : c.role === "ro" ? "読み取り専用・同期設定済み" : "同期設定済み";
   document.getElementById("syncOff").hidden = !on;
 
   // Gist ID は常に見える場所に出す。設定パネルは畳むだけで hidden にしない
@@ -4158,7 +4188,7 @@ document.getElementById("syncStart").addEventListener("click", async ()=>{
       "この端末のデータを残したい場合はキャンセルして、こちらを1台目として設定してください。"))
     return;
 
-  setSyncCfg({ token, gistId });
+  setSyncCfg(Object.assign({}, syncCfg(), { token, gistId }));
   syncPaint("busy", "接続中…");
   try{
     if(gistId){
@@ -4174,7 +4204,7 @@ document.getElementById("syncStart").addEventListener("click", async ()=>{
           }
         })
       });
-      setSyncCfg({ token, gistId: g.id });
+      setSyncCfg(Object.assign({}, syncCfg(), { token, gistId: g.id }));
       document.getElementById("syncGistOut").innerHTML =
         `できました。<b>2台目ではこのGist IDを入れてください:</b><br><code>${esc(g.id)}</code>`;
       syncPaint("ok", "同期を開始しました");
