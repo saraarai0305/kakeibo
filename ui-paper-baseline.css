@@ -594,3 +594,48 @@ body[data-app-shell="v2"]{min-height:100dvh!important}
 .v2fb-tools button,.v2fb-tools label{min-width:0!important;width:100%!important}
 .v2fb-tools .v2fb-clear{grid-column:1/-1!important}
 .v2fb-inline-editor{resize:none!important}
+
+/* v0.31.6: the flow mode owns the lane structure.  The selected mode decides
+   whether one lane or both lanes are rendered; legacy two-column rules must
+   not move a card outside the timeline frame. */
+.an-flow-timeline-shell{min-width:0!important;overflow:hidden!important}
+.an-flow-timeline-shell>.an-flow-lane-guide,.an-flow-timeline-shell>.v2-timeline{min-width:0!important;max-width:100%!important;box-sizing:border-box!important}
+.an-flow-timeline-shell[data-v2-flow-view="work"] .an-flow-lane-guide,.an-flow-timeline-shell[data-v2-flow-view="life"] .an-flow-lane-guide{grid-template-columns:minmax(0,1fr)!important}
+.an-flow-timeline-shell[data-v2-flow-view="work"] .an-flow-lane-guide span:nth-child(2),.an-flow-timeline-shell[data-v2-flow-view="life"] .an-flow-lane-guide span:nth-child(2){display:none!important}
+.an-flow-timeline-shell[data-v2-flow-view="work"] .an-flow-lane-guide span:first-child,.an-flow-timeline-shell[data-v2-flow-view="life"] .an-flow-lane-guide span:first-child{border-right:0!important}
+.an-flow-timeline-shell[data-v2-flow-view="work"] .v2-timeline:after,.an-flow-timeline-shell[data-v2-flow-view="life"] .v2-timeline:after{display:none!important}
+.an-flow-timeline-shell[data-v2-flow-view="work"] .v2-event,.an-flow-timeline-shell[data-v2-flow-view="life"] .v2-event{left:0!important;right:0!important;width:100%!important;max-width:100%!important;box-sizing:border-box!important}
+.an-flow-timeline-shell[data-v2-flow-view="common"] .v2-event{left:var(--event-left,0)!important;right:auto!important;width:var(--event-width,100%)!important;max-width:100%!important;box-sizing:border-box!important}
+.an-flow-timeline-shell .v2-event strong,.an-flow-timeline-shell .v2-event span{min-width:0!important;overflow-wrap:anywhere!important}
+
+/* v0.31.9: common view lays out each category inside its own lane before
+   applying overlap columns. Shared tokens color the icon and label together. */
+.an-flow-timeline-shell{--flow-work-color:#796aa8;--flow-life-color:#4f986f!important}
+.an-flow-timeline-shell[data-v2-flow-view="work"] .an-flow-lane-guide span:first-child,
+.an-flow-timeline-shell[data-v2-flow-view="work"] .an-flow-lane-guide span:first-child .v2-icon{color:var(--flow-work-color)!important}
+.an-flow-timeline-shell[data-v2-flow-view="life"] .an-flow-lane-guide span:first-child,
+.an-flow-timeline-shell[data-v2-flow-view="life"] .an-flow-lane-guide span:first-child .v2-icon{color:var(--flow-life-color)!important}
+.an-flow-timeline-shell[data-v2-flow-view="common"] .an-flow-lane-guide span:first-child,
+.an-flow-timeline-shell[data-v2-flow-view="common"] .an-flow-lane-guide span:first-child .v2-icon{color:var(--flow-work-color)!important}
+.an-flow-timeline-shell[data-v2-flow-view="common"] .an-flow-lane-guide span:nth-child(2),
+.an-flow-timeline-shell[data-v2-flow-view="common"] .an-flow-lane-guide span:nth-child(2) .v2-icon{color:var(--flow-life-color)!important}
+.an-flow-timeline-shell[data-v2-flow-view="common"] .v2-event.an-lane-work{left:var(--event-left,0)!important;right:auto!important;width:var(--event-width,100%)!important}
+.an-flow-timeline-shell[data-v2-flow-view="common"] .v2-event.an-lane-life{left:var(--event-left,50%)!important;right:auto!important;width:var(--event-width,50%)!important}
+
+/* Editing is a centered dialog.  Time fields share one grid and one numeric
+   token so native time-input chrome cannot create a false start/end offset. */
+.an-event-sheet-layer{place-items:center!important;align-items:center!important;justify-items:center!important;padding:16px!important;overflow:auto!important}
+.an-event-sheet{box-sizing:border-box!important;max-height:calc(100dvh - 32px)!important;overflow:auto!important;width:min(100%,520px)!important;margin:0!important}
+.an-event-time-grid{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:10px!important;align-items:start!important;min-width:0!important}
+.an-event-time-grid label{min-width:0!important}
+.an-event-time-grid input{display:block!important;width:100%!important;min-width:0!important;box-sizing:border-box!important;text-align:center!important;font-variant-numeric:tabular-nums lining-nums!important}
+
+/* Monthly analysis and asset breakdown use the same compact, phone-safe grid. */
+.an-month-nav{display:grid!important;grid-template-columns:42px minmax(0,1fr) 42px!important;align-items:center!important;gap:8px!important;margin:0 0 5px!important}
+.an-month-nav button{display:grid!important;place-items:center!important;width:42px!important;height:38px!important;padding:0!important;border:1px solid #c8b99f!important;border-radius:10px!important;background:#fffaf0!important;color:#315674!important;font:800 22px/1 inherit!important}
+.an-month-nav strong{min-width:0!important;color:#21312d!important;font-size:19px!important;text-align:center!important;font-variant-numeric:tabular-nums lining-nums!important}
+.an-month-note{margin:0 0 14px!important;color:#85755e!important;font-size:12px!important;font-weight:750!important;text-align:center!important}
+.an-summary-row.an-total-funds{border-top:2px solid #c8b99f!important}
+.an-summary-row.an-account-row{min-height:42px!important;padding-left:24px!important}
+.an-summary-row.an-account-row i{opacity:.72!important}
+.an-summary-row.an-account-row small{font-size:10px!important}

@@ -51,8 +51,8 @@ window.addEventListener("load", () => setTimeout(async () => {
     tap('[data-v2-back]', "work log → home");
     tap('[data-v2-go="flow"]', "today → flow");
     if (!document.querySelector('.v2-timeline')) throw new Error("UI smoke: flow timeline");
-    if (document.querySelectorAll('[data-v2-flow-filter]').length !== 4) throw new Error("UI smoke: flow filters");
-    if (!document.querySelector('.an-flow-filter-note')?.textContent.includes('仕事')) throw new Error("UI smoke: work flow filter");
+    if (document.querySelectorAll('[data-v2-flow-filter]').length !== 3) throw new Error("UI smoke: flow filters");
+    if (!document.querySelector('.an-flow-filter-note')?.textContent.includes('共通')) throw new Error("UI smoke: common default flow filter");
     tap('[data-v2-flow-filter="common"]', "flow → common filter");
     if (!document.querySelector('.an-flow-filter-note')?.textContent.includes('共通')) throw new Error("UI smoke: common flow filter");
     tap('[data-v2-flow-filter="work"]', "common → work filter");
@@ -72,7 +72,7 @@ window.addEventListener("load", () => setTimeout(async () => {
     await pause(100);
     if (!document.querySelector('#v2EventPriority') || !document.querySelector('#v2EventStatus')) throw new Error("UI smoke: event priority/status edit");
     tap('[data-v2-event-close]', "close event editor");
-    tap('[data-v2-flow-filter="all"]', "work → all flow");
+    tap('[data-v2-flow-filter="common"]', "work → common flow");
     const addTestPlan = async label => {
       tap('[data-v2-plan-open]', "open overlap planner");
       selectValue('#v2TimelineKind', 'plan', "overlap plan kind");
@@ -125,7 +125,9 @@ window.addEventListener("load", () => setTimeout(async () => {
     if (!document.querySelector('[data-v2-metric="break"]')) throw new Error("UI smoke: break metric");
     tap('[data-v2-back]', "health analysis → home");
     tap('[data-v2-go="moneyAnalysis"]', "visualize → money analysis");
-    if (!document.querySelector('.v2-chart-block')) throw new Error("UI smoke: money analysis");
+    if (!document.querySelector('.v2-chart-block') || !document.querySelector('[data-v2-money-month-label]')) throw new Error("UI smoke: monthly money analysis");
+    tap('[data-v2-money-month="-1"]', "money analysis → previous month");
+    if (!document.querySelector('[data-v2-money-month-label]')) throw new Error("UI smoke: monthly navigation");
     tap('[data-v2-back]', "money analysis → home");
     tap('[data-v2-go="settings"]', "home → settings");
     if (!document.querySelector('.v2-settings')) throw new Error("UI smoke: settings");
