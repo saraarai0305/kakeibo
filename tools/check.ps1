@@ -14,10 +14,24 @@ $src = Get-Content "$root\index.html" -Raw -Encoding UTF8
 $smoke = @'
 <script>
 window.addEventListener("load", () => setTimeout(async () => {
+  const visible = selector => Array.from(document.querySelectorAll(selector)).find(node => {
+    const style = getComputedStyle(node);
+    return style.display !== "none" && style.visibility !== "hidden" && node.getClientRects().length;
+  });
   const tap = (selector, label) => {
-    const el = document.querySelector(selector);
+    const el = visible(selector);
     if (!el) throw new Error("UI smoke: " + label);
     el.click();
+  };
+  const openHomeGroup = (id, label) => {
+    const el = visible(`[data-v2-home-group-toggle="${id}"]`);
+    if (!el) throw new Error("UI smoke: " + label);
+    if (el.getAttribute("aria-expanded") !== "true") el.click();
+  };
+  const closeHomeGroup = (id, label) => {
+    const el = visible(`[data-v2-home-group-toggle="${id}"]`);
+    if (!el) throw new Error("UI smoke: " + label);
+    if (el.getAttribute("aria-expanded") === "true") el.click();
   };
   const setValue = (selector, value, label) => {
     const el = document.querySelector(selector);
@@ -33,15 +47,20 @@ window.addEventListener("load", () => setTimeout(async () => {
   };
   const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
   try {
+    openHomeGroup('life', "home → life group");
     tap('[data-v2-go="moneyRecord"]', "home → 支出・収入");
     if (!document.querySelector('#v2Amount')) throw new Error("UI smoke: money form");
     tap('[data-v2-moneytype="borrowing"]', "money → borrowing");
     if (!document.querySelector('#v2Borrower') || !document.querySelector('[data-v2-money-save]')?.textContent.includes('借入')) throw new Error("UI smoke: borrowing form");
     tap('[data-v2-moneytype="expense"]', "borrowing → expense");
     tap('[data-v2-back]', "支出・収入 → home");
+    closeHomeGroup('life', "home → compact life group");
     if (document.querySelectorAll('.an-home-group').length !== 3) throw new Error("UI smoke: home groups");
     if (!document.querySelector('.an-home-group.work')?.textContent.includes('仕事') || !document.querySelector('.an-home-group.life')?.textContent.includes('生活') || !document.querySelector('.an-home-group.review')?.textContent.includes('見える化')) throw new Error("UI smoke: group labels");
+    if (document.querySelectorAll('.an-home-shortcut').length !== 3 || document.querySelectorAll('.an-home-group-list:not([hidden]) .an-choice').length) throw new Error("UI smoke: compact home defaults");
+    openHomeGroup('work', "home → work group");
     tap('[data-v2-go="workLog"]', "home → work log");
+    if (document.querySelectorAll('[data-v2-work-punch]').length !== 4) throw new Error("UI smoke: work punch controls");
     setValue('#v2WorkStart', '09:00', "work start");
     setValue('#v2WorkEnd', '18:00', "work end");
     setValue('#v2WorkBreak', '60', "work break");
@@ -139,6 +158,7 @@ window.addEventListener("load", () => setTimeout(async () => {
     if (!document.querySelector('[data-v2-event-delete]')?.textContent.includes('毎日の予定から削除')) throw new Error("UI smoke: recurring delete label");
     tap('[data-v2-event-close]', "close recurring editor");
     tap('[data-v2-back]', "flow → home after work catalog");
+    openHomeGroup('work', "home → work group for board");
     tap('[data-v2-go="workBoard"]', "home → work board");
     if (!document.querySelector('.an-work-group.next') || !document.querySelector('.an-work-group.now') || !document.querySelector('.an-work-group.someday') || !document.querySelector('.an-work-group.waiting')) throw new Error("UI smoke: work priority groups");
     const priorityOrder = Array.from(document.querySelectorAll('.an-work-group h2')).map(el => el.textContent.trim()).join('|');
@@ -146,6 +166,13 @@ window.addEventListener("load", () => setTimeout(async () => {
     if (document.querySelectorAll('.an-work-item').length < 1) throw new Error("UI smoke: registered existing work group");
     if (!Array.from(document.querySelectorAll('.an-work-group')).some(el => el.textContent.includes('UI smoke work'))) throw new Error("UI smoke: work board item");
     if (!document.querySelector('.an-work-projects')) throw new Error("UI smoke: project reference section");
+    const projectEdit = visible('[data-v2-work-project-edit]');
+    if (projectEdit) {
+      projectEdit.click();
+      await pause(60);
+      if (!document.querySelector('[data-v2-work-project-name]')) throw new Error("UI smoke: project rename editor");
+      tap('[data-v2-work-project-name-cancel]', "cancel project rename");
+    }
     const smokePriority = Array.from(document.querySelectorAll('[data-v2-work-priority]')).find(el => el.closest('.an-work-item')?.textContent.includes('UI smoke work'));
     if (!smokePriority) throw new Error("UI smoke: work priority control");
     smokePriority.value = 'now';
@@ -158,6 +185,7 @@ window.addEventListener("load", () => setTimeout(async () => {
     const linkedPriorityEvent = Array.from(document.querySelectorAll('[data-v2-event-work-item-id]')).find(el => el.textContent.includes('UI smoke work'));
     if (!linkedPriorityEvent || !linkedPriorityEvent.getAttribute('style')?.includes('#c85d54')) throw new Error("UI smoke: linked priority color update");
     tap('[data-v2-back]', "flow → home before linked work log");
+    openHomeGroup('work', "home → work group for linked log");
     tap('[data-v2-go="workLog"]', "today → linked work log");
     if (!document.querySelector('#v2WorkProjectAdd') || !document.querySelector('[data-v2-work-project-row]') || !document.querySelector('[data-v2-work-item-for-project]') || document.querySelectorAll('.an-work-check').length || document.querySelectorAll('input[type="checkbox"][data-v2-work-project]').length) throw new Error("UI smoke: linked work catalog");
     if (!Array.from(document.querySelectorAll('[data-v2-work-item-for-project] option')).some(o => o.textContent.includes('UI smoke work'))) throw new Error("UI smoke: linked work item option");
@@ -182,6 +210,7 @@ window.addEventListener("load", () => setTimeout(async () => {
     tap('[data-v2-cal-lane="common"]', "calendar common filter");
     tap('[data-v2-back]', "calendar → flow");
     tap('[data-v2-back]', "flow → home");
+    openHomeGroup('life', "home → life group for health");
     tap('[data-v2-go="healthRecord"]', "home → health record");
     if (!document.querySelector('#v2HealthDate') || !document.querySelector('[data-v2-health-save="steps"]')) throw new Error("UI smoke: health date selector");
     selectValue('#v2HealthDate', '2099-01-02', "health record date");
@@ -192,11 +221,12 @@ window.addEventListener("load", () => setTimeout(async () => {
     await pause(80);
     if (!document.querySelector('[data-v2-health-save="body"]')?.textContent.includes('変更')) throw new Error("UI smoke: health change label");
     tap('[data-v2-back]', "health record → home");
+    openHomeGroup('review', "home → review group for health analysis");
     tap('[data-v2-go="healthAnalysis"]', "home → health analysis");
     if (!document.querySelector('.v2-line-chart')) throw new Error("UI smoke: health chart");
-    if (!document.querySelector('[data-v2-metric="work"]')) throw new Error("UI smoke: work metric");
-    if (!document.querySelector('[data-v2-metric="break"]')) throw new Error("UI smoke: break metric");
+    if (document.querySelectorAll('[data-v2-metric]').length !== 4 || !document.querySelector('[data-v2-metric="sleep"]') || !document.querySelector('[data-v2-metric="steps"]') || !document.querySelector('[data-v2-metric="body"]') || !document.querySelector('[data-v2-metric="mind"]') || document.querySelector('[data-v2-metric="work"]') || document.querySelector('[data-v2-metric="break"]')) throw new Error("UI smoke: four health metrics only");
     tap('[data-v2-back]', "health analysis → home");
+    openHomeGroup('review', "home → review group for money analysis");
     tap('[data-v2-go="moneyAnalysis"]', "visualize → money analysis");
     if (!document.querySelector('.v2-chart-block') || !document.querySelector('[data-v2-money-month-label]')) throw new Error("UI smoke: monthly money analysis");
     tap('[data-v2-money-month="-1"]', "money analysis → previous month");
@@ -208,7 +238,7 @@ window.addEventListener("load", () => setTimeout(async () => {
   } catch (error) {
     document.documentElement.dataset.uiSmoke = "failed: " + error.message;
   }
-}, 200));
+}, 800));
 </script>
 '@
 $src = $src.Replace('</body>', $smoke + '</body>')
@@ -253,7 +283,7 @@ if ($sw -notmatch [regex]::Escape('const CACHE = "mainichi-v' + $build + '"')) {
 "OK  PWA資産とキャッシュ版が一致"
 
 # 実データがあればそれを流し込んで試す（無ければ空データ）
-$test = "$root\_check_tmp.html"
+$test = Join-Path $env:TEMP "kakeibo-check_tmp.html"
 $dataFile = "$root\private\mainichi-data.json"
 if (Test-Path $dataFile) {
   $json = (Get-Content $dataFile -Raw -Encoding UTF8 | ConvertFrom-Json | ConvertTo-Json -Depth 20 -Compress)
@@ -267,12 +297,38 @@ if (Test-Path $dataFile) {
 
 $log = "$env:TEMP\kakeibo-check-console.txt"
 $dom = "$env:TEMP\kakeibo-check-dom.html"
-# ネイティブexeの stderr は Start-Process で分ける（PS5.1 の 2> は NativeCommandError になる）
+# PowerShell 5.1のStart-Processは環境変数のPath/PATH重複で失敗する環境がある。
+# ProcessStartInfoで標準出力・標準エラーを分け、環境を再構成せずに起動する。
+# 通常のChromeプロファイルを共有すると、GPUプロセスやプロファイルロックで
+# dump-domが空になるため、検査ごとに専用プロファイルを使う。
+$profile = Join-Path $env:TEMP ("kakeibo-check-profile-" + [guid]::NewGuid().ToString("N"))
 $args = @("--headless","--disable-gpu","--virtual-time-budget=4000",
+          "--disable-software-rasterizer","--disable-gpu-compositing",
+          "--no-first-run","--no-default-browser-check",
+          ("--user-data-dir=" + $profile),
           "--enable-logging=stderr","--v=0","--dump-dom",
           ("file:///" + $test.Replace('\','/')))
-Start-Process -FilePath $chrome -ArgumentList $args -NoNewWindow -Wait `
-  -RedirectStandardOutput $dom -RedirectStandardError $log
+$psi = New-Object System.Diagnostics.ProcessStartInfo
+$psi.FileName = $chrome
+$psi.UseShellExecute = $false
+$psi.CreateNoWindow = $true
+$psi.RedirectStandardOutput = $true
+$psi.RedirectStandardError = $true
+$psi.Arguments = ($args | ForEach-Object { '"' + $_.Replace('"','\"') + '"' }) -join ' '
+$proc = New-Object System.Diagnostics.Process
+$proc.StartInfo = $psi
+$null = $proc.Start()
+$stdout = $proc.StandardOutput.ReadToEnd()
+$stderr = $proc.StandardError.ReadToEnd()
+$proc.WaitForExit()
+[System.IO.File]::WriteAllText($dom, $stdout)
+[System.IO.File]::WriteAllText($log, $stderr)
+
+if ([string]::IsNullOrWhiteSpace($stdout)) {
+  Remove-Item $test -Force -ErrorAction SilentlyContinue
+  Remove-Item $profile -Recurse -Force -ErrorAction SilentlyContinue
+  Write-Error "検査用ChromeのDOM出力が空です。検査環境を確認してください。"
+}
 
 # file:// では fetch と manifest が必ず怒られる。それ以外のコンソール出力は異常とみなす
 $bad = Get-Content $log -Encoding UTF8 | Select-String "CONSOLE" |
@@ -285,6 +341,7 @@ if ($html -notmatch 'data-ui-smoke="ok"') {
   $smokeState = [regex]::Match($html, 'data-ui-smoke="([^"]+)"').Groups[1].Value
   if ($smokeState) { Write-Host "SMOKE $smokeState" -ForegroundColor Red }
   Remove-Item $test -Force
+  Remove-Item $profile -Recurse -Force -ErrorAction SilentlyContinue
   Write-Error "画面遷移のスモークテストに失敗しました"
 }
 "OK  入口から設定までの画面遷移"
@@ -305,4 +362,5 @@ if ($html -match 'id="crashBox"([^>]*)>') {
 "OK  crashBox は閉じたまま"
 
 Remove-Item $test -Force
+Remove-Item $profile -Recurse -Force -ErrorAction SilentlyContinue
 Write-Host "`n通りました。git push して大丈夫です。" -ForegroundColor Green

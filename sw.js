@@ -1,12 +1,12 @@
 /* Offline shell. Data lives in localStorage, never in this cache. */
-const CACHE = "mainichi-v0.31.57";
+const CACHE = "mainichi-v0.31.61";
 const ASSETS = [
   "./",
   "./index.html",
-  "./ui-v2.css?v=0.31.57",
-  "./ui-analog.css?v=0.31.57",
-  "./ui-paper-baseline.css?v=0.31.57",
-  "./ui-v2.js?v=0.31.57",
+  "./ui-v2.css?v=0.31.61",
+  "./ui-analog.css?v=0.31.61",
+  "./ui-paper-baseline.css?v=0.31.61",
+  "./ui-v2.js?v=0.31.61",
   "./manifest.webmanifest",
   "./icons/icon-180.png",
   "./icons/icon-192.png",
