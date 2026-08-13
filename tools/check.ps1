@@ -274,7 +274,7 @@ if ($paper -notmatch 'an-file-pick|an-import-preview') { Write-Error "日報取�
 "OK  現行描画入口と日報取り込み紙面層あり"
 
 $paper = Get-Content "$root\ui-paper-baseline.css" -Raw -Encoding UTF8
-if ($paper -notmatch '\.an-health-date\{[^}]*justify-content:center' -or $paper -notmatch '\.an-health-date>span:first-child\{[^}]*position:absolute' -or ([regex]::Matches($paper,'\.an-health-date-control\{width:calc\(100% - var\(--health-date-side-space\)').Count -lt 2)) { Write-Error "体調記録の日付枠が行全体中央の共通構造になっていません" }
+if ($paper -notmatch '\.an-health-date\{[^}]*justify-content:center' -or $paper -notmatch '\.an-health-date>span:first-child\{[^}]*position:absolute' -or ([regex]::Matches($paper,'\.an-health-date-control\{width:calc\(100% - var\(--health-date-side-space\)').Count -lt 2) -or $paper -notmatch '\.an-health-date-control\{[^}]*display:grid[^}]*margin-left:auto') { Write-Error "体調記録の日付枠が行全体中央の共通構造になっていません" }
 "OK  体調記録の日付枠中央配置あり"
 if ($uiV2 -notmatch 'benefitOverview' -or $uiV2 -notmatch 'data-v2-benefit-flip' -or $uiV2 -notmatch 'data-v2-benefit-save' -or $uiV2 -notmatch 'v2BenefitNextStart' -or $uiV2 -notmatch 'data-v2-daily-end' -or $src -notmatch 'dailyTimelineIsVisibleOn' -or $src -notmatch 'dailyTimelineEndDate') { Write-Error "毎日の予定終了日または傷病手当パネルの導線がありません" }
 "OK  毎日の予定終了日と傷病手当パネルあり"

@@ -826,7 +826,8 @@ body[data-app-shell="v2"]{min-height:100dvh!important}
   text-align:left!important;
 }
 .an-flow .v2-event-content{
-  display:block!important;
+  display:grid!important;
+  place-items:center!important;
   min-width:0!important;
   margin:0!important;
   padding:0!important;
@@ -1065,9 +1066,23 @@ body[data-app-shell="v2"]{min-height:100dvh!important}
   white-space:nowrap!important;
 }
 .an-health-date-control{
-  width:100%!important;
+  display:grid!important;
+  place-items:center!important;
+  width:calc(100% - var(--health-date-side-space) - var(--health-date-side-space))!important;
   height:52px!important;
   min-height:52px!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+}
+
+/* v0.31.68: native inputs and visible values share one grid cell. */
+.an-work-time-control>input,
+.an-work-date-control>input,
+.an-health-date-control>input,
+.an-native-time-control>input{
+  grid-area:1/1!important;
+  align-self:stretch!important;
+  justify-self:stretch!important;
 }
 .an-health-data .an-time-fields .an-native-time-control{
   height:38px!important;
@@ -1144,3 +1159,64 @@ body[data-app-shell="v2"]{min-height:100dvh!important}
 .an-work-punch-actions button{min-width:0!important;min-height:38px!important;padding:0 6px!important;border:1px solid #b9a88c!important;border-radius:9px!important;background:#fffdf7!important;color:#294d6b!important;font:inherit!important;font-size:11px!important;font-weight:700!important;line-height:1.2!important}
 .an-work-punch-actions button:disabled{opacity:.42!important}
 @media(max-width:420px){.an-work-punch-actions{grid-template-columns:1fr 1fr!important}}
+
+/* v0.31.67: sleep and steps are parallel health cards.  Their input rows use
+   one shared vertical grid so two time fields and one steps field start at the
+   same Y coordinate and their save buttons share the same baseline. */
+.an-health-data{
+  --health-input-area-height:38px;
+  display:grid!important;
+  grid-template-rows:22px 20px 20px var(--health-input-area-height) 34px!important;
+  gap:6px!important;
+  align-content:start!important;
+  min-height:168px!important;
+}
+.an-health-data .an-time-fields{
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  gap:6px!important;
+  width:100%!important;
+  height:var(--health-input-area-height)!important;
+  min-height:var(--health-input-area-height)!important;
+  margin:0!important;
+}
+.an-health-data .an-time-fields .an-native-time-control,
+.an-health-data>input[data-v2-health="steps"]{
+  width:100%!important;
+  height:var(--health-input-area-height)!important;
+  min-height:var(--health-input-area-height)!important;
+  margin:0!important;
+  align-self:stretch!important;
+}
+.an-health-data .an-health-item-save{
+  width:100%!important;
+  height:34px!important;
+  min-height:34px!important;
+  margin:0!important;
+  align-self:stretch!important;
+}
+
+/* v0.31.65: narrow timeline cards stay readable from the left edge.  The
+   shared card geometry remains responsible for lanes; only the content layer
+   controls line breaking so titles never wrap into the time row. */
+.an-flow .v2-event-content{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:flex-start!important;
+  justify-content:flex-start!important;
+  min-width:0!important;
+  width:100%!important;
+  text-align:left!important;
+}
+.an-flow .v2-event-content>strong,
+.an-flow .v2-event-content>.v2-event-time{
+  display:block!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  overflow:hidden!important;
+  overflow-wrap:normal!important;
+  text-align:left!important;
+  white-space:nowrap!important;
+  text-overflow:ellipsis!important;
+}
