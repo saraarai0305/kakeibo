@@ -1,0 +1,19 @@
+{
+  "format": "mainichi.daily-report.v1",
+  "date": "2026-08-13",
+  "start": "09:00",
+  "end": "18:00",
+  "breakMinutes": 60,
+  "projects": [
+    {
+      "projectName": "プラグイン開発",
+      "description": "実際に行った仕事内容を自由に書く",
+      "done": "成果の例",
+      "statusNote": "進行中",
+      "todo": "次に確認すること",
+      "trial": "試行したこと",
+      "delivery": "納品・成果物の例",
+      "next": "次回やること"
+    }
+  ]
+}

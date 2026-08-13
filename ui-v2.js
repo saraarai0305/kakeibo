@@ -190,6 +190,73 @@
   let workLogDate = ymd(now());
   let workLogFormReset = false;
   let workLogDateViewport = null;
+  let workLogImportDraft = null;
+  const WORK_LOG_IMPORT_FORMAT = "mainichi.daily-report.v1";
+  const WORK_LOG_IMPORT_FIELDS = [
+    ["description", "仕事内容"], ["done", "やったこと・成果"], ["statusNote", "今の状況"],
+    ["todo", "やること"], ["trial", "試行・メモ"], ["delivery", "納品・成果物"], ["next", "次回やること"]
+  ];
+  const normalizeImportDate = value => {
+    const raw = String(value || "").trim().replace(/[./]/g, "-");
+    const match = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if(!match) return "";
+    const date = `${match[1]}-${String(match[2]).padStart(2,"0")}-${String(match[3]).padStart(2,"0")}`;
+    const parsed = new Date(`${date}T00:00:00`);
+    const sameLocalDate = parsed.getFullYear()===+match[1] && parsed.getMonth()+1===+match[2] && parsed.getDate()===+match[3];
+    return Number.isNaN(parsed.getTime()) || !sameLocalDate ? "" : date;
+  };
+  function parseWorkLogImport(text, filename=""){
+    const source=String(text||"").trim();
+    let raw=null;
+    try{ raw=JSON.parse(source); }catch{}
+    if(!raw){
+      const lines=source.split(/\r?\n/), parsed={projects:[]};
+      let current=null, field="";
+      for(const line of lines){
+        const project=line.match(/^##\s*(?:プロジェクト|Project)\s*[：:]\s*(.+?)\s*$/i);
+        if(project){ current={projectName:project[1].trim()}; parsed.projects.push(current); field=""; continue; }
+        const heading=line.match(/^###\s*(.+?)\s*$/);
+        if(heading){
+          const hit=WORK_LOG_IMPORT_FIELDS.find(([,label])=>heading[1].trim()===label);
+          field=hit?.[0]||""; continue;
+        }
+        const date=line.match(/(?:日付|Date)\s*[：:]\s*([0-9./-]+)/i);
+        if(date) parsed.date=date[1];
+        const start=line.match(/(?:作業開始|開始|Start)\s*[：:]\s*([0-9:]+)/i);
+        const end=line.match(/(?:作業終了|終了|End)\s*[：:]\s*([0-9:]+)/i);
+        const rest=line.match(/(?:休憩|Break)\s*[：:]\s*(\d+)/i);
+        if(start) parsed.start=start[1]; if(end) parsed.end=end[1]; if(rest) parsed.breakMinutes=rest[1];
+        if(current&&field&&line.trim()) current[field]=(current[field]?`${current[field]}\n`:"")+line.trim();
+      }
+      raw=parsed;
+    }
+    if(raw?.format && raw.format!==WORK_LOG_IMPORT_FORMAT) return {ok:false,errors:[`対応していない形式です（${WORK_LOG_IMPORT_FORMAT}）`],filename,projects:[]};
+    const date=normalizeImportDate(raw?.date||raw?.day||raw?.recordDate);
+    const projects=Array.isArray(raw?.projects)?raw.projects.map(item=>{
+      const projectId=String(item?.projectId||item?.id||"").trim();
+      const projectName=String(item?.projectName||item?.project||item?.name||"").trim();
+      const fields={};
+      for(const [key] of WORK_LOG_IMPORT_FIELDS) fields[key]=String(item?.[key]??"").trim();
+      return {projectId,projectName,fields};
+    }).filter(item=>item.projectId||item.projectName):[];
+    const errors=[];
+    if(!date) errors.push("日付（YYYY-MM-DD）が必要です");
+    if(!projects.length) errors.push("プロジェクトが1件以上必要です");
+    const resolved=projects.map(item=>{
+      const project=workProjectOf(item.projectId)||workProjects().find(x=>x.name===item.projectName);
+      return Object.assign({},item,{project});
+    });
+    const unknown=resolved.filter(item=>!item.project);
+    if(unknown.length) errors.push(`未登録のプロジェクト: ${unknown.map(item=>item.projectName||item.projectId).join("、")}`);
+    return {ok:errors.length===0,errors,date,filename,format:raw?.format||"markdown",start:String(raw?.start||raw?.workStart||"").trim(),end:String(raw?.end||raw?.workEnd||"").trim(),breakMinutes:raw?.breakMinutes==null?"":String(raw.breakMinutes).trim(),projects:resolved};
+  }
+  function workLogImportPanel(){
+    const draft=workLogImportDraft;
+    if(!draft) return `<p>指定した日報ファイルをこの端末で読み取り、内容を確認してから取り込みます。常時監視や自動上書きはしません。</p><label class="an-file-pick">${icon("upload")}日報ファイルを選ぶ<input id="v2WorkLogFile" type="file" accept=".json,.md,.markdown,.txt,application/json,text/markdown,text/plain"></label><small>JSON（mainichi.daily-report.v1）または定型Markdownに対応します。</small>`;
+    if(!draft.data?.ok) return `<div class="an-import-preview is-error"><strong>読み込めません</strong><p>${esc2((draft.data?.errors||["形式を確認してください"]).join("／"))}</p><button type="button" class="an-small-action" data-v2-work-log-import-cancel>ファイルを選び直す</button></div>`;
+    const data=draft.data,existing=Boolean(S.workLogs?.[data.date]&&Object.keys(S.workLogs[data.date]).length),unknown=data.projects.filter(item=>!item.project);
+    return `<div class="an-import-preview"><strong>取り込み内容を確認</strong><p><b>${esc2(data.date)}</b> ／ ${data.projects.length}プロジェクト ／ 休憩 ${esc2(data.breakMinutes||"0")}分</p><ul>${data.projects.map(item=>`<li>${esc2(item.projectName||item.projectId)}${item.project?"":"（未登録）"}</li>`).join("")}</ul>${existing?`<p class="an-import-warning">この日付には既存の日報があります。上書きしないため取り込めません。</p>`:""}${unknown.length?`<p class="an-import-warning">未登録のプロジェクトがあります。仕事の一覧で先に登録してください。</p>`:""}<div class="an-import-actions"><button type="button" class="an-small-action" data-v2-work-log-import-cancel>取り消す</button><button type="button" class="an-small-action an-import-confirm" data-v2-work-log-import-confirm ${existing||unknown.length||!canWrite()?"disabled":""}>この内容を日報に取り込む</button></div></div>`;
+  }
   // iOS/Safari can scroll a focused date input into view before `focusin`.
   // Keep a short history so a date change can restore the viewport from before
   // that browser-managed scroll, including keyboard and automation-like paths.
@@ -1331,6 +1398,19 @@
   });
   root.addEventListener("change", async event => {
     const input=event.target;
+    if(input.id==="v2WorkLogFile" && input.files?.length){
+      const file=input.files[0];
+      try{
+        const data=parseWorkLogImport(await file.text(),file.name);
+        workLogImportDraft={name:file.name,data};
+        newAppRender();
+      }catch(error){
+        workLogImportDraft={name:file.name,data:{ok:false,errors:[error.message||"ファイルを解析できません"]}};
+        newAppRender();
+      }
+      input.value="";
+      return;
+    }
     if(input.id!=="v2IdeaImage" || !input.files?.length) return;
     if(!canWrite()) return;
     const files=Array.from(input.files).slice(0,4);
@@ -1831,6 +1911,7 @@
       ["wallet","お金の初期設定","カード上限・方法・カテゴリー",`<label>カードの上限</label><input id="v2CardCap" type="text" inputmode="numeric" value="${(+S.cardCap||0).toLocaleString("ja-JP")}"><button class="an-small-action" data-v2-card-cap>上限を保存</button>`],
       ["coin","傷病手当の申請情報","次回申請・今回の申請分・受給期間",`<label>次回申請開始日</label><input id="v2BenefitNextStart" type="date" value="${esc2(benefit.nextApplicationStart||"")}"><label>今回申請している分（月）</label><input id="v2BenefitMonths" type="number" min="0" inputmode="numeric" value="${esc2(benefit.applicationMonths??"")}"><label>今回申請している分（日）</label><input id="v2BenefitDays" type="number" min="0" inputmode="numeric" value="${esc2(benefit.applicationDays??"")}"><p class="an-settings-help">受給予定期間は${esc2(benefit.start)}から${esc2(benefit.units)}か月です。</p><button class="an-small-action" data-v2-benefit-save>傷病手当の申請情報を保存</button>`],
       ["calendar","カレンダー連携","予定の読み込みと表示",`<p>予定は「一日の流れ」とカレンダーから確認できます。</p>`],
+      ["download","日報ファイルを取り込む","読み取り専用・確認してから保存",workLogImportPanel()],
       ["list","表示","完了メッセージ",`<p>「変更しました」など、操作が完了したときのメッセージを切り替えます。入力不足などの注意は常に表示します。</p><button class="an-small-action" data-v2-success-notices>${S.ui?.successNotices===false?"完了メッセージを表示する":"完了メッセージを表示しない"}</button>`],
       ["download","バックアップ","この端末の記録を書き出す",`<button class="an-small-action" data-v2-export>データを書き出す</button>`]
     ];
@@ -1839,6 +1920,25 @@
   /* ブランド表記はアプリ名に合わせて、設定画面も「くらし」で統一する。 */
   const settingsV2WithBrand=settingsV2;
   settingsV2=function(){return settingsV2WithBrand().replaceAll("暮らしの設定","くらしの設定");};
+  root.addEventListener("click",event=>{
+    const cancel=event.target.closest("[data-v2-work-log-import-cancel]");
+    if(cancel){ event.stopImmediatePropagation(); workLogImportDraft=null; newAppRender(); return; }
+    const confirm=event.target.closest("[data-v2-work-log-import-confirm]");
+    if(!confirm){ return; }
+    event.stopImmediatePropagation();
+    if(!canWrite()||confirm.disabled||!workLogImportDraft?.data?.ok) return;
+    const data=workLogImportDraft.data;
+    const existing=S.workLogs?.[data.date];
+    if(existing&&Object.keys(existing).length) return toast("既存の日報を上書きしないため、取り込めません");
+    const reviews={},descriptions={},projectIds=[];
+    data.projects.forEach(item=>{
+      const id=item.project.id; projectIds.push(id); reviews[id]=Object.assign({},item.fields);
+      if(item.fields.description) descriptions[id]=item.fields.description;
+    });
+    S.workLogs=S.workLogs||{};
+    S.workLogs[data.date]={start:data.start,end:data.end,breakMinutes:Math.max(0,+data.breakMinutes||0),projectIds,workDescriptions:descriptions,projectReviews:reviews,importedFrom:workLogImportDraft.name||"日報ファイル",importedAt:new Date().toISOString()};
+    save(); workLogImportDraft=null; newAppRender(); successToast("日報を取り込みました");
+  },true);
   root.addEventListener("click",event=>{
     const toggle=event.target.closest("[data-v2-success-notices]");
     if(!toggle) return;

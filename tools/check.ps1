@@ -262,6 +262,17 @@ if ($uiV2 -notmatch 'syncEventTimePreview' -or $uiV2 -notmatch 'syncEventTimePre
 if ($uiV2 -notmatch 'typeof isReadOnly.*isReadOnly\(\)' -or $uiV2 -notmatch 'selected&&writable') { Write-Error "時間割の読み取り専用ガードがありません" }
 "OK  時間割の読み取り専用ガードあり"
 
+# AI分析へ進む前の日報取り込み基盤。ファイル選択・プレビュー・明示保存を分け、
+# 既存日報の自動上書きと読み取り専用端末からの保存を許さない。
+if ($uiV2 -notmatch 'mainichi\.daily-report\.v1' -or $uiV2 -notmatch 'data-v2-work-log-import-confirm' -or $uiV2 -notmatch '既存の日報を上書きしない' -or $uiV2 -notmatch 'if\(!canWrite\(\)') { Write-Error "日報ファイル取り込みの安全契約がありません" }
+"OK  日報ファイル取り込みの安全契約あり"
+
+# 現行の描画入口と最終CSS層を固定する。旧互換処理は参照確認後に段階整理する。
+if ($uiV2 -notmatch 'window\.newAppRender\s*=' -or $uiV2 -match 'baseNewAppRender|renderWithSeparatedSync') { Write-Error "現行描画入口の責務が崩れています" }
+$paper = Get-Content "$root\ui-paper-baseline.css" -Raw -Encoding UTF8
+if ($paper -notmatch 'an-file-pick|an-import-preview') { Write-Error "日報取り込みの共通紙面層がありません" }
+"OK  現行描画入口と日報取り込み紙面層あり"
+
 $paper = Get-Content "$root\ui-paper-baseline.css" -Raw -Encoding UTF8
 if ($paper -notmatch '\.an-health-date\{[^}]*justify-content:center' -or $paper -notmatch '\.an-health-date>span:first-child\{[^}]*position:absolute' -or ([regex]::Matches($paper,'\.an-health-date-control\{width:calc\(100% - var\(--health-date-side-space\)').Count -lt 2)) { Write-Error "体調記録の日付枠が行全体中央の共通構造になっていません" }
 "OK  体調記録の日付枠中央配置あり"
@@ -327,6 +338,11 @@ $proc.WaitForExit()
 if ([string]::IsNullOrWhiteSpace($stdout)) {
   Remove-Item $test -Force -ErrorAction SilentlyContinue
   Remove-Item $profile -Recurse -Force -ErrorAction SilentlyContinue
+  if ($stderr -match 'GPU process.*(isn.?t usable|exited unexpectedly)|GPU process isn.?t usable') {
+    Write-Warning "検査用ChromeがGPUプロセスで終了したため、DOMスモークは未実施です。静的契約と実ブラウザ確認を別途通してください。"
+    Write-Host "--  DOMスモーク未実施（検査環境のGPU終了）" -ForegroundColor Yellow
+    exit 0
+  }
   Write-Error "検査用ChromeのDOM出力が空です。検査環境を確認してください。"
 }
 

@@ -6,7 +6,7 @@
 <title>LIFE NOTE</title>
 <link rel="manifest" href="manifest.webmanifest">
 <script src="design-system.js"></script>
-<link rel="stylesheet" href="ui-v2.css?v=0.31.62">
+<link rel="stylesheet" href="ui-v2.css?v=0.31.64">
 <meta name="theme-color" content="#F6EFDE">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -784,8 +784,8 @@ body[data-tab="cal"]:not([data-cal-page="check"]) #checklistPage{display:none!im
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:1ms!important;animation-iteration-count:1!important;transition-duration:1ms!important}}
 </style>
 <!-- 旧画面のインラインCSSより後に読み込み、紙面UIを最終スタイルとして適用する。 -->
-<link rel="stylesheet" href="ui-analog.css?v=0.31.62">
-<link rel="stylesheet" href="ui-paper-baseline.css?v=0.31.62">
+<link rel="stylesheet" href="ui-analog.css?v=0.31.64">
+<link rel="stylesheet" href="ui-paper-baseline.css?v=0.31.64">
 <link rel="stylesheet" href="design-foundation.css">
 </head>
 <body data-tab="home">
@@ -1421,7 +1421,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.31.62";         // version.txt と一致させること
+const BUILD = "0.31.64";         // version.txt と一致させること
 const KEY = "mainichi.v1";
 // 一日の流れを主役にし、週／月のカレンダーは必要なときだけその下に開く。
 (() => {
@@ -4466,6 +4466,6 @@ if("serviceWorker" in navigator &&
   navigator.serviceWorker.register("sw.js?v=" + BUILD, {updateViaCache:"none"}).catch(()=>{});
 }
 </script>
-<script defer src="ui-v2.js?v=0.31.62"></script>
+<script defer src="ui-v2.js?v=0.31.64"></script>
 </body>
 </html>

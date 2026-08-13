@@ -251,6 +251,20 @@ body[data-app-shell="v2"]{min-height:100dvh!important}
 .an-sync-settings .an-sync-actions{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important;margin-top:10px!important}
 .an-sync-settings .an-sync-code{display:block!important;margin:5px 0 12px!important;padding:9px 10px!important;border:1px dashed #b6a88d!important;border-radius:9px!important;background:#fffaf0!important;color:#315674!important;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace!important;word-break:break-all!important;white-space:pre-wrap!important}
 @media(max-width:390px){.an-sync-settings .an-sync-actions{grid-template-columns:1fr!important}}
+
+/* 日報ファイル取り込み: 読み取り→確認→明示保存の3状態を同じ枠で扱う。 */
+.an-file-pick{display:flex!important;align-items:center!important;justify-content:center!important;gap:7px!important;min-height:46px!important;padding:0 12px!important;border:1px solid #4d80ad!important;border-radius:12px!important;background:#edf5fa!important;color:#315674!important;font:800 13px/1 var(--board-font-sans)!important;cursor:pointer!important}
+.an-file-pick input{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important}
+.an-import-preview{display:grid!important;gap:8px!important;padding:13px!important;border:1px dashed #b7a789!important;border-radius:12px!important;background:#fffdf7!important;color:#273734!important}
+.an-import-preview>strong{font:800 14px/1.3 var(--board-font-sans)!important}
+.an-import-preview p{margin:0!important;font-size:12px!important;line-height:1.5!important}
+.an-import-preview ul{margin:0!important;padding-left:18px!important;color:#53615b!important;font:700 12px/1.5 var(--board-font-sans)!important}
+.an-import-warning{color:#a84f45!important;font-weight:800!important}
+.an-import-actions{display:grid!important;grid-template-columns:1fr 1.35fr!important;gap:8px!important}
+.an-import-confirm{background:#4d80ad!important;color:#fffaf0!important}
+.an-import-confirm:disabled{opacity:.45!important;cursor:not-allowed!important}
+.an-import-preview.is-error{border-color:#c86655!important}
+@media(max-width:390px){.an-import-actions{grid-template-columns:1fr!important}}
 /* Settings folder rows: icon and title share one visual row; the description is a
    secondary line kept close to the title.  This is a common component contract. */
 .an-sync-settings details>summary{grid-template-columns:28px minmax(0,1fr) auto!important;column-gap:10px!important;align-items:center!important}
