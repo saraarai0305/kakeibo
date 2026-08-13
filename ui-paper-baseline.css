@@ -864,6 +864,7 @@ body[data-app-shell="v2"]{min-height:100dvh!important}
   width:calc(100% - var(--flow-time-rail))!important;
   min-width:0!important;
   margin-left:var(--flow-time-rail)!important;
+  overflow:visible!important;
 }
 .an-flow-timeline-shell[data-v2-flow-view] .an-flow-event-layer .v2-event{
   left:var(--event-left,0)!important;
@@ -1052,3 +1053,42 @@ body[data-app-shell="v2"]{min-height:100dvh!important}
 .an-work-project-head strong{min-width:0!important;overflow-wrap:anywhere!important;color:#21312d!important;font-size:14px!important;font-weight:800!important}
 .an-work-project-remove{flex:none!important;min-height:30px!important;padding:0 10px!important;border:1px solid #c96b62!important;border-radius:8px!important;background:#fff0ed!important;color:#b24f4a!important;font:inherit!important;font-size:11px!important;font-weight:800!important}
 .an-work-project-empty{margin:0!important;padding:12px!important;border:1px dashed #c8b99f!important;border-radius:10px!important;color:#85755e!important;font-size:12px!important;font-weight:700!important;text-align:center!important}
+
+/* v0.31.56: daily review belongs to each selected project; time remains whole-day. */
+.an-work-project-review{display:grid!important;gap:10px!important;padding:10px!important;border:1px solid #d3c6b0!important;border-radius:14px!important;background:#fffaf0!important}
+.an-work-project-review{display:none!important}
+.an-work-project-review.is-active{display:grid!important}
+.an-work-project-review .an-work-project-row{padding:0!important;border:0!important;background:transparent!important}
+.an-work-selected-projects{display:flex!important;gap:6px!important;overflow-x:auto!important;padding:2px 0!important;scrollbar-width:thin!important}
+.an-work-selected-projects button{flex:none!important;min-height:32px!important;padding:0 10px!important;border:1px solid #af9f87!important;border-radius:999px!important;background:#fffaf0!important;color:#315674!important;font:inherit!important;font-size:11px!important;font-weight:800!important;white-space:nowrap!important}
+.an-work-selected-projects button.is-active{background:#315674!important;color:#fff!important;border-color:#315674!important}
+.an-work-page-nav{display:grid!important;grid-template-columns:42px minmax(0,1fr) 42px!important;align-items:center!important;gap:8px!important;padding:4px 0!important}
+.an-work-page-nav strong{text-align:center!important;color:#315674!important;font-size:12px!important;font-variant-numeric:tabular-nums!important}
+.an-work-page-nav button{min-height:34px!important;padding:0!important;border:1px solid #af9f87!important;border-radius:8px!important;background:#fffaf0!important;color:#315674!important;font:inherit!important;font-weight:900!important}
+.an-work-page-nav button:disabled{opacity:.35!important;cursor:not-allowed!important}
+.an-work-review-fields{display:grid!important;gap:8px!important;padding-top:8px!important;border-top:1px dashed #d3c6b0!important}
+.an-work-review-entry{display:grid!important;gap:5px!important}
+.an-work-review-entry textarea{width:100%!important;min-height:56px!important;padding:9px!important;border:1px solid #af9f87!important;border-radius:9px!important;background:#fffdf7!important;color:#21312d!important;font:inherit!important;font-size:13px!important;line-height:1.45!important;resize:vertical!important}
+.an-work-review-help{margin:0 0 12px!important;padding:10px 12px!important;border-left:4px solid #4d80ad!important;border-radius:8px!important;background:#eef5f8!important;color:#315674!important;font-size:12px!important;font-weight:700!important}
+.an-work-saved-review{margin:12px 0 0!important;padding-top:10px!important;border-top:1px dashed #d3c6b0!important}
+.an-work-saved-review h3{margin:0 0 6px!important;color:#315674!important;font-size:14px!important}
+.an-work-saved-review p{margin:5px 0!important;color:#68726a!important;font-size:12px!important;line-height:1.5!important}
+.an-work-saved-review p strong{display:inline-block!important;margin-right:5px!important;color:#315674!important}
+.an-work-growth{margin-top:8px!important;padding:8px!important;border-top:1px dashed #d3c6b0!important;color:#68726a!important;font-size:11px!important;line-height:1.45!important}
+.an-work-growth p{margin:4px 0!important}
+.an-work-growth p b{display:inline-block!important;min-width:36px!important;color:#315674!important}
+.an-work-growth details{margin-top:6px!important}
+.an-work-growth ol{margin:5px 0 0 18px!important;padding:0!important}
+.an-work-growth li{display:flex!important;gap:6px!important}
+
+/* v0.31.56: selection actions live in a full-width panel, never inside a narrow card. */
+.an-flow .v2-event.is-selected.is-writable .v2-event-content{padding-right:0!important}
+.an-flow .v2-event-edit-action{display:none!important}
+.an-flow-selection-panel{position:absolute!important;z-index:20!important;top:var(--selection-panel-top,0px)!important;left:0!important;right:0!important;display:grid!important;grid-template-columns:minmax(0,1fr) auto auto;align-items:center!important;gap:8px!important;margin:0!important;padding:10px!important;border:1px solid #315674!important;border-radius:12px!important;background:#eef5f8!important;color:#21312d!important;box-sizing:border-box!important;box-shadow:0 4px 12px rgba(33,49,45,.12)!important}
+.an-flow-selection-panel>div{display:grid!important;min-width:0!important;gap:2px!important}
+.an-flow-selection-panel small{color:#315674!important;font-size:11px!important;font-weight:800!important}
+.an-flow-selection-panel strong{overflow-wrap:anywhere!important;color:#21312d!important;font-size:13px!important;line-height:1.35!important}
+.an-flow-selection-panel span{color:#68726a!important;font-size:11px!important;font-variant-numeric:tabular-nums!important}
+.an-flow-selection-panel button{min-height:36px!important;padding:0 10px!important;border:1px solid #af9f87!important;border-radius:8px!important;background:#fffaf0!important;color:#315674!important;font:inherit!important;font-size:11px!important;font-weight:800!important;white-space:nowrap!important}
+.an-flow-selection-panel .v2-flow-selection-edit{background:#4d80ad!important;color:#fff!important;border-color:#4d80ad!important}
+@media(max-width:480px){.an-flow-selection-panel{grid-template-columns:1fr 1fr!important}.an-flow-selection-panel>div{grid-column:1/-1}.an-flow-selection-panel button{min-height:38px!important}}
