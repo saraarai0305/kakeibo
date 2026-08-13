@@ -67,6 +67,19 @@ window.addEventListener("load", () => setTimeout(async () => {
     if (document.querySelector('[data-v2-work-net]')?.textContent !== "8時間0分") {
       throw new Error("UI smoke: net work duration");
     }
+    if (document.querySelectorAll('[data-v2-work-time-save]').length !== 2) throw new Error("UI smoke: work time confirm controls");
+    const workStartConfirm = document.querySelector('[data-v2-work-time-save="start"]');
+    const workEndConfirm = document.querySelector('[data-v2-work-time-save="end"]');
+    if (!workStartConfirm?.disabled && !workEndConfirm?.disabled) {
+      tap('[data-v2-work-time-save="start"]', "confirm work start");
+      await pause(100);
+      if (!document.querySelector('[data-v2-work-time-save="start"]')?.textContent.includes('変更')) throw new Error("UI smoke: confirmed work start label");
+      tap('[data-v2-work-time-save="end"]', "confirm work end");
+      await pause(100);
+      if (!document.querySelector('[data-v2-work-time-save="end"]')?.textContent.includes('変更')) throw new Error("UI smoke: confirmed work end label");
+    } else if (!workStartConfirm?.textContent.includes('確定') || !workEndConfirm?.textContent.includes('確定')) {
+      throw new Error("UI smoke: read-only work time labels");
+    }
     tap('[data-v2-back]', "work log → home");
     tap('[data-v2-go="flow"]', "today → flow");
     if (!document.querySelector('.v2-timeline')) throw new Error("UI smoke: flow timeline");
@@ -276,6 +289,10 @@ if ($uiV2 -notmatch 'mainichi\.daily-report\.v1' -or $uiV2 -notmatch 'data-v2-wo
 
 if ($uiV2 -notmatch 'function renameWorkProject' -or $uiV2 -notmatch 'function renameWorkItem' -or $uiV2 -notmatch 'data-v2-work-project-edit' -or $uiV2 -notmatch 'data-v2-work-item-edit' -or $uiV2 -notmatch 'workItemId===itemId') { Write-Error "仕事カタログのID保持編集契約がありません" }
 "OK  仕事カタログのID保持編集契約あり"
+
+if ($uiV2 -notmatch 'function applyWorkTimeConfirmation' -or $uiV2 -notmatch 'data-v2-work-time-save' -or $uiV2 -notmatch 'workSessions:timeRecord\.workSessions') { Write-Error "作業時間の確定と勤務区間の連動契約がありません" }
+if ($src -notmatch 'stepsSource="sync"' -or $src -notmatch 'stepsSavedAt' -or $src -notmatch 'saveNow\(\);\s*render\(\)') { Write-Error "歩数自動保存の受信後保存契約がありません" }
+"OK  作業時間の確定・勤務区間連動と歩数自動保存あり"
 
 # 現行の描画入口と最終CSS層を固定する。旧互換処理は参照確認後に段階整理する。
 if ($uiV2 -notmatch 'window\.newAppRender\s*=' -or $uiV2 -match 'baseNewAppRender|renderWithSeparatedSync') { Write-Error "現行描画入口の責務が崩れています" }

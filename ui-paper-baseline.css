@@ -1212,6 +1212,10 @@ body[data-app-shell="v2"]{min-height:100dvh!important}
 .an-work-punch-actions button{min-width:0!important;min-height:38px!important;padding:0 6px!important;border:1px solid #b9a88c!important;border-radius:9px!important;background:#fffdf7!important;color:#294d6b!important;font:inherit!important;font-size:11px!important;font-weight:700!important;line-height:1.2!important}
 .an-work-punch-actions button:disabled{opacity:.42!important}
 @media(max-width:420px){.an-work-punch-actions{grid-template-columns:1fr 1fr!important}}
+.an-work-time-actions{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:5px!important}
+.an-work-time-save{width:100%!important;min-height:34px!important;margin:0!important;padding:0 8px!important;border:1px solid #c8b99f!important;border-radius:9px!important;background:#fffaf0!important;color:#315674!important;font:800 11px/1.1 var(--board-font-sans)!important}
+.an-work-time-save.is-change{border-color:#c95f54!important;background:#fff0ed!important;color:#b24f4a!important}
+.an-work-time-save:disabled{opacity:.42!important;cursor:not-allowed!important}
 
 /* v0.31.67: sleep and steps are parallel health cards.  Their input rows use
    one shared vertical grid so two time fields and one steps field start at the

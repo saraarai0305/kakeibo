@@ -372,6 +372,21 @@
     const sessions=workIntervals(record,"workSessions"),breaks=workIntervals(record,"breakSessions"),lastWork=sessions[sessions.length-1],lastBreak=breaks[breaks.length-1];
     return {sessions,breaks,activeWork:Boolean(lastWork&&!lastWork.end),activeBreak:Boolean(lastBreak&&!lastBreak.end),firstStart:sessions[0]?.start||"",lastEnd:[...sessions].reverse().find(x=>x.end)?.end||"",breakMinutes:workLogBreakMinutes(record)};
   }
+  function workTimeSaved(record,edge){const punch=workPunchState(record);return Boolean(edge==="start"?(record?.start||punch.firstStart):(record?.end||punch.lastEnd));}
+  function workSessionRecords(record){
+    let source=Array.isArray(record?.workSessions)?record.workSessions:[];
+    if(!source.length&&(record?.start||record?.end))source=[{start:record.start||"",end:record.end||""}];
+    return source.map(x=>({start:x?.start||x?.from||"",end:x?.end||x?.to||""}));
+  }
+  function applyWorkTimeConfirmation(record,edge,value){
+    const sessions=workSessionRecords(record);
+    if(!sessions.length)sessions.push({start:"",end:""});
+    if(edge==="start"){sessions[0].start=value;record.start=value;}else{sessions[sessions.length-1].end=value;record.end=value;}
+    record.workSessions=sessions;
+    record.breakSessions=Array.isArray(record.breakSessions)?record.breakSessions.map(x=>({start:x?.start||x?.from||"",end:x?.end||x?.to||""})):[];
+    record.breakMinutes=workLogBreakMinutes(record);
+    return record;
+  }
   function workLogState(record){
     const span=workLogSpan(record),breakMinutes=Math.max(0,Math.min(720,workLogBreakMinutes(record)));
     if(span==null)return {state:"empty",span:null,breakMinutes,net:null};
@@ -592,7 +607,7 @@
   function workLog(){
     const key=workLogDate||ymd(now()),saved=(S.workLogs&&S.workLogs[key])||{},draft=workLogDraftFor(key),form=workLogFormReset?{}:Object.assign({},saved,draft||{}),punch=workPunchState(form),projectReviews=form.projectReviews&&typeof form.projectReviews==="object"?form.projectReviews:{},selection=workLogSelection(key,form),planned=scheduledWorkForDate(key,selection.workItemId)[0],start=form.start||punch.firstStart||planned?.from||"",end=form.end||punch.lastEnd||planned?.to||"";
     const input=(id,label,type,value,placeholder="")=>`<label class="an-work-field"><span>${label}</span><input id="${id}" type="${type}" value="${esc2(value==null?"":value)}"${placeholder?` placeholder="${placeholder}"`:""}></label>`;
-    const timeInput=(id,label,value)=>`<label class="an-work-field an-work-time-field"><span>${label}</span><span class="an-work-time-control"><input id="${id}" type="time" value="${esc2(value==null?"":value)}"><span class="an-work-time-value" data-v2-work-time-value="${id}" aria-hidden="true">${esc2(value||"--:--")}</span></span></label>`;
+    const timeInput=(id,label,value)=>{const edge=id==="v2WorkStart"?"start":"end",changed=workTimeSaved(saved,edge);return `<label class="an-work-field an-work-time-field"><span>${label}</span><span class="an-work-time-control"><input id="${id}" type="time" value="${esc2(value==null?"":value)}"><span class="an-work-time-value" data-v2-work-time-value="${id}" aria-hidden="true">${esc2(value||"--:--")}</span></span><span class="an-work-time-actions"><button type="button" class="an-work-time-save${changed?" is-change":""}" data-v2-work-time-save="${edge}" ${canWrite()?"":"disabled"}>${label}${changed?"を変更":"を確定"}</button></span></label>`;};
     const choice=(id,label,value,options,placeholder)=>{const custom=Boolean(value)&&!options.includes(value),selected=custom?"__custom":value||"";return `<div class="an-work-entry" data-v2-work-entry="${id}"><label class="an-work-field"><span>${label}</span><select id="${id}Choice" data-v2-work-choice="${id}"><option value="">選択してください</option>${options.map(option=>`<option value="${esc2(option)}" ${option===selected?"selected":""}>${esc2(option)}</option>`).join("")}<option value="__custom" ${selected==="__custom"?"selected":""}>自由に入力する</option></select></label><textarea id="${id}" data-v2-work-custom="${id}" rows="3" placeholder="${placeholder}"${custom?"":" hidden"}>${esc2(custom?value:"")}</textarea></div>`};
     const options={done:["調査した","作成した","修正した","確認した","提出した"],statusNote:["進行中","確認待ち","問題あり","完了","保留"],todo:["次の作業を決める","確認・修正する","提出・共有する","返事を待つ"],trial:["比較した","試作した","相談した","調べた"],delivery:["提出済み","確認済み","未提出","対象なし"],next:["続きから始める","結果を確認する","次の予定を入れる","保留の理由を書く"]};
     const savedProjectIds=selection.projectIds.map(id=>workProjectOf(id)?.name).filter(Boolean),savedItemIds=selection.workItemIds.map(id=>workItemOf(id)).filter(Boolean),summary=Object.keys(saved).length?`<section class="an-work-summary"><h2>保存済みの記録</h2><div class="an-work-summary-stats"><div><small>実作業時間</small><b>${formatWorkMinutes(workLogMinutes(saved))}</b></div><div><small>休憩</small><b>${workLogBreakMinutes(saved)}分</b></div></div>${savedProjectIds.length?`<p><strong>プロジェクト</strong>${esc2(savedProjectIds.join("、"))}</p>`:""}${savedItemIds.length?`<p><strong>仕事内容</strong>${savedItemIds.map(item=>`${esc2(item.name)}（${esc2(workStatusLabel(item.status))}・優先 ${workPriorityLabel(item)}）`).join("、")}</p>`:""}${(saved.done||saved.implementation)?`<p><strong>やったこと・成果</strong>${esc2(saved.done||saved.implementation)}</p>`:""}${(saved.statusNote||saved.quality)?`<p><strong>今の状況</strong>${esc2(saved.statusNote||saved.quality)}</p>`:""}${(saved.todo||saved.insight)?`<p><strong>やること</strong>${esc2(saved.todo||saved.insight)}</p>`:""}${(saved.trial||saved.design)?`<p><strong>試行・メモ</strong>${esc2(saved.trial||saved.design)}</p>`:""}${saved.delivery?`<p><strong>納品・成果物</strong>${esc2(saved.delivery)}</p>`:""}${saved.next?`<p><strong>次回やること</strong>${esc2(saved.next)}</p>`:""}</section>`:"";
@@ -2578,6 +2593,22 @@
     save();workLogDate=date;newAppRender();successToast(kind==="in"?"勤務を開始しました":kind==="out"?"勤務を終了しました":kind==="break-start"?"休憩を開始しました":"休憩を終了しました");
   },true);
   root.addEventListener("click",event=>{
+    const button=event.target.closest("[data-v2-work-time-save]");
+    if(!button)return;
+    event.stopImmediatePropagation();
+    if(!canWrite())return;
+    const edge=button.dataset.v2WorkTimeSave,inputId=edge==="start"?"v2WorkStart":"v2WorkEnd",value=document.getElementById(inputId)?.value||"";
+    if(timeValueMinutes(value)==null)return toast(`${edge==="start"?"作業開始":"作業終了"}の時刻を入力してください`);
+    const date=document.getElementById("v2WorkDate")?.value||workLogDate||ymd(now()),saved=Object.assign({},(S.workLogs&&S.workLogs[date])||{}),wasSaved=workTimeSaved(saved,edge),draft=workLogDraftFor(date),record=applyWorkTimeConfirmation(Object.assign({},saved,draft||{}),edge,value);
+    S.workLogs=S.workLogs&&typeof S.workLogs==="object"?S.workLogs:{};
+    S.workLogs[date]=Object.assign({},saved,record,{id:saved.id||uid()});
+    const draftData=Object.assign({},draft||{},record,{projectIds:selectedWorkLogProjects(),workItemIds:selectedWorkLogItems(),workDescriptions:selectedWorkLogDescriptions(),projectReviews:selectedWorkLogReviews()});
+    try{localStorage.setItem(WORK_LOG_DRAFT_KEY,JSON.stringify({day:date,data:draftData,updatedAt:Date.now()}));}catch{}
+    workLogDate=date;workLogFormReset=false;save();
+    const position=currentViewport();newAppRender({preserveScroll:false});restoreViewport(position);
+    successToast(`${edge==="start"?"作業開始":"作業終了"}を${wasSaved?"変更":"確定"}しました`);
+  },true);
+  root.addEventListener("click",event=>{
     const button=event.target.closest("[data-v2-work-save]");
     if(!button)return;
     event.stopImmediatePropagation();
@@ -2586,8 +2617,9 @@
     if(span==null)return toast("作業開始と作業終了を入力してください");
     if(breakMinutes>span)return toast("休憩分は作業時間以内にしてください");
     S.workLogs=S.workLogs&&typeof S.workLogs==="object"?S.workLogs:{};
-    const previous=S.workLogs[date]||{},projectIds=selectedWorkLogProjects(),workItemIds=selectedWorkLogItems(),workDescriptions=selectedWorkLogDescriptions(),projectReviews=selectedWorkLogReviews(),projectId=projectIds[0]||"",workItemId=workItemIds[0]||"",project=workProjectOf(projectId),item=workItemOf(workItemId);
-    S.workLogs[date]={id:previous.id||uid(),start,end,breakMinutes,actualWorkMinutes:previous.actualWorkMinutes??null,workSessions:Array.isArray(previous.workSessions)?previous.workSessions:[],breakSessions:Array.isArray(previous.breakSessions)?previous.breakSessions:[],projectIds,workItemIds,workDescriptions,projectReviews,projectId,workItemId,project:project?.name||previous.project||"",workItem:item?.name||previous.workItem||"",checks:Array.isArray(previous.checks)?previous.checks:[],done:previous.done||"",statusNote:previous.statusNote||"",todo:previous.todo||"",trial:previous.trial||"",delivery:previous.delivery||"",next:previous.next||"",implementation:previous.implementation||"",quality:previous.quality||"",design:previous.design||"",insight:previous.insight||""};
+    const previous=S.workLogs[date]||{},projectIds=selectedWorkLogProjects(),workItemIds=selectedWorkLogItems(),workDescriptions=selectedWorkLogDescriptions(),projectReviews=selectedWorkLogReviews(),projectId=projectIds[0]||"",workItemId=workItemIds[0]||"",project=workProjectOf(projectId),item=workItemOf(workItemId),timeRecord=Object.assign({},previous,{start,end,breakMinutes});
+    applyWorkTimeConfirmation(timeRecord,"start",start);applyWorkTimeConfirmation(timeRecord,"end",end);
+    S.workLogs[date]={id:previous.id||uid(),start,end,breakMinutes,actualWorkMinutes:previous.actualWorkMinutes??null,workSessions:timeRecord.workSessions,breakSessions:timeRecord.breakSessions,projectIds,workItemIds,workDescriptions,projectReviews,projectId,workItemId,project:project?.name||previous.project||"",workItem:item?.name||previous.workItem||"",checks:Array.isArray(previous.checks)?previous.checks:[],done:previous.done||"",statusNote:previous.statusNote||"",todo:previous.todo||"",trial:previous.trial||"",delivery:previous.delivery||"",next:previous.next||"",implementation:previous.implementation||"",quality:previous.quality||"",design:previous.design||"",insight:previous.insight||""};
     workLogDate=date;workLogFormReset=true;clearWorkLogDraft(date);save();newAppRender();successToast("仕事の記録を保存しました");
   },true);
   function healthChartBounds(vp){
