@@ -181,10 +181,11 @@ body[data-app-shell="v2"]{min-height:100dvh!important}
   box-shadow:none!important;
 }
 .an-home-content{padding-bottom:34px!important}
-.an-home-meta{display:grid!important;grid-template-columns:1fr auto!important;align-items:end!important;gap:4px 12px!important;margin:0 0 var(--an-home-header-to-shortcuts-gap,0px)!important;padding:10px 0 12px!important;border-top:1px solid rgba(108,85,52,.45)!important;border-bottom:1px dashed rgba(108,85,52,.42)!important;color:#85755e!important}
-.an-home-meta time{font-size:12px!important;font-weight:800!important;letter-spacing:.04em!important}
-.an-home-meta strong{grid-column:2!important;grid-row:1 / span 2!important;color:#21312d!important;font-size:28px!important;font-weight:780!important;font-variant-numeric:tabular-nums!important;line-height:.95!important}
-.an-home-meta small{font-size:10px!important;font-weight:800!important;letter-spacing:.12em!important}
+.an-home-meta{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:end!important;gap:4px 12px!important;margin:0 0 var(--an-home-header-to-shortcuts-gap,0px)!important;padding:10px 0 12px!important;border-top:1px solid rgba(108,85,52,.45)!important;border-bottom:1px dashed rgba(108,85,52,.42)!important;color:#85755e!important}
+.an-home-date{display:flex!important;align-items:baseline!important;gap:8px!important;min-width:0!important;white-space:nowrap!important}
+.an-home-date>span{color:#68726a!important;font-size:11px!important;font-weight:850!important;letter-spacing:.06em!important}
+.an-home-meta time{color:#85755e!important;font-size:13px!important;font-weight:800!important;letter-spacing:.04em!important}
+.an-home-meta strong{color:#21312d!important;font-size:28px!important;font-weight:780!important;font-variant-numeric:tabular-nums!important;line-height:.95!important;white-space:nowrap!important}
 .an-home-shortcuts{margin:var(--an-home-header-to-shortcuts-gap,0px) 0 var(--an-home-section-gap,12px)!important;padding-top:14px!important;border-top:1px dashed rgba(108,85,52,.48)!important}
 .an-home-shortcuts>div:first-child{display:flex!important;align-items:center!important;justify-content:space-between!important;margin-bottom:9px!important}
 .an-home-shortcuts h2{margin:0!important;color:#68726a!important;font-size:12px!important;font-weight:800!important;letter-spacing:.08em!important}
