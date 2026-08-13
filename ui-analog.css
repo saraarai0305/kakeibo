@@ -403,7 +403,14 @@ body[data-app-shell="v2"] .wrap{width:100%!important;max-width:390px!important;m
 .an-work-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 10px;padding:11px;border:1px solid #d3c6b0;border-radius:11px;background:color-mix(in srgb,var(--work-priority-color,#c8b99f) 5%,#fffaf0)}
 .an-work-item-copy{display:grid;gap:3px;min-width:0}
 .an-work-item-copy strong{overflow-wrap:anywhere;color:#21312d;font-size:14px;font-weight:850;line-height:1.25}
-.an-work-item-copy small{overflow-wrap:anywhere;color:#68726a;font-size:11px;font-weight:700;line-height:1.2}
+.an-work-item-copy small{display:flex;align-items:center;flex-wrap:wrap;gap:5px;overflow-wrap:anywhere;color:#68726a;font-size:11px;font-weight:700;line-height:1.2}
+.an-work-item-edit-open,.an-work-item-project-edit{min-height:24px;padding:0 6px;border:1px solid #af9f87;border-radius:7px;background:#fffdf7;color:#315674;font:inherit;font-size:9px;font-weight:800;white-space:nowrap}
+.an-work-item-edit-open{justify-self:start;margin-top:1px}
+.an-work-item-edit{display:grid;gap:6px;min-width:0}
+.an-work-item-edit input{width:100%;min-width:0;min-height:36px;box-sizing:border-box;padding:0 8px;border:1px solid #4d80ad;border-radius:8px;background:#fffdf7;color:#21312d;font:inherit;font-size:12px;font-weight:700}
+.an-work-item-edit>div{display:flex;flex-wrap:wrap;gap:5px}
+.an-work-item-edit button{min-height:30px;padding:0 8px;border:1px solid #af9f87;border-radius:8px;background:#fffdf7;color:#315674;font:inherit;font-size:10px;font-weight:800;white-space:nowrap}
+.an-work-item-edit button:first-of-type{border-color:#4d80ad;background:#4d80ad;color:#fff}
 .an-work-status{align-self:start;padding:4px 7px;border-radius:8px;color:#315674;background:#edf2f4;font-size:10px;font-weight:850;white-space:nowrap}
 .an-work-status.doing{color:#39785d;background:#e2eee5}.an-work-status.waiting{color:#796aa8;background:#e7e1f0}.an-work-status.done{color:#68726a;background:#e8e5dc}
 .an-work-priority-label{grid-column:1/-1;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:8px;color:#68726a;font-size:11px;font-weight:800}

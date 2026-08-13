@@ -36,6 +36,7 @@
   let stack = [];
   let homeOpenGroups = new Set();
   let workProjectEditingId = "";
+  let workItemEditingId = "";
   let moneyType = "expense";
   let benefitFlip = false;
   let healthDraft = null;
@@ -196,6 +197,13 @@
     ["description", "仕事内容"], ["done", "やったこと・成果"], ["statusNote", "今の状況"],
     ["todo", "やること"], ["trial", "試行・メモ"], ["delivery", "納品・成果物"], ["next", "次回やること"]
   ];
+  function workLogProjectAliases(){
+    return S.workLogProjectAliases&&typeof S.workLogProjectAliases==="object"&&!Array.isArray(S.workLogProjectAliases)?S.workLogProjectAliases:{};
+  }
+  function resolveWorkLogProject(projectId,projectName){
+    const direct=workProjectOf(projectId),name=String(projectName||"").trim(),aliases=workLogProjectAliases(),aliasId=name?String(aliases[name]||"").trim():"";
+    return direct||workProjectOf(aliasId)||workProjects().find(project=>String(project?.name||"").trim()===name)||null;
+  }
   const normalizeImportDate = value => {
     const raw = String(value || "").trim().replace(/[./]/g, "-");
     const match = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
@@ -225,7 +233,8 @@
         const start=line.match(/(?:作業開始|開始|Start)\s*[：:]\s*([0-9:]+)/i);
         const end=line.match(/(?:作業終了|終了|End)\s*[：:]\s*([0-9:]+)/i);
         const rest=line.match(/(?:休憩|Break)\s*[：:]\s*(\d+)/i);
-        if(start) parsed.start=start[1]; if(end) parsed.end=end[1]; if(rest) parsed.breakMinutes=rest[1];
+        const actual=line.match(/(?:実作業時間|Actual\s*Work\s*Minutes)\s*[：:]\s*(\d+)/i);
+        if(start) parsed.start=start[1]; if(end) parsed.end=end[1]; if(rest) parsed.breakMinutes=rest[1]; if(actual) parsed.actualWorkMinutes=actual[1];
         if(current&&field&&line.trim()) current[field]=(current[field]?`${current[field]}\n`:"")+line.trim();
       }
       raw=parsed;
@@ -242,20 +251,44 @@
     const errors=[];
     if(!date) errors.push("日付（YYYY-MM-DD）が必要です");
     if(!projects.length) errors.push("プロジェクトが1件以上必要です");
+    const actualRaw=raw?.actualWorkMinutes==null?"":String(raw.actualWorkMinutes).trim();
+    if(actualRaw!==""&&!/^\d+$/.test(actualRaw)) errors.push("actualWorkMinutesは0以上の分数で指定してください");
     const resolved=projects.map(item=>{
-      const project=workProjectOf(item.projectId)||workProjects().find(x=>x.name===item.projectName);
+      const project=resolveWorkLogProject(item.projectId,item.projectName);
       return Object.assign({},item,{project});
     });
-    const unknown=resolved.filter(item=>!item.project);
-    if(unknown.length) errors.push(`未登録のプロジェクト: ${unknown.map(item=>item.projectName||item.projectId).join("、")}`);
-    return {ok:errors.length===0,errors,date,filename,format:raw?.format||"markdown",start:String(raw?.start||raw?.workStart||"").trim(),end:String(raw?.end||raw?.workEnd||"").trim(),breakMinutes:raw?.breakMinutes==null?"":String(raw.breakMinutes).trim(),projects:resolved};
+    return {ok:errors.length===0,errors,date,filename,format:raw?.format||"markdown",start:String(raw?.start||raw?.workStart||"").trim(),end:String(raw?.end||raw?.workEnd||"").trim(),breakMinutes:raw?.breakMinutes==null?"":String(raw.breakMinutes).trim(),actualWorkMinutes:actualRaw,projects:resolved};
+  }
+  function workLogImportResolution(draft,item,index){
+    const selected=draft.resolutions?.[index]||"";
+    if(item.project)return `<span class="an-import-project-status is-linked">既存プロジェクトに自動紐付け</span>`;
+    const options=workProjects().map(project=>`<option value="existing:${esc2(project.id)}" ${selected===`existing:${project.id}`?"selected":""}>既存：${esc2(project.name)}</option>`).join("");
+    return `<label class="an-import-project-resolution"><span>対応付け</span><select data-v2-work-log-project-resolution="${index}" ${canWrite()?"":"disabled"}><option value="" ${selected?"":"selected"}>選択してください</option>${options}${item.projectName?`<option value="new" ${selected==="new"?"selected":""}>新規プロジェクトとして登録</option>`:""}</select></label>`;
+  }
+  function syncWorkLogImportResolutionUI(){
+    const draft=workLogImportDraft,data=draft?.data;
+    if(!data?.ok)return;
+    const unresolved=data.projects.some((item,index)=>!item.project&&!draft.resolutions?.[index]);
+    const confirm=root.querySelector("[data-v2-work-log-import-confirm]");
+    if(confirm)confirm.disabled=Boolean(S.workLogs?.[data.date]&&Object.keys(S.workLogs[data.date]).length)||unresolved||!canWrite();
+    const warning=root.querySelector("[data-v2-work-log-resolution-warning]");
+    if(warning)warning.hidden=!unresolved;
+    data.projects.forEach((item,index)=>{
+      if(item.project)return;
+      const status=root.querySelector(`[data-v2-work-log-project-status="${index}"]`),selected=draft.resolutions?.[index]||"";
+      if(status)status.textContent=selected?"対応付け済み・取り込み時に確定":"未解決のプロジェクト名";
+    });
+  }
+  function keepWorkLogImportDetailsOpen(open){
+    if(!open)return;
+    [...root.querySelectorAll("details")].find(details=>details.textContent.includes("日報ファイルを取り込む"))?.setAttribute("open","");
   }
   function workLogImportPanel(){
     const draft=workLogImportDraft;
-    if(!draft) return `<p>指定した日報ファイルをこの端末で読み取り、内容を確認してから取り込みます。常時監視や自動上書きはしません。</p><label class="an-file-pick">${icon("upload")}日報ファイルを選ぶ<input id="v2WorkLogFile" type="file" accept=".json,.md,.markdown,.txt,application/json,text/markdown,text/plain"></label><small>JSON（mainichi.daily-report.v1）または定型Markdownに対応します。</small>`;
+    if(!draft) return `<p>指定した日報ファイルをこの端末で読み取り、内容を確認してから取り込みます。常時監視や自動上書きはしません。</p><label class="an-file-pick"><span class="an-file-pick-content">${icon("upload")}<span>日報ファイルを選ぶ</span></span><input id="v2WorkLogFile" type="file" accept=".json,.md,.markdown,.txt,application/json,text/markdown,text/plain"></label><small>JSON（mainichi.daily-report.v1）または定型Markdownに対応します。</small>`;
     if(!draft.data?.ok) return `<div class="an-import-preview is-error"><strong>読み込めません</strong><p>${esc2((draft.data?.errors||["形式を確認してください"]).join("／"))}</p><button type="button" class="an-small-action" data-v2-work-log-import-cancel>ファイルを選び直す</button></div>`;
-    const data=draft.data,existing=Boolean(S.workLogs?.[data.date]&&Object.keys(S.workLogs[data.date]).length),unknown=data.projects.filter(item=>!item.project);
-    return `<div class="an-import-preview"><strong>取り込み内容を確認</strong><p><b>${esc2(data.date)}</b> ／ ${data.projects.length}プロジェクト ／ 休憩 ${esc2(data.breakMinutes||"0")}分</p><ul>${data.projects.map(item=>`<li>${esc2(item.projectName||item.projectId)}${item.project?"":"（未登録）"}</li>`).join("")}</ul>${existing?`<p class="an-import-warning">この日付には既存の日報があります。上書きしないため取り込めません。</p>`:""}${unknown.length?`<p class="an-import-warning">未登録のプロジェクトがあります。仕事の一覧で先に登録してください。</p>`:""}<div class="an-import-actions"><button type="button" class="an-small-action" data-v2-work-log-import-cancel>取り消す</button><button type="button" class="an-small-action an-import-confirm" data-v2-work-log-import-confirm ${existing||unknown.length||!canWrite()?"disabled":""}>この内容を日報に取り込む</button></div></div>`;
+    const data=draft.data,existing=Boolean(S.workLogs?.[data.date]&&Object.keys(S.workLogs[data.date]).length),unknown=data.projects.filter(item=>!item.project),unresolved=data.projects.some((item,index)=>!item.project&&!draft.resolutions?.[index]);
+    return `<div class="an-import-preview"><strong>取り込み内容を確認</strong><p><b>${esc2(data.date)}</b> ／ ${data.projects.length}プロジェクト ／ 休憩 ${esc2(data.breakMinutes||"0")}分 ／ 実作業時間 ${data.actualWorkMinutes===""?"未申告":formatWorkMinutes(data.actualWorkMinutes)}</p><ul>${data.projects.map((item,index)=>`<li><div><b>${esc2(item.projectName||item.projectId)}</b>${item.project?`<small>既存プロジェクトに自動紐付け</small>`:`<small data-v2-work-log-project-status="${index}">未解決のプロジェクト名</small>`}</div>${workLogImportResolution(draft,item,index)}</li>`).join("")}</ul>${existing?`<p class="an-import-warning">この日付には既存の日報があります。上書きしないため取り込めません。</p>`:""}${unknown.length?`<p class="an-import-warning" data-v2-work-log-resolution-warning>未解決のプロジェクトは、既存への対応付けか新規登録を選んでください。</p>`:""}${!canWrite()?`<p class="an-import-warning">この端末は読み取り専用のため、取り込みはできません。</p>`:""}<div class="an-import-actions"><button type="button" class="an-small-action" data-v2-work-log-import-cancel>取り消す</button><button type="button" class="an-small-action an-import-confirm" data-v2-work-log-import-confirm ${existing||unresolved||!canWrite()?"disabled":""}>この内容を日報に取り込む</button></div></div>`;
   }
   // iOS/Safari can scroll a focused date input into view before `focusin`.
   // Keep a short history so a date change can restore the viewport from before
@@ -333,7 +366,7 @@
     if(!breaks.length)return Math.max(0,Math.round(Number(record?.breakMinutes)||0));
     return breaks.reduce((sum,br)=>sum+sessions.reduce((inner,work)=>inner+Math.max(0,Math.min(br.b,work.b)-Math.max(br.a,work.a)),0),0);
   }
-  function workLogMinutes(record){const span=workLogSpan(record);if(span==null)return null;return Math.max(0,span-workLogBreakMinutes(record));}
+  function workLogMinutes(record){const declared=record?.actualWorkMinutes;if(declared!==null&&declared!==undefined&&declared!==""&&Number.isFinite(Number(declared)))return Math.max(0,Math.round(Number(declared)));const span=workLogSpan(record);if(span==null)return null;return Math.max(0,span-workLogBreakMinutes(record));}
   function formatWorkMinutes(value){if(value==null)return "未記録";const n=Math.max(0,Math.round(Number(value)||0));return `${Math.floor(n/60)}時間${n%60}分`;}
   function workPunchState(record){
     const sessions=workIntervals(record,"workSessions"),breaks=workIntervals(record,"breakSessions"),lastWork=sessions[sessions.length-1],lastBreak=breaks[breaks.length-1];
@@ -410,6 +443,32 @@
         record.project=clean;
       }
     });
+    return {ok:true};
+  }
+  function renameWorkItem(itemId,name){
+    if(!canWrite())return {ok:false,reason:"readonly"};
+    const item=workItemOf(itemId),clean=String(name||"").trim();
+    if(!item)return {ok:false,reason:"missing"};
+    if(!clean)return {ok:false,reason:"empty"};
+    if(workItems().some(x=>x.id!==itemId&&x.projectId===item.projectId&&String(x.name||"").trim()===clean))return {ok:false,reason:"duplicate"};
+    const oldName=String(item.name||"").trim();
+    item.name=clean;
+    const updateEvent=event=>{
+      if(!event||typeof event!=="object")return;
+      if(event.workItemId===itemId){event.text=clean;event.projectId=item.projectId;return;}
+      if(!event.workItemId&&String(event.text||"").trim()===oldName&&(event.projectId===item.projectId||event.lane==="work"||event.cat==="work"||event.cat==="make")){
+        event.workItemId=itemId;event.projectId=item.projectId;event.lane="work";event.cat="work";event.text=clean;
+      }
+    };
+    for(const list of Object.values(S.plan||{})) for(const event of Array.isArray(list)?list:[]) updateEvent(event);
+    for(const event of Array.isArray(S.dailyTimeline)?S.dailyTimeline:[]) updateEvent(event);
+    for(const record of Object.values(S.workLogs||{})){
+      if(!record||typeof record!=="object")continue;
+      if(record.workItemId===itemId){record.workItem=clean;record.projectId=item.projectId;continue;}
+      if(!record.workItemId&&String(record.workItem||"").trim()===oldName&&(record.projectId===item.projectId||record.project===workProjectOf(item.projectId)?.name)){
+        record.workItemId=itemId;record.projectId=item.projectId;record.workItem=clean;
+      }
+    }
     return {ok:true};
   }
   const workProjectOf=id=>workProjects().find(x=>x.id===id)||null;
@@ -1398,15 +1457,30 @@
   });
   root.addEventListener("change", async event => {
     const input=event.target;
+    if(input.id==="v2BenefitNextStart"){
+      const display=root.querySelector("[data-v2-settings-date-value]");
+      if(display)display.textContent=String(input.value||"").replaceAll("-","/");
+      return;
+    }
+    const resolution=input.closest("[data-v2-work-log-project-resolution]");
+    if(resolution){
+      const index=Number(resolution.dataset.v2WorkLogProjectResolution);
+      if(workLogImportDraft&&Number.isInteger(index)){
+        workLogImportDraft.resolutions=Object.assign({},workLogImportDraft.resolutions||{}, {[index]:resolution.value||""});
+        syncWorkLogImportResolutionUI();
+      }
+      return;
+    }
     if(input.id==="v2WorkLogFile" && input.files?.length){
       const file=input.files[0];
+      const keepOpen=Boolean(input.closest("details")?.open);
       try{
         const data=parseWorkLogImport(await file.text(),file.name);
-        workLogImportDraft={name:file.name,data};
-        newAppRender();
+        workLogImportDraft={name:file.name,data,resolutions:{}};
+        newAppRender();keepWorkLogImportDetailsOpen(keepOpen);
       }catch(error){
-        workLogImportDraft={name:file.name,data:{ok:false,errors:[error.message||"ファイルを解析できません"]}};
-        newAppRender();
+        workLogImportDraft={name:file.name,data:{ok:false,errors:[error.message||"ファイルを解析できません"]},resolutions:{}};
+        newAppRender();keepWorkLogImportDetailsOpen(keepOpen);
       }
       input.value="";
       return;
@@ -1618,12 +1692,12 @@
     const candidates=legacyWorkCandidates();
     const groups=WORK_PRIORITY_OPTIONS.map(group=>{
       const items=workItems().filter(item=>workPriorityId(item)===group.id).sort((a,b)=>String(a.name).localeCompare(String(b.name),"ja"));
-      const rows=items.length?items.map(item=>{const project=workProjectOf(item.projectId);return `<article class="an-work-item" style="--work-priority-color:${esc2(workPriorityColor(item))}"><div class="an-work-item-copy"><strong>${esc2(item.name)}</strong><small>${esc2(project?.name||"プロジェクト未設定")}</small></div><span class="an-work-status ${esc2(item.status||"todo")}">${esc2(workStatusLabel(item.status))}</span><label class="an-work-priority-label">優先度<select data-v2-work-priority="${esc2(item.id)}">${workOptions(WORK_PRIORITY_OPTIONS,workPriorityId(item))}</select></label></article>`}).join(""):`<p class="an-empty">この分類の仕事はありません。</p>`;
+      const rows=items.length?items.map(item=>{const project=workProjectOf(item.projectId),writable=!(typeof isReadOnly==="function"&&isReadOnly()),editing=workItemEditingId===item.id&&writable,projectName=project?.name||"プロジェクト未設定",projectEdit=project&&writable?`<button type="button" class="an-work-item-project-edit" data-v2-work-project-edit="${esc2(project.id)}">プロジェクト名を変更</button>`:"",itemEdit=writable?`<button type="button" class="an-work-item-edit-open" data-v2-work-item-edit="${esc2(item.id)}">仕事内容名を変更</button>`:"",copy=editing?`<div class="an-work-item-edit"><input data-v2-work-item-name value="${esc2(item.name)}" maxlength="80" aria-label="仕事内容名"><div><button type="button" data-v2-work-item-name-save="${esc2(item.id)}">保存</button><button type="button" data-v2-work-item-name-cancel>キャンセル</button></div></div>`:`<strong>${esc2(item.name)}</strong>${itemEdit}<small>${esc2(projectName)}${projectEdit}</small>`;return `<article class="an-work-item" style="--work-priority-color:${esc2(workPriorityColor(item))}"><div class="an-work-item-copy">${copy}</div><span class="an-work-status ${esc2(item.status||"todo")}">${esc2(workStatusLabel(item.status))}</span><label class="an-work-priority-label">優先度<select data-v2-work-priority="${esc2(item.id)}">${workOptions(WORK_PRIORITY_OPTIONS,workPriorityId(item))}</select></label></article>`}).join(""):`<p class="an-empty">この分類の仕事はありません。</p>`;
       return `<section class="an-work-group ${esc2(group.id)}" style="--work-priority-color:${esc2(workPriorityColor(group.id))}"><header><h2>${esc2(group.label)}</h2><span>${items.length}件</span></header><div class="an-work-items">${rows}</div></section>`;
     }).join("");
     const candidateRows=candidates.map(candidate=>`<article class="an-work-import-row"><label class="an-work-import-check"><input type="checkbox" data-v2-work-import="${esc2(candidate.key)}"><span><strong>${esc2(candidate.name)}</strong><small>${esc2(candidate.source)} ・ ${esc2(workProjectOf(candidate.projectId)?.name||"プロジェクト未設定")}</small></span></label><label>優先度<select data-v2-work-import-priority="${esc2(candidate.key)}">${workOptions(WORK_PRIORITY_OPTIONS,"next")}</select></label><label>状態<select data-v2-work-import-status="${esc2(candidate.key)}">${workOptions(WORK_STATUS_OPTIONS,"todo")}</select></label></article>`).join("");
     const importBox=candidates.length?`<section class="an-work-import"><header><div><h2>既存の仕事を登録</h2><p>以前の予定を仕事として整理できます。登録後は、優先度と進み具合を一覧で確認できます。</p></div><span>${candidates.length}件</span></header><div class="an-work-import-list">${candidateRows}</div><button type="button" class="an-save blue" data-v2-work-import-save>選択した仕事を登録</button></section>`:`<section class="an-work-import is-empty"><h2>仕事を登録する</h2><p>まだ仕事が登録されていません。時間割から仕事内容を追加すると、ここで優先度と進み具合を整理できます。</p></section>`;
-    const projectRows=workProjects().map(project=>{const count=workItems().filter(item=>item.projectId===project.id).length,editing=workProjectEditingId===project.id&&canWrite();const controls=canWrite()?(editing?`<div class="an-work-project-edit"><input data-v2-work-project-name value="${esc2(project.name)}" maxlength="60" aria-label="プロジェクト名"><button type="button" data-v2-work-project-name-save="${esc2(project.id)}">保存</button><button type="button" data-v2-work-project-name-cancel>キャンセル</button></div>`:`<button type="button" class="an-work-project-edit-open" data-v2-work-project-edit="${esc2(project.id)}">名前を変更</button>`):"";return `<article class="an-work-project"><div class="an-work-project-title"><strong>${esc2(project.name)}</strong>${controls}</div><span>${count}件の仕事内容</span>${workProjectGrowthSummary(project.id)}</article>`}).join("");
+    const projectRows=workProjects().map(project=>{const count=workItems().filter(item=>item.projectId===project.id).length,editing=workProjectEditingId===project.id&&canWrite();const controls=canWrite()?(editing?`<div class="an-work-project-edit"><input data-v2-work-project-name value="${esc2(project.name)}" maxlength="60" aria-label="プロジェクト名"><button type="button" data-v2-work-project-name-save="${esc2(project.id)}">保存</button><button type="button" data-v2-work-project-name-cancel>キャンセル</button></div>`:`<button type="button" class="an-work-project-edit-open" data-v2-work-project-edit="${esc2(project.id)}">プロジェクト名を変更</button>`):"";return `<article class="an-work-project"><div class="an-work-project-title"><strong>${esc2(project.name)}</strong>${controls}</div><span>${count}件の仕事内容</span>${workProjectGrowthSummary(project.id)}</article>`}).join("");
     const projectBox=`<section class="an-work-projects"><header><div><h2>プロジェクト</h2><p>まとまりを管理します。次にする行動は下の「仕事内容」で分けます。</p></div><span>${workProjects().length}件</span></header><div class="an-work-project-list">${projectRows||`<p class="an-empty">プロジェクトはありません。</p>`}</div></section>`;
     return analogPage("an-work-board","list","WORK BOARD","仕事の一覧",`<p class="an-date-note">仕事のまとまりと、具体的にすることを分けて整理します。今やる仕事を優先度順に並べます。</p>${projectBox}${importBox}${groups}`);
   }
@@ -1845,6 +1919,29 @@
     box.innerHTML=`<div class="an-shortcut-editor">${[0,1,2].map(select).join("")}<button type="button" data-v2-shortcuts-save>保存</button></div>`;
   },true);
   root.addEventListener("click", event => {
+    const itemOpen=event.target.closest("[data-v2-work-item-edit]");
+    if(itemOpen&&page==="workBoard"){
+      event.stopImmediatePropagation();
+      workItemEditingId=itemOpen.dataset.v2WorkItemEdit||"";
+      newAppRender({preserveScroll:true});
+      setTimeout(()=>root.querySelector("[data-v2-work-item-name]")?.focus(),0);
+      return;
+    }
+    const itemCancel=event.target.closest("[data-v2-work-item-name-cancel]");
+    if(itemCancel&&page==="workBoard"){
+      event.stopImmediatePropagation();
+      workItemEditingId="";
+      newAppRender({preserveScroll:true});
+      return;
+    }
+    const itemSaver=event.target.closest("[data-v2-work-item-name-save]");
+    if(itemSaver&&page==="workBoard"){
+      event.stopImmediatePropagation();
+      const itemId=itemSaver.dataset.v2WorkItemNameSave||"",result=renameWorkItem(itemId,root.querySelector("[data-v2-work-item-name]")?.value||"");
+      if(!result.ok){toast(result.reason==="empty"?"仕事内容名を入力してください":result.reason==="duplicate"?"同じプロジェクト内に同じ仕事内容があります":result.reason==="readonly"?"この端末は読み取り専用です":"仕事内容を確認できません");return;}
+      workItemEditingId="";save();newAppRender({preserveScroll:true});successToast("仕事内容名を変更しました");
+      return;
+    }
     const open=event.target.closest("[data-v2-work-project-edit]");
     if(open&&page==="workBoard"){
       event.stopImmediatePropagation();
@@ -1904,12 +2001,13 @@
     const device=syncCfg(), health=healthSyncCfg(), benefit=Object.assign({start:"2026-01",units:18,nextApplicationStart:"2026-08-01",applicationMonths:"",applicationDays:""},S.benefit||{});
     if(!benefit.nextApplicationStart)benefit.nextApplicationStart="2026-08-01";
     const deviceRole=device.role==="ro" ? "ro" : device.gistId ? "rw" : "ro";
+    const settingsDate=(id,value)=>`<span class="an-settings-date-control"><input id="${id}" type="date" value="${esc2(value||"")}" aria-label="次回申請開始日"><span data-v2-settings-date-value aria-hidden="true">${esc2(String(value||"").replaceAll("-","/"))}</span></span>`;
     const sections=[
       ["refresh","端末データ同期",deviceSyncStatus(device),`<p>PC・iPhone間で、予定・お金・記録などアプリ全体のデータを同期します。歩数・睡眠のショートカットは使いません。</p><p class="an-sync-note">iPhoneを正本にしてこのPCへ共有する場合は、読み取り専用で受信します。受信で置き換わるのはPC側だけで、iPhone側へ書き戻しません。</p><label for="v2DeviceSyncRole">このPCの役割</label><select id="v2DeviceSyncRole"><option value="ro" ${deviceRole==="ro"?"selected":""}>読み取り専用（iPhoneから受信する）</option><option value="rw" ${deviceRole==="rw"?"selected":""}>記録・送信もする</option></select><button class="an-small-action" data-v2-device-sync-role-save>役割を保存</button><label>GitHubトークン</label><input id="v2DeviceSyncToken" type="password" autocomplete="off" placeholder="この端末で入力"><label>端末データ用Gist ID</label><input id="v2DeviceSyncGist" value="${esc2(device.gistId||"")}" placeholder="iPhone側の既存IDを入力"><div class="an-sync-actions"><button class="an-small-action" data-v2-device-sync-start>端末同期を設定</button><button class="an-small-action" data-v2-device-sync-pull>今すぐ端末同期</button></div>`],
       ["heart","ヘルスケア自動取り込み",healthSyncStatus(health),`<p>iPhoneショートカットから歩数・睡眠だけを受信します。端末データ同期とは別の専用Gistです。</p><label>GitHubトークン</label><input id="v2HealthSyncToken" type="password" autocomplete="off" placeholder="この端末で入力"><label>ヘルスケア受信用Gist ID</label><input id="v2HealthSyncGist" value="${esc2(health.gistId||"")}" placeholder="空欄なら新規作成"><div class="an-sync-actions"><button class="an-small-action" data-v2-health-sync-create>受信先を新規作成</button><button class="an-small-action" data-v2-health-sync-check>受信を確認</button></div>${healthSyncGuide(health)}`],
       ["list","毎日の習慣","今日の流れに表示する項目",`<div class="an-habits">${habitList().map(h=>`<span class="an-habit">${habitIcon(h)}<span>${esc2(h.label)}</span></span>`).join("")}</div><label>習慣の名前</label><input id="v2HabitLabel" placeholder="例：ストレッチ"><button class="an-small-action" data-v2-habit-add>習慣を追加</button>`],
       ["wallet","お金の初期設定","カード上限・方法・カテゴリー",`<label>カードの上限</label><input id="v2CardCap" type="text" inputmode="numeric" value="${(+S.cardCap||0).toLocaleString("ja-JP")}"><button class="an-small-action" data-v2-card-cap>上限を保存</button>`],
-      ["coin","傷病手当の申請情報","次回申請・今回の申請分・受給期間",`<label>次回申請開始日</label><input id="v2BenefitNextStart" type="date" value="${esc2(benefit.nextApplicationStart||"")}"><label>今回申請している分（月）</label><input id="v2BenefitMonths" type="number" min="0" inputmode="numeric" value="${esc2(benefit.applicationMonths??"")}"><label>今回申請している分（日）</label><input id="v2BenefitDays" type="number" min="0" inputmode="numeric" value="${esc2(benefit.applicationDays??"")}"><p class="an-settings-help">受給予定期間は${esc2(benefit.start)}から${esc2(benefit.units)}か月です。</p><button class="an-small-action" data-v2-benefit-save>傷病手当の申請情報を保存</button>`],
+      ["coin","傷病手当の申請情報","次回申請・今回の申請分・受給期間",`<label>次回申請開始日</label>${settingsDate("v2BenefitNextStart",benefit.nextApplicationStart)}<label>今回申請している分（月）</label><input id="v2BenefitMonths" type="number" min="0" inputmode="numeric" value="${esc2(benefit.applicationMonths??"")}"><label>今回申請している分（日）</label><input id="v2BenefitDays" type="number" min="0" inputmode="numeric" value="${esc2(benefit.applicationDays??"")}"><p class="an-settings-help">受給予定期間は${esc2(benefit.start)}から${esc2(benefit.units)}か月です。</p><button class="an-small-action" data-v2-benefit-save>傷病手当の申請情報を保存</button>`],
       ["calendar","カレンダー連携","予定の読み込みと表示",`<p>予定は「一日の流れ」とカレンダーから確認できます。</p>`],
       ["download","日報ファイルを取り込む","読み取り専用・確認してから保存",workLogImportPanel()],
       ["list","表示","完了メッセージ",`<p>「変更しました」など、操作が完了したときのメッセージを切り替えます。入力不足などの注意は常に表示します。</p><button class="an-small-action" data-v2-success-notices>${S.ui?.successNotices===false?"完了メッセージを表示する":"完了メッセージを表示しない"}</button>`],
@@ -1931,12 +2029,23 @@
     const existing=S.workLogs?.[data.date];
     if(existing&&Object.keys(existing).length) return toast("既存の日報を上書きしないため、取り込めません");
     const reviews={},descriptions={},projectIds=[];
-    data.projects.forEach(item=>{
-      const id=item.project.id; projectIds.push(id); reviews[id]=Object.assign({},item.fields);
+    const aliases=workLogProjectAliases();
+    for(const [index,item] of data.projects.entries()){
+      let project=item.project;
+      if(!project){
+        const resolution=workLogImportDraft.resolutions?.[index]||"";
+        if(resolution==="new") project=ensureWorkProject(item.projectName);
+        else if(resolution.startsWith("existing:")) project=workProjectOf(resolution.slice("existing:".length));
+        if(!project)return toast("未解決のプロジェクトがあります");
+        const name=String(item.projectName||"").trim();
+        if(name)aliases[name]=project.id;
+      }
+      const id=project.id; projectIds.push(id); reviews[id]=Object.assign({},reviews[id]||{},item.fields);
       if(item.fields.description) descriptions[id]=item.fields.description;
-    });
+    }
+    S.workLogProjectAliases=aliases;
     S.workLogs=S.workLogs||{};
-    S.workLogs[data.date]={start:data.start,end:data.end,breakMinutes:Math.max(0,+data.breakMinutes||0),projectIds,workDescriptions:descriptions,projectReviews:reviews,importedFrom:workLogImportDraft.name||"日報ファイル",importedAt:new Date().toISOString()};
+    S.workLogs[data.date]={start:data.start,end:data.end,breakMinutes:Math.max(0,+data.breakMinutes||0),actualWorkMinutes:data.actualWorkMinutes===""?null:Number(data.actualWorkMinutes),projectIds,workDescriptions:descriptions,projectReviews:reviews,importedFrom:workLogImportDraft.name||"日報ファイル",importedAt:new Date().toISOString()};
     save(); workLogImportDraft=null; newAppRender(); successToast("日報を取り込みました");
   },true);
   root.addEventListener("click",event=>{
@@ -2478,7 +2587,7 @@
     if(breakMinutes>span)return toast("休憩分は作業時間以内にしてください");
     S.workLogs=S.workLogs&&typeof S.workLogs==="object"?S.workLogs:{};
     const previous=S.workLogs[date]||{},projectIds=selectedWorkLogProjects(),workItemIds=selectedWorkLogItems(),workDescriptions=selectedWorkLogDescriptions(),projectReviews=selectedWorkLogReviews(),projectId=projectIds[0]||"",workItemId=workItemIds[0]||"",project=workProjectOf(projectId),item=workItemOf(workItemId);
-    S.workLogs[date]={id:previous.id||uid(),start,end,breakMinutes,workSessions:Array.isArray(previous.workSessions)?previous.workSessions:[],breakSessions:Array.isArray(previous.breakSessions)?previous.breakSessions:[],projectIds,workItemIds,workDescriptions,projectReviews,projectId,workItemId,project:project?.name||previous.project||"",workItem:item?.name||previous.workItem||"",checks:Array.isArray(previous.checks)?previous.checks:[],done:previous.done||"",statusNote:previous.statusNote||"",todo:previous.todo||"",trial:previous.trial||"",delivery:previous.delivery||"",next:previous.next||"",implementation:previous.implementation||"",quality:previous.quality||"",design:previous.design||"",insight:previous.insight||""};
+    S.workLogs[date]={id:previous.id||uid(),start,end,breakMinutes,actualWorkMinutes:previous.actualWorkMinutes??null,workSessions:Array.isArray(previous.workSessions)?previous.workSessions:[],breakSessions:Array.isArray(previous.breakSessions)?previous.breakSessions:[],projectIds,workItemIds,workDescriptions,projectReviews,projectId,workItemId,project:project?.name||previous.project||"",workItem:item?.name||previous.workItem||"",checks:Array.isArray(previous.checks)?previous.checks:[],done:previous.done||"",statusNote:previous.statusNote||"",todo:previous.todo||"",trial:previous.trial||"",delivery:previous.delivery||"",next:previous.next||"",implementation:previous.implementation||"",quality:previous.quality||"",design:previous.design||"",insight:previous.insight||""};
     workLogDate=date;workLogFormReset=true;clearWorkLogDraft(date);save();newAppRender();successToast("仕事の記録を保存しました");
   },true);
   function healthChartBounds(vp){

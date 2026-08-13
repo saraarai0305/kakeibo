@@ -173,6 +173,13 @@ window.addEventListener("load", () => setTimeout(async () => {
       if (!document.querySelector('[data-v2-work-project-name]')) throw new Error("UI smoke: project rename editor");
       tap('[data-v2-work-project-name-cancel]', "cancel project rename");
     }
+    const itemEdit = visible('[data-v2-work-item-edit]');
+    if (itemEdit) {
+      itemEdit.click();
+      await pause(60);
+      if (!document.querySelector('[data-v2-work-item-name]')) throw new Error("UI smoke: work item rename editor");
+      tap('[data-v2-work-item-name-cancel]', "cancel work item rename");
+    }
     const smokePriority = Array.from(document.querySelectorAll('[data-v2-work-priority]')).find(el => el.closest('.an-work-item')?.textContent.includes('UI smoke work'));
     if (!smokePriority) throw new Error("UI smoke: work priority control");
     smokePriority.value = 'now';
@@ -264,8 +271,11 @@ if ($uiV2 -notmatch 'typeof isReadOnly.*isReadOnly\(\)' -or $uiV2 -notmatch 'sel
 
 # AI分析へ進む前の日報取り込み基盤。ファイル選択・プレビュー・明示保存を分け、
 # 既存日報の自動上書きと読み取り専用端末からの保存を許さない。
-if ($uiV2 -notmatch 'mainichi\.daily-report\.v1' -or $uiV2 -notmatch 'data-v2-work-log-import-confirm' -or $uiV2 -notmatch '既存の日報を上書きしない' -or $uiV2 -notmatch 'if\(!canWrite\(\)') { Write-Error "日報ファイル取り込みの安全契約がありません" }
+if ($uiV2 -notmatch 'mainichi\.daily-report\.v1' -or $uiV2 -notmatch 'data-v2-work-log-import-confirm' -or $uiV2 -notmatch '既存の日報を上書きしない' -or $uiV2 -notmatch 'if\(!canWrite\(\)' -or $uiV2 -notmatch 'actualWorkMinutes' -or $uiV2 -notmatch 'data-v2-work-log-project-resolution' -or $uiV2 -notmatch 'workLogProjectAliases' -or $uiV2 -notmatch '新規プロジェクトとして登録') { Write-Error "日報ファイル取り込みの安全契約がありません" }
 "OK  日報ファイル取り込みの安全契約あり"
+
+if ($uiV2 -notmatch 'function renameWorkProject' -or $uiV2 -notmatch 'function renameWorkItem' -or $uiV2 -notmatch 'data-v2-work-project-edit' -or $uiV2 -notmatch 'data-v2-work-item-edit' -or $uiV2 -notmatch 'workItemId===itemId') { Write-Error "仕事カタログのID保持編集契約がありません" }
+"OK  仕事カタログのID保持編集契約あり"
 
 # 現行の描画入口と最終CSS層を固定する。旧互換処理は参照確認後に段階整理する。
 if ($uiV2 -notmatch 'window\.newAppRender\s*=' -or $uiV2 -match 'baseNewAppRender|renderWithSeparatedSync') { Write-Error "現行描画入口の責務が崩れています" }
