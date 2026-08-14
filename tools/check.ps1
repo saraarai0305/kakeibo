@@ -305,6 +305,8 @@ if ($paper -notmatch '\.an-health-date\{[^}]*justify-content:center' -or $paper 
 "OK  体調記録の日付枠中央配置あり"
 if ($uiV2 -notmatch 'benefitOverview' -or $uiV2 -notmatch 'data-v2-benefit-flip' -or $uiV2 -notmatch 'data-v2-benefit-save' -or $uiV2 -notmatch 'v2BenefitNextStart' -or $uiV2 -notmatch 'data-v2-daily-end' -or $src -notmatch 'dailyTimelineIsVisibleOn' -or $src -notmatch 'dailyTimelineEndDate') { Write-Error "毎日の予定終了日または傷病手当パネルの導線がありません" }
 "OK  毎日の予定終了日と傷病手当パネルあり"
+if ($uiV2 -notmatch 'function isWorkScheduleEvent' -or $uiV2 -notmatch 'function futureWorkScheduleCount' -or $uiV2 -notmatch 'function deleteFutureWorkSchedules' -or $uiV2 -notmatch 'data-v2-work-future-clear' -or $paper -notmatch '\.an-flow-work-clear') { Write-Error "明日以降の仕事予定一括削除契約がありません" }
+"OK  明日以降の仕事予定一括削除契約あり"
 
 # PWAが古いCSS/JSをキャッシュすると、公開URLとホーム画面アプリの表示が食い違う。
 # 画面側とService Worker側の主要資産は、BUILDと同じクエリ版を必ず持たせる。

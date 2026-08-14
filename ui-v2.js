@@ -1017,6 +1017,21 @@
       S.dailyTimelineEndDate=endDate;save();newAppRender();successToast("明後日以降の毎日の予定を終了しました");
       return;
     }
+    const futureWorkClear=e.target.closest("[data-v2-work-future-clear]");
+    if(futureWorkClear){
+      e.stopImmediatePropagation();
+      if(!canWrite())return;
+      const today=ymd(now()),tomorrow=new Date();
+      tomorrow.setDate(tomorrow.getDate()+1);
+      const startDate=ymd(tomorrow),count=futureWorkScheduleCount(today);
+      if(!count){toast("削除対象の仕事予定はありません");return;}
+      if(!window.confirm(`明日（${dateLabel(startDate)}）以降の仕事予定を${count}件削除します。過去の予定・仕事記録・生活／共通予定は残ります。よろしいですか？`))return;
+      captureFlowUndo();
+      const removed=deleteFutureWorkSchedules(today);
+      selectedFlowEvent=null;
+      save();newAppRender();successToast(`明日以降の仕事予定を${removed}件削除しました`);
+      return;
+    }
   },true);
   root.addEventListener("click",e=>{const t=e.target.closest("[data-v2-go],[data-v2-back],[data-v2-moneytype],[data-v2-money-save],[data-v2-private],[data-v2-rate],[data-v2-health-save],[data-v2-metric],[data-v2-plan-open],[data-v2-habit],[data-v2-task],[data-v2-theme-save],[data-v2-cal-mode],[data-v2-cal-date],[data-v2-sync],[data-v2-role],[data-v2-habit-add],[data-v2-card-cap],[data-v2-export]");if(!t)return;if(t.hasAttribute("data-v2-back")){back();return;}if(t.dataset.v2Go){go(t.dataset.v2Go);return;}if(t.dataset.v2Moneytype){moneyType=t.dataset.v2Moneytype;newAppRender();return;}if(t.hasAttribute("data-v2-private")){S.ui.moneyVisible=!S.ui.moneyVisible;save();newAppRender();return;}if(t.hasAttribute("data-v2-money-save")){const amt=document.getElementById("v2Amount").value,method=document.getElementById("v2Method"),cat=document.getElementById("v2Category").value;if(moneyType==="income")addIncomeLog(amt,cat,method.value,method.selectedOptions[0]?.textContent);else addSpend(amt,cat,method.value,method.selectedOptions[0]?.textContent);return;}if(t.dataset.v2Rate){healthDraft=Object.assign({},healthDraft||{}, {[t.dataset.v2Rate]:+t.dataset.v2Value});newAppRender();return;}if(t.hasAttribute("data-v2-health-save")){if(!canWrite())return;const key=ymd(now());S.health[key]=Object.assign({},S.health[key]||{},healthDraft||{});healthDraft=null;save();render();toast("この日の記録を保存しました");return;}if(t.dataset.v2Metric){metricOn[t.dataset.v2Metric]=!metricOn[t.dataset.v2Metric];newAppRender();return;}if(t.hasAttribute("data-v2-plan-open")){const box=document.getElementById("v2PlanArea");box.innerHTML=`<div class="v2-form-row"><label>予定</label><input id="v2PlanText" placeholder="予定の名前"></div><div class="v2-form-row"><label>開始時刻</label><input id="v2PlanFrom" type="time"></div><div class="v2-form-row"><label>終了時刻</label><input id="v2PlanTo" type="time"></div><button class="v2-primary" data-v2-plan-save>${icon("plus")}予定を保存</button>`;return;}if(t.hasAttribute("data-v2-plan-save")){if(!canWrite())return;const text=document.getElementById("v2PlanText").value.trim(),from=document.getElementById("v2PlanFrom").value,to=document.getElementById("v2PlanTo").value;if(!text||!from||!to)return toast("予定・開始時刻・終了時刻を入れてください");const key=ymd(now());(S.plan[key]||(S.plan[key]=[])).push({id:uid(),text,from,to,cat:"custom"});save();render();return;}if(t.dataset.v2Habit){if(!canWrite())return;const d=dayRec(ymd(now()));d.habits[t.dataset.v2Habit]=!d.habits[t.dataset.v2Habit];save();render();return;}if(t.dataset.v2Task){if(!canWrite())return;const task=S.errands.find(x=>x.id===t.dataset.v2Task);if(task){task.done=!task.done;task.doneAt=task.done?ymd(now()):null;save();render();}return;}if(t.hasAttribute("data-v2-theme-save")){if(!canWrite())return;dayRec(ymd(now())).theme=document.getElementById("v2Theme").value.trim();save();render();toast("テーマを保存しました");return;}if(t.dataset.v2CalMode){calendarMode=t.dataset.v2CalMode;newAppRender();return;}if(t.dataset.v2CalDate){calendarDate=t.dataset.v2CalDate;go("flow");return;}if(t.hasAttribute("data-v2-sync")){pullRemote(false);return;}if(t.hasAttribute("data-v2-role")){const c=syncCfg();c.role=c.role==="ro"?"rw":"ro";setSyncCfg(c);rolePaint();newAppRender();return;}if(t.hasAttribute("data-v2-habit-add")){if(!canWrite())return;const label=document.getElementById("v2HabitLabel").value.trim();if(!label)return toast("項目名を入れてください");S.habits=habitList().slice();S.habits.push({id:uid(),icon:"・",label});save();render();return;}if(t.hasAttribute("data-v2-card-cap")){if(!canWrite())return;S.cardCap=Math.max(0,moneyAmount(document.getElementById("v2CardCap").value));save();render();toast("カードの上限を保存しました");return;}if(t.hasAttribute("data-v2-export")){document.getElementById("expBtn")?.click();return;}});
   // 表示／非表示は金額領域ごとに独立。capture で旧一括ハンドラより先に処理する。
@@ -1635,6 +1650,26 @@
   const FLOW_HOUR_PX=49;
   const flowLane = block => block.lane || ((block.cat === "sleep" || block.cat === "life" || block.cat === "out" || block.errand) ? "life" : "work");
   const flowVisibleBlocks = key => allBlocks(key).filter(b=>b.cat!=="sleep").filter(b=>flowLaneFilter==="common"||flowLane(b)===flowLaneFilter);
+  function isWorkScheduleEvent(event){
+    return Boolean(event&&(event.lane==="work"||event.cat==="work"||event.cat==="make"||event.workItemId||event.projectId));
+  }
+  function futureWorkScheduleCount(today=ymd(now())){
+    return Object.entries(S.plan||{}).filter(([key])=>key>today).reduce((sum,[,list])=>sum+(Array.isArray(list)?list.filter(isWorkScheduleEvent).length:0),0);
+  }
+  function deleteFutureWorkSchedules(today=ymd(now())){
+    let removed=0;
+    for(const key of Object.keys(S.plan||{})){
+      if(key<=today)continue;
+      const list=Array.isArray(S.plan[key])?S.plan[key]:[];
+      const next=list.filter(event=>{
+        const keep=!isWorkScheduleEvent(event);
+        if(!keep)removed++;
+        return keep;
+      });
+      if(next.length)S.plan[key]=next;else delete S.plan[key];
+    }
+    return removed;
+  }
   function calendar(){
     const base=new Date(calendarDate+"T00:00:00"),mon=new Date(base);
     mon.setDate(base.getDate()-((base.getDay()+6)%7));
@@ -1740,7 +1775,9 @@
     const addLabel=flowLaneFilter==="work"?"仕事内容を追加する":flowLaneFilter==="life"?"生活の予定を足す":"予定を追加する";
     const laneGuide=flowLaneFilter==="work"?`<span>${icon("work")}仕事</span>`:flowLaneFilter==="life"?`<span>${icon("life")}生活</span>`:`<span>${icon("work")}仕事</span><span>${icon("life")}生活</span>`;
     const dailyEndAction=writable&&Array.isArray(S.dailyTimeline)&&S.dailyTimeline.length?`<button type="button" data-v2-daily-end>毎日の予定を明後日以降終了</button>`:"";
-    return analogPage("an-flow","calendar","DAILY FLOW","一日の流れ",`<section class="an-theme-strip"><small>${dateLabel(key)}<\/small><strong>${esc2(rec.theme||"今日のテーマを設定")}<\/strong><\/section><div class="an-flow-filter" aria-label="時間割の分類"><button class="${flowLaneFilter==="work"?"on":""}" data-v2-flow-filter="work">仕事<\/button><button class="${flowLaneFilter==="life"?"on":""}" data-v2-flow-filter="life">生活<\/button><button class="${flowLaneFilter==="common"?"on":""}" data-v2-flow-filter="common">共通<\/button><\/div><p class="an-flow-filter-note">表示中：${filterLabel}。共通はすべての予定を表示します。<\/p>${undoToolbar}<section class="an-timeline-section"><h2>${icon("clock")}時間割<\/h2><div class="an-flow-timeline-shell" data-v2-flow-view="${flowLaneFilter}"><div class="an-flow-lane-guide">${laneGuide}<\/div><div class="v2-timeline" data-v2-timeline data-v2-start="${start}" data-v2-end="${end}" style="min-height:${h}px"><div class="an-flow-time-rail">${slots.join("")}<\/div><div class="an-flow-event-layer" style="height:${h}px">${events}${nowline}${flowSelectionPanel(selectionPanelTop)}<\/div><\/div><\/div><\/section><div class="an-flow-actions"><button data-v2-plan-open aria-expanded="false">${icon("plus")}${addLabel}<\/button><button data-v2-go="calendar">${icon("calendar")}週／月を見る<\/button>${dailyEndAction}<\/div><div id="v2PlanArea" aria-live="polite"><\/div>${flowEventSheet()}`);
+    const futureWorkCount=futureWorkScheduleCount();
+    const futureWorkAction=writable&&flowLaneFilter==="work"&&futureWorkCount?`<button type="button" class="an-flow-work-clear" data-v2-work-future-clear>明日以降の仕事予定を削除（${futureWorkCount}件）<\/button>`:"";
+    return analogPage("an-flow","calendar","DAILY FLOW","一日の流れ",`<section class="an-theme-strip"><small>${dateLabel(key)}<\/small><strong>${esc2(rec.theme||"今日のテーマを設定")}<\/strong><\/section><div class="an-flow-filter" aria-label="時間割の分類"><button class="${flowLaneFilter==="work"?"on":""}" data-v2-flow-filter="work">仕事<\/button><button class="${flowLaneFilter==="life"?"on":""}" data-v2-flow-filter="life">生活<\/button><button class="${flowLaneFilter==="common"?"on":""}" data-v2-flow-filter="common">共通<\/button><\/div><p class="an-flow-filter-note">表示中：${filterLabel}。共通はすべての予定を表示します。<\/p>${undoToolbar}<section class="an-timeline-section"><h2>${icon("clock")}時間割<\/h2><div class="an-flow-timeline-shell" data-v2-flow-view="${flowLaneFilter}"><div class="an-flow-lane-guide">${laneGuide}<\/div><div class="v2-timeline" data-v2-timeline data-v2-start="${start}" data-v2-end="${end}" style="min-height:${h}px"><div class="an-flow-time-rail">${slots.join("")}<\/div><div class="an-flow-event-layer" style="height:${h}px">${events}${nowline}${flowSelectionPanel(selectionPanelTop)}<\/div><\/div><\/div><\/section><div class="an-flow-actions"><button data-v2-plan-open aria-expanded="false">${icon("plus")}${addLabel}<\/button><button data-v2-go="calendar">${icon("calendar")}週／月を見る<\/button>${dailyEndAction}${futureWorkAction}<\/div><div id="v2PlanArea" aria-live="polite"><\/div>${flowEventSheet()}`);
   }
   root.addEventListener("click", event => {
     const opener=event.target.closest("[data-v2-plan-open]");
