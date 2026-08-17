@@ -1,7 +1,7 @@
 {
   "name": "まとめて管理",
   "short_name": "まとめて管理",
-  "description": "からだ・こころ・予定・おかねを一つにまとめて管理するアプリ",
+  "description": "体調に合わせて仕事と暮らしを立て直すアプリ",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

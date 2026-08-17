@@ -1278,3 +1278,19 @@ body[data-app-shell="v2"]{min-height:100dvh!important}
   white-space:nowrap!important;
   text-overflow:ellipsis!important;
 }
+
+/* v0.31.77: product promise and explainable analysis share
+   the same paper surface and functional Gothic text. */
+:root{
+  --analysis-surface:#fffaf0;
+  --analysis-line:#c8b99f;
+  --analysis-ink:#21312d;
+  --analysis-muted:#68726a;
+  --analysis-action:#e5f0e5;
+}
+.an-home-positioning{margin:0 auto 14px!important;color:var(--analysis-muted)!important;font:800 13px/1.45 var(--board-font-sans)!important;letter-spacing:.04em!important;text-align:center!important}
+.v2-health-ai{display:grid!important;gap:9px!important;margin-top:10px!important;padding:13px!important;border:1px solid var(--analysis-line)!important;border-radius:14px!important;background:var(--analysis-surface)!important;box-shadow:2px 3px 0 rgba(103,82,49,.08)!important;color:var(--analysis-ink)!important}
+.an-import-overwrite{border-color:var(--a-coral)!important;background:#fff0ec!important;color:#9b3d32!important}
+.v2-health-ai-head{display:grid!important;gap:3px!important;padding-bottom:8px!important;border-bottom:1px dashed var(--analysis-line)!important}.v2-health-ai-head strong{font:800 16px/1.3 var(--board-font-sans)!important}.v2-health-ai-head span{color:var(--analysis-muted)!important;font:700 11px/1.35 var(--board-font-sans)!important}
+.v2-health-ai-section{padding:8px 0;border-bottom:1px dashed rgba(200,185,159,.8)}.v2-health-ai-section:last-of-type{border-bottom:0}.v2-health-ai-section h3{margin:0 0 4px!important;color:var(--a-blue)!important;font:800 12px/1.35 var(--board-font-sans)!important}.v2-health-ai-section>div{color:var(--analysis-ink)!important;font:650 13px/1.55 var(--board-font-sans)!important}.v2-health-ai-section ul{display:grid!important;grid-template-columns:1fr 1fr!important;gap:4px 10px!important;margin:0!important;padding:0!important;list-style:none!important}.v2-health-ai-section li{display:flex!important;justify-content:space-between!important;gap:6px!important;min-width:0!important}.v2-health-ai-section li strong{font-weight:800!important}.v2-health-ai-section li span{color:var(--analysis-muted)!important;text-align:right!important;white-space:nowrap!important}.v2-health-ai-section.is-warning h3,.v2-health-ai-section.is-caution h3{color:var(--a-coral)!important}.v2-health-ai-section.is-good h3{color:var(--a-green)!important}.v2-health-ai-section.is-action{margin:0 -5px!important;padding:9px 10px!important;border:1px solid rgba(79,152,111,.35)!important;border-radius:10px!important;background:var(--analysis-action)!important}.v2-health-ai-note{display:block!important;color:var(--analysis-muted)!important;font:650 11px/1.5 var(--board-font-sans)!important}
+@media(max-width:390px){.an-home-positioning{font-size:12px!important}.v2-health-ai-section ul{grid-template-columns:1fr!important}.v2-health-ai-section li span{text-align:left!important}}

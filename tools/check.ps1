@@ -245,6 +245,13 @@ window.addEventListener("load", () => setTimeout(async () => {
     tap('[data-v2-go="healthAnalysis"]', "home → health analysis");
     if (!document.querySelector('.v2-line-chart')) throw new Error("UI smoke: health chart");
     if (document.querySelectorAll('[data-v2-metric]').length !== 4 || !document.querySelector('[data-v2-metric="sleep"]') || !document.querySelector('[data-v2-metric="steps"]') || !document.querySelector('[data-v2-metric="body"]') || !document.querySelector('[data-v2-metric="mind"]') || document.querySelector('[data-v2-metric="work"]') || document.querySelector('[data-v2-metric="break"]')) throw new Error("UI smoke: four health metrics only");
+    tap('[data-v2-health-analysis]', "health analysis report");
+    await pause(80);
+    const reportText = document.querySelector('.v2-health-ai')?.textContent || '';
+    for (const section of ['使用したデータ','欠けているデータ','観察できた傾向','根拠の強さ','推測にすぎない部分','次に試せる小さな行動']) {
+      if (!reportText.includes(section)) throw new Error("UI smoke: explainable health report " + section);
+    }
+    if (!reportText.includes('AI連携未接続')) throw new Error("UI smoke: local-only analysis notice");
     tap('[data-v2-back]', "health analysis → home");
     openHomeGroup('review', "home → review group for money analysis");
     tap('[data-v2-go="moneyAnalysis"]', "visualize → money analysis");
@@ -283,8 +290,8 @@ if ($uiV2 -notmatch 'typeof isReadOnly.*isReadOnly\(\)' -or $uiV2 -notmatch 'sel
 "OK  時間割の読み取り専用ガードあり"
 
 # AI分析へ進む前の日報取り込み基盤。ファイル選択・プレビュー・明示保存を分け、
-# 既存日報の自動上書きと読み取り専用端末からの保存を許さない。
-if ($uiV2 -notmatch 'mainichi\.daily-report\.v1' -or $uiV2 -notmatch 'data-v2-work-log-import-confirm' -or $uiV2 -notmatch '既存の日報を上書きしない' -or $uiV2 -notmatch 'if\(!canWrite\(\)' -or $uiV2 -notmatch 'actualWorkMinutes' -or $uiV2 -notmatch 'data-v2-work-log-project-resolution' -or $uiV2 -notmatch 'workLogProjectAliases' -or $uiV2 -notmatch '新規プロジェクトとして登録') { Write-Error "日報ファイル取り込みの安全契約がありません" }
+# 既存日報は専用の上書き操作に隔離し、読み取り専用端末からの保存を許さない。
+if ($uiV2 -notmatch 'mainichi\.daily-report\.v1' -or $uiV2 -notmatch 'data-v2-work-log-import-confirm' -or $uiV2 -notmatch 'data-v2-work-log-import-overwrite' -or $uiV2 -notmatch '既存の日報があります。内容を確認すると' -or $uiV2 -notmatch 'if\(!canWrite\(\)' -or $uiV2 -notmatch 'actualWorkMinutes' -or $uiV2 -notmatch 'data-v2-work-log-project-resolution' -or $uiV2 -notmatch 'workLogProjectAliases' -or $uiV2 -notmatch '新規プロジェクトとして登録') { Write-Error "日報ファイル取り込みの安全契約がありません" }
 "OK  日報ファイル取り込みの安全契約あり"
 
 if ($uiV2 -notmatch 'function renameWorkProject' -or $uiV2 -notmatch 'function renameWorkItem' -or $uiV2 -notmatch 'data-v2-work-project-edit' -or $uiV2 -notmatch 'data-v2-work-item-edit' -or $uiV2 -notmatch 'workItemId===itemId') { Write-Error "仕事カタログのID保持編集契約がありません" }
@@ -307,6 +314,8 @@ if ($uiV2 -notmatch 'benefitOverview' -or $uiV2 -notmatch 'data-v2-benefit-flip'
 "OK  毎日の予定終了日と傷病手当パネルあり"
 if ($uiV2 -notmatch 'function isWorkScheduleEvent' -or $uiV2 -notmatch 'function futureWorkScheduleCount' -or $uiV2 -notmatch 'function deleteFutureWorkSchedules' -or $uiV2 -notmatch 'data-v2-work-future-clear' -or $paper -notmatch '\.an-flow-work-clear') { Write-Error "明日以降の仕事予定一括削除契約がありません" }
 "OK  明日以降の仕事予定一括削除契約あり"
+if ($uiV2 -notmatch 'DAILY_REPORT_API_KEY' -or $uiV2 -notmatch 'dailyReportApiRequest\("/v1/daily-reports/pending"\)' -or $uiV2 -notmatch 'v1/daily-reports/.+?/ack' -or $uiV2 -notmatch 'data-v2-daily-report-api-check' -or $uiV2 -notmatch 'workLogImportDraft=\{name:`共有API') { Write-Error "共有APIの日報未確認受信契約がありません" }
+"OK  共有APIの日報未確認受信契約あり"
 
 # PWAが古いCSS/JSをキャッシュすると、公開URLとホーム画面アプリの表示が食い違う。
 # 画面側とService Worker側の主要資産は、BUILDと同じクエリ版を必ず持たせる。

@@ -77,6 +77,7 @@
     calendar:["calendar","こよみ"],
     settings:["settings","設定"]
   });
+  const PRODUCT_PROMISE = "体調に合わせて仕事と暮らしを立て直すアプリ";
 
   const icon = (name, cls = "") => {
     const approved = {
@@ -193,6 +194,9 @@
   let workLogDateViewport = null;
   let workLogImportDraft = null;
   const WORK_LOG_IMPORT_FORMAT = "mainichi.daily-report.v1";
+  const DAILY_REPORT_API_KEY = "mainichi.daily-report-api";
+  let dailyReportApiBusy = false;
+  let dailyReportApiTimer = null;
   const WORK_LOG_IMPORT_FIELDS = [
     ["description", "仕事内容"], ["done", "やったこと・成果"], ["statusNote", "今の状況"],
     ["todo", "やること"], ["trial", "試行・メモ"], ["delivery", "納品・成果物"], ["next", "次回やること"]
@@ -283,12 +287,78 @@
     if(!open)return;
     [...root.querySelectorAll("details")].find(details=>details.textContent.includes("日報ファイルを取り込む"))?.setAttribute("open","");
   }
+  function dailyReportApiCfg(){
+    try{return JSON.parse(localStorage.getItem(DAILY_REPORT_API_KEY))||{};}catch{return {};}
+  }
+  function setDailyReportApiCfg(value){localStorage.setItem(DAILY_REPORT_API_KEY,JSON.stringify(value||{}));}
+  function dailyReportApiStatus(c){
+    if(!(c.endpoint&&c.token))return "未設定";
+    if(c.lastError)return "接続エラー（確認が必要）";
+    if(c.lastCheck)return c.lastPending?"未確認の日報あり":"確認済み・待機中";
+    return "設定済み（通信未確認）";
+  }
+  function dailyReportApiUrl(c,path=""){
+    return String(c.endpoint||"").trim().replace(/\/+$/,"/")+String(path||"").replace(/^\/+/,"");
+  }
+  async function dailyReportApiRequest(path,options={}){
+    const c=dailyReportApiCfg();
+    if(!c.endpoint||!c.token)throw new Error("日報APIの接続設定がありません");
+    const headers=Object.assign({"Accept":"application/json","Authorization":"Bearer "+c.token},options.headers||{});
+    const response=await fetch(dailyReportApiUrl(c,path),Object.assign({},options,{headers}));
+    if(!response.ok)throw new Error(`日報API ${response.status}`);
+    if(response.status===204)return null;
+    return response.json();
+  }
+  function dailyReportApiEntryList(payload){
+    if(Array.isArray(payload?.reports))return payload.reports;
+    if(Array.isArray(payload?.data?.reports))return payload.data.reports;
+    if(payload?.report)return [{id:payload.id||payload.reportId||"",report:payload.report}];
+    if(payload?.data?.report)return [{id:payload.data.id||payload.id||"",report:payload.data.report}];
+    return [];
+  }
+  async function acknowledgeDailyReportApi(id){
+    if(!id)return;
+    try{
+      await dailyReportApiRequest(`/v1/daily-reports/${encodeURIComponent(id)}/ack`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:"imported"})});
+      const c=dailyReportApiCfg();c.lastAck=new Date().toISOString();delete c.lastAckError;setDailyReportApiCfg(c);
+    }catch(error){
+      const c=dailyReportApiCfg();c.lastAckError=error.message||"確認済み通知に失敗しました";setDailyReportApiCfg(c);
+      toast("日報は保存しましたが、APIへの確認済み通知に失敗しました");
+    }
+  }
+  async function pullDailyReportApi(silent=false){
+    const c=dailyReportApiCfg();
+    if(!c.endpoint||!c.token||dailyReportApiBusy||workLogImportDraft)return {skipped:true};
+    dailyReportApiBusy=true;
+    try{
+      const payload=await dailyReportApiRequest("/v1/daily-reports/pending"),entries=dailyReportApiEntryList(payload);
+      c.lastCheck=new Date().toISOString();delete c.lastError;c.lastPending=entries.length>0;setDailyReportApiCfg(c);
+      if(!entries.length){if(!silent)toast("未確認の日報はありません");return {pending:0};}
+      const entry=entries[0],raw=entry.report||entry.payload||entry.data||entry;
+      const data=parseWorkLogImport(typeof raw==="string"?raw:JSON.stringify(raw),`API日報${raw?.date||""}.json`);
+      workLogImportDraft={name:`共有API：${raw?.date||"日報"}`,data,resolutions:{},apiId:String(entry.id||entry.reportId||"")};
+      newAppRender();keepWorkLogImportDetailsOpen(true);
+      toast("未確認の日報を受信しました。内容を確認してください");
+      return {pending:entries.length,data};
+    }catch(error){
+      c.lastCheck=new Date().toISOString();c.lastError=error.message||"日報APIを確認できませんでした";setDailyReportApiCfg(c);
+      if(!silent)toast(`日報APIを確認できませんでした: ${c.lastError}`);
+      return {pending:0,error};
+    }finally{dailyReportApiBusy=false;}
+  }
+  function startDailyReportApiLoop(){
+    clearInterval(dailyReportApiTimer);
+    dailyReportApiTimer=setInterval(()=>{if(!document.hidden)pullDailyReportApi(true);},60000);
+  }
   function workLogImportPanel(){
     const draft=workLogImportDraft;
     if(!draft) return `<p>指定した日報ファイルをこの端末で読み取り、内容を確認してから取り込みます。常時監視や自動上書きはしません。</p><label class="an-file-pick"><span class="an-file-pick-content">${icon("upload")}<span>日報ファイルを選ぶ</span></span><input id="v2WorkLogFile" type="file" accept=".json,.md,.markdown,.txt,application/json,text/markdown,text/plain"></label><small>JSON（mainichi.daily-report.v1）または定型Markdownに対応します。</small>`;
     if(!draft.data?.ok) return `<div class="an-import-preview is-error"><strong>読み込めません</strong><p>${esc2((draft.data?.errors||["形式を確認してください"]).join("／"))}</p><button type="button" class="an-small-action" data-v2-work-log-import-cancel>ファイルを選び直す</button></div>`;
     const data=draft.data,existing=Boolean(S.workLogs?.[data.date]&&Object.keys(S.workLogs[data.date]).length),unknown=data.projects.filter(item=>!item.project),unresolved=data.projects.some((item,index)=>!item.project&&!draft.resolutions?.[index]);
-    return `<div class="an-import-preview"><strong>取り込み内容を確認</strong><p><b>${esc2(data.date)}</b> ／ ${data.projects.length}プロジェクト ／ 休憩 ${esc2(data.breakMinutes||"0")}分 ／ 実作業時間 ${data.actualWorkMinutes===""?"未申告":formatWorkMinutes(data.actualWorkMinutes)}</p><ul>${data.projects.map((item,index)=>`<li><div><b>${esc2(item.projectName||item.projectId)}</b>${item.project?`<small>既存プロジェクトに自動紐付け</small>`:`<small data-v2-work-log-project-status="${index}">未解決のプロジェクト名</small>`}</div>${workLogImportResolution(draft,item,index)}</li>`).join("")}</ul>${existing?`<p class="an-import-warning">この日付には既存の日報があります。上書きしないため取り込めません。</p>`:""}${unknown.length?`<p class="an-import-warning" data-v2-work-log-resolution-warning>未解決のプロジェクトは、既存への対応付けか新規登録を選んでください。</p>`:""}${!canWrite()?`<p class="an-import-warning">この端末は読み取り専用のため、取り込みはできません。</p>`:""}<div class="an-import-actions"><button type="button" class="an-small-action" data-v2-work-log-import-cancel>取り消す</button><button type="button" class="an-small-action an-import-confirm" data-v2-work-log-import-confirm ${existing||unresolved||!canWrite()?"disabled":""}>この内容を日報に取り込む</button></div></div>`;
+    const confirmLabel=existing?"既存の日報を上書きして取り込む":"この内容を日報に取り込む";
+    const confirmClass=existing?" an-import-overwrite":"";
+    const confirmAttr=existing?" data-v2-work-log-import-overwrite":"";
+    return `<div class="an-import-preview"><strong>取り込み内容を確認</strong><p><b>${esc2(data.date)}</b> ／ ${data.projects.length}プロジェクト ／ 休憩 ${esc2(data.breakMinutes||"0")}分 ／ 実作業時間 ${data.actualWorkMinutes===""?"未申告":formatWorkMinutes(data.actualWorkMinutes)}</p><ul>${data.projects.map((item,index)=>`<li><div><b>${esc2(item.projectName||item.projectId)}</b>${item.project?`<small>既存プロジェクトに自動紐付け</small>`:`<small data-v2-work-log-project-status="${index}">未解決のプロジェクト名</small>`}</div>${workLogImportResolution(draft,item,index)}</li>`).join("")}</ul>${existing?`<p class="an-import-warning">この日付には既存の日報があります。内容を確認すると、下のボタンで置き換えできます。</p>`:""}${unknown.length?`<p class="an-import-warning" data-v2-work-log-resolution-warning>未解決のプロジェクトは、既存への対応付けか新規登録を選んでください。</p>`:""}${!canWrite()?`<p class="an-import-warning">この端末は読み取り専用のため、取り込みはできません。</p>`:""}<div class="an-import-actions"><button type="button" class="an-small-action" data-v2-work-log-import-cancel>取り消す</button><button type="button" class="an-small-action an-import-confirm${confirmClass}" data-v2-work-log-import-confirm${confirmAttr} ${unresolved||!canWrite()?"disabled":""}>${confirmLabel}</button></div></div>`;
   }
   // iOS/Safari can scroll a focused date input into view before `focusin`.
   // Keep a short history so a date change can restore the viewport from before
@@ -501,6 +571,14 @@
   const asIdList=value=>Array.isArray(value)?value.filter(Boolean):value?[value]:[];
   function workLogSelection(key,saved){
     let projectIds=asIdList(saved.projectIds),workItemIds=asIdList(saved.workItemIds);
+    const projectNames=saved.projectNames&&typeof saved.projectNames==="object"&&!Array.isArray(saved.projectNames)?saved.projectNames:{};
+    // 同期先と端末でカタログIDが違っても、日報に退避した正式名を優先して現在のIDへ戻す。
+    Object.entries(projectNames).forEach(([sourceId,name])=>{
+      const clean=String(name||"").trim();
+      const aliasId=clean?String(workLogProjectAliases()[clean]||"").trim():"";
+      const resolved=(clean&&workProjects().find(project=>String(project?.name||"").trim()===clean))||workProjectOf(aliasId)||workProjectOf(sourceId);
+      if(resolved&&!projectIds.includes(resolved.id))projectIds.push(resolved.id);
+    });
     if(saved.projectId&&!projectIds.includes(saved.projectId))projectIds.unshift(saved.projectId);
     if(saved.workItemId&&!workItemIds.includes(saved.workItemId))workItemIds.unshift(saved.workItemId);
     const byName=workItems().find(x=>x.name===saved.workItem);
@@ -546,8 +624,11 @@
   }
   function workReviewFor(record,projectId){
     const reviews=record?.projectReviews&&typeof record.projectReviews==="object"?record.projectReviews:{};
-    const legacyDescription=record?.workDescriptions?.[projectId]||"";
-    return Object.assign({description:legacyDescription},reviews[projectId]||{});
+    const descriptions=record?.workDescriptions&&typeof record.workDescriptions==="object"?record.workDescriptions:{};
+    const project=workProjectOf(projectId),names=record?.projectNames&&typeof record.projectNames==="object"&&!Array.isArray(record.projectNames)?record.projectNames:{};
+    const sourceId=Object.entries(names).find(([,name])=>project&&String(name||"").trim()===String(project.name||"").trim())?.[0]||projectId;
+    const legacyDescription=descriptions[projectId]||descriptions[sourceId]||"";
+    return Object.assign({description:legacyDescription},reviews[projectId]||reviews[sourceId]||{});
   }
   function workReviewFieldHtml(projectId,key,value,options){
     const custom=Boolean(value)&&!options.includes(value),selected=custom?"__custom":value||"";
@@ -761,7 +842,7 @@
     const work=group("work","work","work","仕事","予定・実績・日報をまとめる",[["flow","blue","calendar","仕事の時間割","予定と現在時刻を見る",`data-v2-open-flow-filter="work"`],["workBoard","blue","list","仕事の一覧","優先度ごとに次の行動を見る"],["workLog","blue","work","仕事の記録","作業・休憩・日報を残す"]]);
     const life=group("life","life","life","生活","お金・こころとからだを記録する",[["moneyRecord","green","money","支出・収入","金額、方法、カテゴリーを記録"],["healthRecord","green","heart","こころとからだ","今日の調子を記録"],["checklist","yellow","list","生活の習慣・やること","今日の習慣と予定を確認"]]);
     const review=group("review","review","chart","見える化","記録した変化を振り返る",[["moneyAnalysis","purple","money","お金の分析","支払い方法とカテゴリーの傾向"],["healthAnalysis","purple","body","体調の分析","睡眠・歩数・こころ・からだ"]]);
-    return `<section class="v2-page an-page an-home"><main class="an-home-content"><div class="an-home-brand">${appBrand()}</div><div class="an-home-meta"><div class="an-home-date"><span>今日</span><time data-v2-live-date>${dateLabel(ymd(d))}</time></div><strong data-v2-live-time>${time}</strong></div><section class="an-home-shortcuts" aria-label="ショートカット"><div><h2>ショートカット</h2><button type="button" data-v2-shortcuts-open>編集</button></div><div class="an-home-shortcut-grid">${shortcuts.map(tile).join("")}</div><div id="v2ShortcutArea"></div></section><div class="an-home-groups">${work}${life}${review}</div><button type="button" class="an-home-settings" data-v2-go="settings">${icon("settings")}<span>設定</span></button></main></section>`;
+    return `<section class="v2-page an-page an-home"><main class="an-home-content"><div class="an-home-brand">${appBrand()}</div><p class="an-home-positioning">${PRODUCT_PROMISE}</p><div class="an-home-meta"><div class="an-home-date"><span>今日</span><time data-v2-live-date>${dateLabel(ymd(d))}</time></div><strong data-v2-live-time>${time}</strong></div><section class="an-home-shortcuts" aria-label="ショートカット"><div><h2>ショートカット</h2><button type="button" data-v2-shortcuts-open>編集</button></div><div class="an-home-shortcut-grid">${shortcuts.map(tile).join("")}</div><div id="v2ShortcutArea"></div></section><div class="an-home-groups">${work}${life}${review}</div><button type="button" class="an-home-settings" data-v2-go="settings">${icon("settings")}<span>設定</span></button></main></section>`;
   }
   function branch(kind){
     const groups={
@@ -2049,14 +2130,20 @@
     const last=c.lastReceipt ? `<p>最終受信：${esc2(c.lastReceipt.day)} ／ ${c.lastReceipt.steps ?? "—"}歩 ／ ${fmtSleep(c.lastReceipt.sleep)}</p>` : "";
     return `<p>ショートカットのURLを下記に変更してください。端末データ同期のGist IDは使いません。受信箱には最新の記録を残すため、再確認もできます。</p>${last}<label>ショートカットの送信先 URL</label><code class="an-sync-code">${url}</code><label>本文（JSON）</label><code class="an-sync-code">{"files":{"inbox.txt":{"content":"kenko|YYYY-MM-DD|歩数|就寝時刻|起床時刻"}}}</code>`;
   }
+  function dailyReportApiPanel(){
+    const c=dailyReportApiCfg(),ackError=c.lastAckError?`<p class="an-import-warning">${esc2(c.lastAckError)}</p>`:"";
+    const pending=c.lastPending?"未確認の日報があります。下の日報取り込みで内容を確認してください。":"未確認の日報を待機中です。API受信後も自動保存はしません。";
+    return `<p>Claude Codeが送信した日報だけを受信します。受信後は内容を確認してから取り込みます。家計・残高・体調・端末全体データは送信しません。</p><label>日報APIのURL</label><input id="v2DailyReportApiEndpoint" type="url" value="${esc2(c.endpoint||"")}" placeholder="https://example.com"><label>日報APIトークン</label><input id="v2DailyReportApiToken" type="password" autocomplete="off" placeholder="この端末だけに保存"><div class="an-sync-actions"><button class="an-small-action" data-v2-daily-report-api-save>接続設定を保存</button><button class="an-small-action" data-v2-daily-report-api-check ${c.endpoint&&c.token?"":"disabled"}>未確認の日報を確認</button></div><p data-v2-daily-report-api-status>${esc2(pending)}</p>${ackError}`;
+  }
   function settingsV2(){
-    const device=syncCfg(), health=healthSyncCfg(), benefit=Object.assign({start:"2026-01",units:18,nextApplicationStart:"2026-08-01",applicationMonths:"",applicationDays:""},S.benefit||{});
+    const device=syncCfg(), health=healthSyncCfg(), dailyReportApi=dailyReportApiCfg(), benefit=Object.assign({start:"2026-01",units:18,nextApplicationStart:"2026-08-01",applicationMonths:"",applicationDays:""},S.benefit||{});
     if(!benefit.nextApplicationStart)benefit.nextApplicationStart="2026-08-01";
     const deviceRole=device.role==="ro" ? "ro" : device.gistId ? "rw" : "ro";
     const settingsDate=(id,value)=>`<span class="an-settings-date-control"><input id="${id}" type="date" value="${esc2(value||"")}" aria-label="次回申請開始日"><span data-v2-settings-date-value aria-hidden="true">${esc2(String(value||"").replaceAll("-","/"))}</span></span>`;
     const sections=[
       ["refresh","端末データ同期",deviceSyncStatus(device),`<p>PC・iPhone間で、予定・お金・記録などアプリ全体のデータを同期します。歩数・睡眠のショートカットは使いません。</p><p class="an-sync-note">iPhoneを正本にしてこのPCへ共有する場合は、読み取り専用で受信します。受信で置き換わるのはPC側だけで、iPhone側へ書き戻しません。</p><label for="v2DeviceSyncRole">このPCの役割</label><select id="v2DeviceSyncRole"><option value="ro" ${deviceRole==="ro"?"selected":""}>読み取り専用（iPhoneから受信する）</option><option value="rw" ${deviceRole==="rw"?"selected":""}>記録・送信もする</option></select><button class="an-small-action" data-v2-device-sync-role-save>役割を保存</button><label>GitHubトークン</label><input id="v2DeviceSyncToken" type="password" autocomplete="off" placeholder="この端末で入力"><label>端末データ用Gist ID</label><input id="v2DeviceSyncGist" value="${esc2(device.gistId||"")}" placeholder="iPhone側の既存IDを入力"><div class="an-sync-actions"><button class="an-small-action" data-v2-device-sync-start>端末同期を設定</button><button class="an-small-action" data-v2-device-sync-pull>今すぐ端末同期</button></div>`],
       ["heart","ヘルスケア自動取り込み",healthSyncStatus(health),`<p>iPhoneショートカットから歩数・睡眠だけを受信します。端末データ同期とは別の専用Gistです。</p><label>GitHubトークン</label><input id="v2HealthSyncToken" type="password" autocomplete="off" placeholder="この端末で入力"><label>ヘルスケア受信用Gist ID</label><input id="v2HealthSyncGist" value="${esc2(health.gistId||"")}" placeholder="空欄なら新規作成"><div class="an-sync-actions"><button class="an-small-action" data-v2-health-sync-create>受信先を新規作成</button><button class="an-small-action" data-v2-health-sync-check>受信を確認</button></div>${healthSyncGuide(health)}`],
+      ["download","日報API受信",dailyReportApiStatus(dailyReportApi),dailyReportApiPanel()],
       ["list","毎日の習慣","今日の流れに表示する項目",`<div class="an-habits">${habitList().map(h=>`<span class="an-habit">${habitIcon(h)}<span>${esc2(h.label)}</span></span>`).join("")}</div><label>習慣の名前</label><input id="v2HabitLabel" placeholder="例：ストレッチ"><button class="an-small-action" data-v2-habit-add>習慣を追加</button>`],
       ["wallet","お金の初期設定","カード上限・方法・カテゴリー",`<label>カードの上限</label><input id="v2CardCap" type="text" inputmode="numeric" value="${(+S.cardCap||0).toLocaleString("ja-JP")}"><button class="an-small-action" data-v2-card-cap>上限を保存</button>`],
       ["coin","傷病手当の申請情報","次回申請・今回の申請分・受給期間",`<label>次回申請開始日</label>${settingsDate("v2BenefitNextStart",benefit.nextApplicationStart)}<label>今回申請している分（月）</label><input id="v2BenefitMonths" type="number" min="0" inputmode="numeric" value="${esc2(benefit.applicationMonths??"")}"><label>今回申請している分（日）</label><input id="v2BenefitDays" type="number" min="0" inputmode="numeric" value="${esc2(benefit.applicationDays??"")}"><p class="an-settings-help">受給予定期間は${esc2(benefit.start)}から${esc2(benefit.units)}か月です。</p><button class="an-small-action" data-v2-benefit-save>傷病手当の申請情報を保存</button>`],
@@ -2070,17 +2157,18 @@
   /* ブランド表記はアプリ名に合わせて、設定画面も「くらし」で統一する。 */
   const settingsV2WithBrand=settingsV2;
   settingsV2=function(){return settingsV2WithBrand().replaceAll("暮らしの設定","くらしの設定");};
-  root.addEventListener("click",event=>{
+  root.addEventListener("click",async event=>{
     const cancel=event.target.closest("[data-v2-work-log-import-cancel]");
     if(cancel){ event.stopImmediatePropagation(); workLogImportDraft=null; newAppRender(); return; }
     const confirm=event.target.closest("[data-v2-work-log-import-confirm]");
     if(!confirm){ return; }
     event.stopImmediatePropagation();
     if(!canWrite()||confirm.disabled||!workLogImportDraft?.data?.ok) return;
-    const data=workLogImportDraft.data;
+    const data=workLogImportDraft.data,apiId=workLogImportDraft.apiId||"";
     const existing=S.workLogs?.[data.date];
-    if(existing&&Object.keys(existing).length) return toast("既存の日報を上書きしないため、取り込めません");
-    const reviews={},descriptions={},projectIds=[];
+    const overwrite=confirm.hasAttribute("data-v2-work-log-import-overwrite");
+    if(existing&&Object.keys(existing).length&&!overwrite) return toast("既存の日報を上書きする場合は専用ボタンを使ってください");
+    const reviews={},descriptions={},projectNames={},projectIds=[];
     const aliases=workLogProjectAliases();
     for(const [index,item] of data.projects.entries()){
       let project=item.project;
@@ -2092,13 +2180,33 @@
         const name=String(item.projectName||"").trim();
         if(name)aliases[name]=project.id;
       }
-      const id=project.id; projectIds.push(id); reviews[id]=Object.assign({},reviews[id]||{},item.fields);
+      const id=project.id; projectIds.push(id); projectNames[id]=String(project.name||item.projectName||"").trim(); reviews[id]=Object.assign({},reviews[id]||{},item.fields);
       if(item.fields.description) descriptions[id]=item.fields.description;
     }
     S.workLogProjectAliases=aliases;
     S.workLogs=S.workLogs||{};
-    S.workLogs[data.date]={start:data.start,end:data.end,breakMinutes:Math.max(0,+data.breakMinutes||0),actualWorkMinutes:data.actualWorkMinutes===""?null:Number(data.actualWorkMinutes),projectIds,workDescriptions:descriptions,projectReviews:reviews,importedFrom:workLogImportDraft.name||"日報ファイル",importedAt:new Date().toISOString()};
-    save(); workLogImportDraft=null; newAppRender(); successToast("日報を取り込みました");
+    S.workLogs[data.date]={start:data.start,end:data.end,breakMinutes:Math.max(0,+data.breakMinutes||0),actualWorkMinutes:data.actualWorkMinutes===""?null:Number(data.actualWorkMinutes),projectIds,projectNames,workDescriptions:descriptions,projectReviews:reviews,importedFrom:workLogImportDraft.name||"日報ファイル",importedAt:new Date().toISOString()};
+    const importedRecord=JSON.parse(JSON.stringify(S.workLogs[data.date]));
+    saveNow();
+    // 日報専用の対象日マージが失敗したとき、古い端末全体を遅延送信して
+    // 同期先を上書きしない。専用処理の成否だけを完了条件にする。
+    try{ clearTimeout(syncTimer); syncTimer=null; }catch(e){}
+    // 取り込み前の日付下書きが保存値を隠さないよう、確定した日だけ破棄する。
+    clearWorkLogDraft(data.date);
+    workLogImportDraft=null; newAppRender();
+    const syncCfgNow=typeof syncCfg==="function"?syncCfg():{};
+    if(syncCfgNow.token&&syncCfgNow.gistId&&syncCfgNow.role!=="ro"&&typeof pushImportedWorkLog==="function"){
+      try{ localStorage.setItem("mainichi.pending-work-log-sync",JSON.stringify({day:data.date,record:importedRecord,createdAt:new Date().toISOString()})); }catch(e){}
+      toast("日報を同期先へ反映中…");
+      const syncResult=await pushImportedWorkLog(data.date,importedRecord);
+      if(syncResult.ok) successToast(overwrite?"日報を上書きし、同期先へ反映しました":"日報を取り込み、同期先へ反映しました");
+      else toast("日報はこの端末に保存しましたが、同期先へ反映できませんでした");
+    }else if(syncCfgNow.token&&syncCfgNow.gistId&&syncCfgNow.role==="ro"){
+      toast("読み取り専用のため、同期先へ反映できませんでした");
+    }else{
+      successToast(overwrite?"日報を上書きしました（端末内保存）":"日報を取り込みました（端末内保存）");
+    }
+    if(apiId)void acknowledgeDailyReportApi(apiId);
   },true);
   root.addEventListener("click",event=>{
     const toggle=event.target.closest("[data-v2-success-notices]");
@@ -2110,9 +2218,19 @@
     newAppRender();
   },true);
   root.addEventListener("click",async event=>{
-    const button=event.target.closest("[data-v2-device-sync-role-save],[data-v2-device-sync-start],[data-v2-device-sync-pull],[data-v2-health-sync-create],[data-v2-health-sync-check]");
+    const button=event.target.closest("[data-v2-device-sync-role-save],[data-v2-device-sync-start],[data-v2-device-sync-pull],[data-v2-health-sync-create],[data-v2-health-sync-check],[data-v2-daily-report-api-save],[data-v2-daily-report-api-check]");
     if(!button) return;
     event.stopImmediatePropagation();
+    if(button.hasAttribute("data-v2-daily-report-api-save")){
+      const current=dailyReportApiCfg(),endpoint=document.getElementById("v2DailyReportApiEndpoint")?.value.trim()||"",token=document.getElementById("v2DailyReportApiToken")?.value.trim()||current.token||"";
+      if(!endpoint||!token)return toast("日報APIのURLとトークンを入力してください");
+      setDailyReportApiCfg(Object.assign({},current,{endpoint,token}));startDailyReportApiLoop();newAppRender();successToast("日報APIの接続設定を保存しました");
+      return;
+    }
+    if(button.hasAttribute("data-v2-daily-report-api-check")){
+      await pullDailyReportApi(false);newAppRender();keepWorkLogImportDetailsOpen(Boolean(workLogImportDraft));
+      return;
+    }
     if(button.hasAttribute("data-v2-device-sync-role-save")){
       const role=document.getElementById("v2DeviceSyncRole")?.value||"ro";
       const current=syncCfg();
@@ -2494,14 +2612,25 @@
   function healthCorr(a,b){const pairs=a.map((v,i)=>[v,b[i]]).filter(([x,y])=>x!=null&&y!=null);if(pairs.length<3)return null;const ax=healthMean(pairs.map(p=>p[0])),ay=healthMean(pairs.map(p=>p[1]));const n=pairs.reduce((s,[x,y])=>s+(x-ax)*(y-ay),0),dx=Math.sqrt(pairs.reduce((s,[x])=>s+(x-ax)**2,0)),dy=Math.sqrt(pairs.reduce((s,[,y])=>s+(y-ay)**2,0));return dx&&dy?n/(dx*dy):null;}
   function healthMetricMarker(metric){return `<i class="an-health-marker marker-${metric.marker||"bar"}" style="--marker-color:${metric.c}" aria-hidden="true"></i>`;}
   function healthAnalysisResult(metrics){
-    const by=id=>metrics.find(m=>m.id===id),sleep=by("sleep"),steps=by("steps"),body=by("body"),mind=by("mind"),corrs=[
+    const by=id=>metrics.find(m=>m.id===id),sleep=by("sleep"),steps=by("steps"),body=by("body"),mind=by("mind"),days=healthDays();
+    const pairs=[
       ["睡眠とからだ",healthCorr(sleep.vals,body.vals)],
       ["睡眠とこころ",healthCorr(sleep.vals,mind.vals)],
       ["歩数とからだ",healthCorr(steps.vals,body.vals)],
       ["歩数とこころ",healthCorr(steps.vals,mind.vals)]
-    ].filter(([,v])=>v!=null).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])),strong=corrs[0],direction=strong?strong[1]>.3?"同じ方向の変化":strong[1]<-.3?"反対方向の変化":"大きな連動は未確認":"記録をためると傾向を確認できます";
-    const values=metrics.map(m=>{const mean=healthMean(m.vals),display=m.id==="steps"&&mean!=null?Math.round(mean):mean;return `<li><strong>${m.label}</strong><span>${m.vals.some(v=>v!=null)?`${m.format(display)}（記録${m.vals.filter(v=>v!=null).length}日）`:"未記録"}</span></li>`}).join("");
-    return `<article class="v2-health-ai"><strong>4指標の分析結果</strong><p>睡眠・歩数・からだ・こころを同じ期間で確認した結果：${strong?`${strong[0]}に${direction}があります。`:direction}</p><ul>${values}</ul><small>端末内の記録から算出した目安です。医療上の判断には使わず、気になる変化は専門家へ相談してください。</small></article>`;
+    ].filter(([,v])=>v!=null).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1]));
+    const strongest=pairs[0],recordCount=m=>m.vals.filter(v=>v!=null).length,totalRecords=metrics.reduce((n,m)=>n+recordCount(m),0),completeDays=days.filter((_,i)=>metrics.every(m=>m.vals[i]!=null)).length;
+    const used=metrics.map(m=>{const count=recordCount(m),mean=count?healthMean(m.vals):null,display=m.id==="steps"&&mean!=null?Math.round(mean):mean;return `<li><strong>${m.label}</strong><span>${count?`${m.format(display)}・${count}日`:"未記録"}</span></li>`}).join("");
+    const missing=metrics.filter(m=>recordCount(m)<days.length).map(m=>`${m.label}（${days.length-recordCount(m)}日不足）`);
+    const missingText=missing.length?`${missing.join("、")}。4項目すべて揃った日は${completeDays}日です。`:`4項目すべて揃った日が${completeDays}日あります。`;
+    const trendParts=metrics.filter(m=>recordCount(m)).map(m=>{const mean=healthMean(m.vals),label=m.label;if(m.id==="sleep"&&mean<360)return `${label}は平均${m.format(mean)}で、短い記録が含まれます`;if(m.id==="steps"&&mean>=8000)return `${label}は平均${m.format(mean)}で、よく歩いた記録があります`;if((m.id==="body"||m.id==="mind")&&mean>=4)return `${label}は平均${m.format(mean)}で、比較的高い記録です`;return `${label}は${recordCount(m)}日記録されています`;});
+    const direction=strongest?(strongest[1]>.3?"同じ方向":strongest[1]<-.3?"反対方向":"大きな連動は未確認"):"比較できる記録がまだ不足しています";
+    const trendText=strongest&&Math.abs(strongest[1])>.3?`${strongest[0]}に${direction}の変化が見られます。` : trendParts.join("。")+"。";
+    const strength=completeDays>=5&&pairs.length?"中〜強（同じ日に揃った記録と比較可能な組み合わせがあります）":totalRecords>=6?"中（記録はありますが、欠けている日があります）":"弱（記録日数が少なく、傾向は仮置きです）";
+    const speculation=strongest?`${strongest[0]}の相関は、同じ期間に動いた度合いを示すだけです。原因や医療上の関係は判断できません。`:"記録が増えるまで、体調の変化と生活上の原因を結びつけて推測しません。";
+    const action=missing.length?"まずは明日、睡眠・歩数・からだ・こころを同じ日に記録して比較できる状態にする":"次の3日だけ、就寝・起床と体調を同じタイミングで記録して変化を見比べる";
+    const section=(title,body,kind="")=>`<section class="v2-health-ai-section ${kind}"><h3>${title}</h3><div>${body}</div></section>`;
+    return `<article class="v2-health-ai"><header class="v2-health-ai-head"><strong>体調分析レポート</strong><span>AI連携未接続・端末内の整理</span></header>${section("使用したデータ",`<ul>${used}</ul>`)}${section("欠けているデータ",missingText,missing.length?"is-warning":"is-good")}${section("観察できた傾向",trendText)}${section("根拠の強さ",strength)}${section("推測にすぎない部分",speculation,"is-caution")}${section("次に試せる小さな行動",action,"is-action")}<small class="v2-health-ai-note">この表示は保存された記録から算出した目安です。診断や治療の判断には使わず、気になる変化は専門家へ相談してください。</small></article>`;
   }
   // 体調分析の現行正本。対象は健康の4指標だけに固定する。
   healthAnalysis=function(){
@@ -2942,5 +3071,6 @@
     recordUiState.swipe=null;
   },true);
   document.addEventListener("pointercancel",()=>{recordUiState.swipe=null;},true);
+  startDailyReportApiLoop();
   newAppRender();
 })();
