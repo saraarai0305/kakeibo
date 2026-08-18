@@ -298,7 +298,8 @@ if ($uiV2 -notmatch 'function renameWorkProject' -or $uiV2 -notmatch 'function r
 "OK  仕事カタログのID保持編集契約あり"
 
 if ($uiV2 -notmatch 'function applyWorkTimeConfirmation' -or $uiV2 -notmatch 'data-v2-work-time-save' -or $uiV2 -notmatch 'workSessions:timeRecord\.workSessions') { Write-Error "作業時間の確定と勤務区間の連動契約がありません" }
-if ($src -notmatch 'stepsSource="sync"' -or $src -notmatch 'stepsSavedAt' -or $src -notmatch 'saveNow\(\);\s*render\(\)') { Write-Error "歩数自動保存の受信後保存契約がありません" }
+$healthSrc = $src + $uiV2
+if ($healthSrc -notmatch 'stepsSource\s*=\s*"sync"' -or $healthSrc -notmatch 'stepsSavedAt' -or $src -notmatch 'saveNow\(\);[\s\S]{0,300}?render\(\)' -or $healthSrc -notmatch 'mainichiHealthAutoSaved' -or $healthSrc -notmatch 'mainichiHealthAutoPullStarted' -or $healthSrc -notmatch 'mainichiHealthAutoPullFinished' -or $healthSrc -notmatch 'pullHealthInbox\(true,\s*"startup"\)' -or $uiV2 -notmatch 'an-health-auto-status') { Write-Error "歩数自動保存・次回起動時の自動確認契約がありません" }
 "OK  作業時間の確定・勤務区間連動と歩数自動保存あり"
 
 # 現行の描画入口と最終CSS層を固定する。旧互換処理は参照確認後に段階整理する。

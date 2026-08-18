@@ -41,6 +41,7 @@
   let benefitFlip = false;
   let healthDraft = null;
   let healthRecordDate = ymd(now());
+  let healthAutoPullState = window.mainichiHealthAutoPullState || {phase:"idle", imported:0, receipt:null, lastCheck:"", error:""};
   let calendarMode = "month";
   let calendarLane = "common";
   let flowLaneFilter = "common";
@@ -895,6 +896,21 @@
     const isSaved=kind==="sleep"?Boolean(saved.bed&&saved.wake):saved[kind]!=null;
     return `<button class="an-health-item-save${isSaved?" is-change":""}" data-v2-health-save="${kind}">${label}${isSaved?"を変更":"を保存"}</button>`;
   }
+  function healthAutoPullMessage(){
+    const c=healthSyncCfg();
+    if(!(c.token&&c.gistId)) return "";
+    const s=healthAutoPullState, r=s.receipt||c.lastReceipt;
+    const checked=s.lastCheck?new Date(s.lastCheck).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"}):"";
+    if(s.phase==="checking") return `<p class="an-health-auto-status is-checking" role="status">最新のヘルスケア記録を自動確認中…</p>`;
+    if(s.phase==="error") return `<p class="an-health-auto-status is-error" role="status">ヘルスケアの自動確認に失敗しました。設定を確認してください。</p>`;
+    if(s.phase==="done"&&s.imported>0&&r?.day){
+      const receivedLabel=(r.bed!=null||r.wake!=null)?"歩数・睡眠":"歩数";
+      return `<p class="an-health-auto-status is-imported" role="status">${esc2(r.day.replaceAll("-","/"))}の${receivedLabel}を自動取得して保存しました${checked?`（確認 ${esc2(checked)}）`:""}</p>`;
+    }
+    if(s.phase==="done") return `<p class="an-health-auto-status" role="status">ヘルスケアを自動確認済み${checked?`（${esc2(checked)}）`:""}。新しい記録はありません。</p>`;
+    if(r?.day) return `<p class="an-health-auto-status" role="status">最終受信：${esc2(r.day.replaceAll("-","/"))} ${esc2(String(r.steps??"—"))}歩</p>`;
+    return "";
+  }
   function healthRecord(){
     const key=healthRecordDate||ymd(now()),saved=S.health[key]||{},draft=healthDraft||{};
     const draftValue=name=>Object.prototype.hasOwnProperty.call(draft,name)?draft[name]:"";
@@ -903,7 +919,7 @@
     const savedSteps=saved.steps!=null?`${(+saved.steps).toLocaleString("ja-JP")}歩`:"—";
     const timeField=(id,value,label)=>`<span class="an-native-time-control"><input id="${id}" type="time" value="${esc2(value||"")}" data-v2-health="${id==='v2Bed'?"bed":"wake"}" aria-label="${label}"><span data-v2-health-time-value="${id}" aria-hidden="true">${esc2(value||"--:--")}</span></span>`;
     const stepNote=saved.stepsSource==="sync"?`自動保存済み${saved.stepsSavedAt?`（${new Date(saved.stepsSavedAt).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})}）`:""}`:"保存済みの歩数";
-    return analogPage("an-health-record","heart","HEALTH LOG","今日の調子を残す",`<label class="an-health-date"><span>記録日</span><span class="an-health-date-control"><input id="v2HealthDate" aria-label="記録日" type="date" value="${esc2(key)}"><span class="an-health-date-value" aria-hidden="true">${esc2(dateLabel(key))}</span></span></label><p class="an-date-note">${dateLabel(key)}</p><section class="an-health-sheet">${savedRating("body","からだ","体の調子")}${savedRating("mind","こころ","心の調子")}<section class="an-health-data"><span>${icon("moon")}睡眠</span><strong>${fmtSleep(savedSleep)}</strong><small>保存済みの睡眠時間</small><div class="an-time-fields">${timeField("v2Bed",draftValue("bed"),"就寝時刻")}${timeField("v2Wake",draftValue("wake"),"起床時刻")}</div>${healthChangeButton("睡眠","sleep",saved)}</section><section class="an-health-data"><span>${icon("foot")}歩数</span><strong>${savedSteps}</strong><small>${stepNote}</small><input id="v2Steps" type="number" inputmode="numeric" min="0" value="${esc2(draftValue("steps"))}" placeholder="歩数を入力" data-v2-health="steps">${healthChangeButton("歩数","steps",saved)}</section></section><button class="an-wide-action green" data-v2-go="healthAnalysis">${icon("chart")}<span>体調の変化を見る</span><b>›</b></button>`);
+    return analogPage("an-health-record","heart","HEALTH LOG","今日の調子を残す",`<label class="an-health-date"><span>記録日</span><span class="an-health-date-control"><input id="v2HealthDate" aria-label="記録日" type="date" value="${esc2(key)}"><span class="an-health-date-value" aria-hidden="true">${esc2(dateLabel(key))}</span></span></label><p class="an-date-note">${dateLabel(key)}</p>${healthAutoPullMessage()}<section class="an-health-sheet">${savedRating("body","からだ","体の調子")}${savedRating("mind","こころ","心の調子")}<section class="an-health-data"><span>${icon("moon")}睡眠</span><strong>${fmtSleep(savedSleep)}</strong><small>保存済みの睡眠時間</small><div class="an-time-fields">${timeField("v2Bed",draftValue("bed"),"就寝時刻")}${timeField("v2Wake",draftValue("wake"),"起床時刻")}</div>${healthChangeButton("睡眠","sleep",saved)}</section><section class="an-health-data"><span>${icon("foot")}歩数</span><strong>${savedSteps}</strong><small>${stepNote}</small><input id="v2Steps" type="number" inputmode="numeric" min="0" value="${esc2(draftValue("steps"))}" placeholder="歩数を入力" data-v2-health="steps">${healthChangeButton("歩数","steps",saved)}</section></section><button class="an-wide-action green" data-v2-go="healthAnalysis">${icon("chart")}<span>体調の変化を見る</span><b>›</b></button>`);
   }
   function healthAnalysis(){
     const labels=[["sleep","睡眠","#4d80ad","bar"],["steps","歩数","#4f986f","bar"],["body","からだ","#796aa8","circle"],["mind","こころ","#ca796b","square"]];
@@ -1047,6 +1063,30 @@
     restoreViewport(position);
   }
   window.newAppRender = renderV2;
+  // ヘルスケア自動受信は、同日下書きの自動取得項目だけを保存値へ合わせる。
+  // からだ・こころなど利用者が入力途中の項目は失わせない。
+  window.mainichiHealthAutoSaved = dates => {
+    const received = new Set((Array.isArray(dates) ? dates : [dates]).filter(Boolean));
+    if(!healthDraft || !received.has(healthDraft.day)){
+      if(page === "healthRecord") newAppRender();
+      return;
+    }
+    const kept = Object.assign({}, healthDraft);
+    ["steps","bed","wake"].forEach(key => delete kept[key]);
+    healthDraft = Object.keys(kept).some(key => key !== "day") ? kept : null;
+    if(page === "healthRecord") newAppRender();
+  };
+  window.mainichiHealthAutoPullStarted = () => {
+    healthAutoPullState = {phase:"checking", imported:0, receipt:null, lastCheck:"", error:""};
+    window.mainichiHealthAutoPullState = healthAutoPullState;
+    if(page === "healthRecord" || page === "settings") newAppRender({preserveScroll:true});
+  };
+  window.mainichiHealthAutoPullFinished = result => {
+    const r = result || {};
+    healthAutoPullState = {phase:r.error?"error":"done", imported:+r.imported||0, receipt:r.receipt||healthSyncCfg().lastReceipt||null, lastCheck:r.lastCheck||healthSyncCfg().lastCheck||"", error:r.error||""};
+    window.mainichiHealthAutoPullState = healthAutoPullState;
+    if(page === "healthRecord" || page === "settings") newAppRender({preserveScroll:true});
+  };
   // 画面遷移を待たず、ホームの時計と時間割の現在線を毎秒更新する。
   function paintLiveClock(){
     const d=now(), raw=d.getHours()*60+d.getMinutes(), text=toHHMM(raw);
