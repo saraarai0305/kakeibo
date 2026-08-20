@@ -8,7 +8,7 @@ from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
 
 
-OUT = Path(r"D:\仕事用\5_その他\mainichi\design\LIFE_NOTE_デザインシステムと実装ロードマップ_v1.docx")
+OUT = Path(r"D:\仕事用\会社｜codex\開発｜自己管理アプリ\design\LIFE_NOTE_デザインシステムと実装ロードマップ_v1.docx")
 
 COLORS = {
     "ink": "132238",
