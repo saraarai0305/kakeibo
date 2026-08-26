@@ -355,11 +355,15 @@
     const draft=workLogImportDraft;
     if(!draft) return `<p>指定した日報ファイルをこの端末で読み取り、内容を確認してから取り込みます。常時監視や自動上書きはしません。</p><label class="an-file-pick"><span class="an-file-pick-content">${icon("upload")}<span>日報ファイルを選ぶ</span></span><input id="v2WorkLogFile" type="file" accept=".json,.md,.markdown,.txt,application/json,text/markdown,text/plain"></label><small>JSON（mainichi.daily-report.v1）または定型Markdownに対応します。</small>`;
     if(!draft.data?.ok) return `<div class="an-import-preview is-error"><strong>読み込めません</strong><p>${esc2((draft.data?.errors||["形式を確認してください"]).join("／"))}</p><button type="button" class="an-small-action" data-v2-work-log-import-cancel>ファイルを選び直す</button></div>`;
-    const data=draft.data,existing=Boolean(S.workLogs?.[data.date]&&Object.keys(S.workLogs[data.date]).length),unknown=data.projects.filter(item=>!item.project),unresolved=data.projects.some((item,index)=>!item.project&&!draft.resolutions?.[index]);
+    const data=draft.data,existingRecord=S.workLogs?.[data.date],existing=Boolean(existingRecord&&Object.keys(existingRecord).length),unknown=data.projects.filter(item=>!item.project),unresolved=data.projects.some((item,index)=>!item.project&&!draft.resolutions?.[index]);
     const confirmLabel=existing?"既存の日報を上書きして取り込む":"この内容を日報に取り込む";
     const confirmClass=existing?" an-import-overwrite":"";
     const confirmAttr=existing?" data-v2-work-log-import-overwrite":"";
-    return `<div class="an-import-preview"><strong>取り込み内容を確認</strong><p><b>${esc2(data.date)}</b> ／ ${data.projects.length}プロジェクト ／ 休憩 ${esc2(data.breakMinutes||"0")}分 ／ 実作業時間 ${data.actualWorkMinutes===""?"未申告":formatWorkMinutes(data.actualWorkMinutes)}</p><ul>${data.projects.map((item,index)=>`<li><div><b>${esc2(item.projectName||item.projectId)}</b>${item.project?`<small>既存プロジェクトに自動紐付け</small>`:`<small data-v2-work-log-project-status="${index}">未解決のプロジェクト名</small>`}</div>${workLogImportResolution(draft,item,index)}</li>`).join("")}</ul>${existing?`<p class="an-import-warning">この日付には既存の日報があります。内容を確認すると、下のボタンで置き換えできます。</p>`:""}${unknown.length?`<p class="an-import-warning" data-v2-work-log-resolution-warning>未解決のプロジェクトは、既存への対応付けか新規登録を選んでください。</p>`:""}${!canWrite()?`<p class="an-import-warning">この端末は読み取り専用のため、取り込みはできません。</p>`:""}<div class="an-import-actions"><button type="button" class="an-small-action" data-v2-work-log-import-cancel>取り消す</button><button type="button" class="an-small-action an-import-confirm${confirmClass}" data-v2-work-log-import-confirm${confirmAttr} ${unresolved||!canWrite()?"disabled":""}>${confirmLabel}</button></div></div>`;
+    const hasExistingTiming=existingRecord&&(
+      Boolean(existingRecord.start||existingRecord.end||existingRecord.workSessions?.length||existingRecord.breakSessions?.length)||
+      Object.prototype.hasOwnProperty.call(existingRecord,"actualWorkMinutes")
+    );
+    return `<div class="an-import-preview"><strong>取り込み内容を確認</strong><p><b>${esc2(data.date)}</b> ／ ${data.projects.length}プロジェクト ／ 休憩 ${esc2(data.breakMinutes||"0")}分 ／ 実作業時間 ${data.actualWorkMinutes===""?"未申告":formatWorkMinutes(data.actualWorkMinutes)}</p>${hasExistingTiming?`<p class="an-import-note">開始・終了・休憩・実作業時間は、この端末に保存されているスマホ側の値を保持します。</p>`:""}<ul>${data.projects.map((item,index)=>`<li><div><b>${esc2(item.projectName||item.projectId)}</b>${item.project?`<small>既存プロジェクトに自動紐付け</small>`:`<small data-v2-work-log-project-status="${index}">未解決のプロジェクト名</small>`}</div>${workLogImportResolution(draft,item,index)}</li>`).join("")}</ul>${existing?`<p class="an-import-warning">この日付には既存の日報があります。内容を確認すると、下のボタンで置き換えできます。</p>`:""}${unknown.length?`<p class="an-import-warning" data-v2-work-log-resolution-warning>未解決のプロジェクトは、既存への対応付けか新規登録を選んでください。</p>`:""}${!canWrite()?`<p class="an-import-warning">この端末は読み取り専用のため、取り込みはできません。</p>`:""}<div class="an-import-actions"><button type="button" class="an-small-action" data-v2-work-log-import-cancel>取り消す</button><button type="button" class="an-small-action an-import-confirm${confirmClass}" data-v2-work-log-import-confirm${confirmAttr} ${unresolved||!canWrite()?"disabled":""}>${confirmLabel}</button></div></div>`;
   }
   // iOS/Safari can scroll a focused date input into view before `focusin`.
   // Keep a short history so a date change can restore the viewport from before
@@ -467,14 +471,14 @@
   function workLogDraftState(){return workLogState({start:document.getElementById("v2WorkStart")?.value||"",end:document.getElementById("v2WorkEnd")?.value||"",breakMinutes:document.getElementById("v2WorkBreak")?.value||""});}
   const WORK_LOG_DRAFT_KEY="mainichi.worklog-draft.v1";
   function canPersistWorkLogDraft(){return true;}
-  function workLogDraftFor(key){try{const raw=localStorage.getItem(WORK_LOG_DRAFT_KEY),draft=raw?JSON.parse(raw):null;return draft&&draft.day===key&&draft.data&&typeof draft.data==="object"?draft.data:null;}catch{return null;}}
+  function workLogDraftFor(key){try{const raw=localStorage.getItem(WORK_LOG_DRAFT_KEY),draft=raw?JSON.parse(raw):null,saved=S.workLogs?.[key],savedImportedAt=String(saved?.importedAt||"");if(!draft||draft.day!==key||!draft.data||typeof draft.data!=="object")return null;if(savedImportedAt&&String(draft.baseImportedAt||"")!==savedImportedAt)return null;return draft.data;}catch{return null;}}
   function clearWorkLogDraft(key){try{const raw=localStorage.getItem(WORK_LOG_DRAFT_KEY),draft=raw?JSON.parse(raw):null;if(!draft||draft.day===key)localStorage.removeItem(WORK_LOG_DRAFT_KEY);}catch{}}
   function readWorkLogChoice(id){const choice=document.getElementById(`${id}Choice`),custom=document.getElementById(id);return choice?.value==="__custom"?(custom?.value||"").trim():(choice?.value||"").trim();}
   function persistWorkLogDraft(key=workLogDate){
     if(!document.getElementById("v2WorkDate")||!canPersistWorkLogDraft())return;
     const saved=(S.workLogs&&S.workLogs[key])||{},data={start:document.getElementById("v2WorkStart")?.value||"",end:document.getElementById("v2WorkEnd")?.value||"",breakMinutes:document.getElementById("v2WorkBreak")?.value||"",workSessions:Array.isArray(saved.workSessions)?saved.workSessions:[],breakSessions:Array.isArray(saved.breakSessions)?saved.breakSessions:[],projectIds:selectedWorkLogProjects(),workItemIds:selectedWorkLogItems(),workDescriptions:selectedWorkLogDescriptions(),projectReviews:selectedWorkLogReviews(),done:readWorkLogChoice("v2WorkDone"),statusNote:readWorkLogChoice("v2WorkStatusNote"),todo:readWorkLogChoice("v2WorkTodo"),trial:readWorkLogChoice("v2WorkTrial"),delivery:readWorkLogChoice("v2WorkDelivery"),next:readWorkLogChoice("v2WorkNext")};
     const meaningful=Object.values(data).some(value=>Array.isArray(value)?value.length:Boolean(value));
-    try{if(meaningful)localStorage.setItem(WORK_LOG_DRAFT_KEY,JSON.stringify({day:key,data,updatedAt:Date.now()}));else clearWorkLogDraft(key);}catch{}
+    try{if(meaningful)localStorage.setItem(WORK_LOG_DRAFT_KEY,JSON.stringify({day:key,data,baseImportedAt:String(saved.importedAt||""),updatedAt:Date.now()}));else clearWorkLogDraft(key);}catch{}
   }
   function workLogDurationNote(state){return state.state==="invalid"?"休憩分は作業時間以内にしてください":state.state==="valid"?`拘束時間 ${formatWorkMinutes(state.span)} − 休憩 ${state.breakMinutes}分`:"開始・終了・休憩分を入力すると計算します";}
   function paintWorkLogDraft(){
@@ -586,7 +590,7 @@
     if(byName&&!workItemIds.includes(byName.id))workItemIds.unshift(byName.id);
     if(saved.project&&!projectIds.length){const project=workProjects().find(x=>x.name===saved.project);if(project)projectIds.push(project.id);}
     workItemIds.forEach(id=>{const projectId=workItemOf(id)?.projectId;if(projectId&&!projectIds.includes(projectId))projectIds.push(projectId);});
-    if(!workItemIds.length){
+    if(!workItemIds.length&&!saved.importedFrom){
       const planned=(typeof planOf==="function"?planOf(key):[]).filter(x=>x&&x.workItemId);
       planned.forEach(x=>{if(!workItemIds.includes(x.workItemId))workItemIds.push(x.workItemId);const projectId=x.projectId||workItemOf(x.workItemId)?.projectId;if(projectId&&!projectIds.includes(projectId))projectIds.push(projectId);});
     }
@@ -2205,9 +2209,9 @@
     event.stopImmediatePropagation();
     if(!canWrite()||confirm.disabled||!workLogImportDraft?.data?.ok) return;
     const data=workLogImportDraft.data,apiId=workLogImportDraft.apiId||"";
-    const existing=S.workLogs?.[data.date];
+    const existingRecord=S.workLogs?.[data.date];
     const overwrite=confirm.hasAttribute("data-v2-work-log-import-overwrite");
-    if(existing&&Object.keys(existing).length&&!overwrite) return toast("既存の日報を上書きする場合は専用ボタンを使ってください");
+    if(existingRecord&&Object.keys(existingRecord).length&&!overwrite) return toast("既存の日報を上書きする場合は専用ボタンを使ってください");
     const reviews={},descriptions={},projectNames={},projectIds=[];
     const aliases=workLogProjectAliases();
     for(const [index,item] of data.projects.entries()){
@@ -2225,8 +2229,33 @@
     }
     S.workLogProjectAliases=aliases;
     S.workLogs=S.workLogs||{};
-    S.workLogs[data.date]={start:data.start,end:data.end,breakMinutes:Math.max(0,+data.breakMinutes||0),actualWorkMinutes:data.actualWorkMinutes===""?null:Number(data.actualWorkMinutes),projectIds,projectNames,workDescriptions:descriptions,projectReviews:reviews,importedFrom:workLogImportDraft.name||"日報ファイル",importedAt:new Date().toISOString()};
-    const importedRecord=JSON.parse(JSON.stringify(S.workLogs[data.date]));
+    const previous=existingRecord&&typeof existingRecord==="object"?existingRecord:{};
+    const hasPreviousKey=key=>Object.prototype.hasOwnProperty.call(previous,key);
+    const hasPreviousTiming=Boolean(
+      previous.start||previous.end||previous.workSessions?.length||previous.breakSessions?.length||
+      hasPreviousKey("actualWorkMinutes")||hasPreviousKey("breakMinutes")
+    );
+    const importedRecord=Object.assign({},previous,{
+      // 日報ファイルはプロジェクト別の内容だけを更新し、スマホ側の時間を優先する。
+      start:hasPreviousTiming?(previous.start||""):data.start,
+      end:hasPreviousTiming?(previous.end||""):data.end,
+      projectIds,projectNames,workItemIds:[],workDescriptions:descriptions,projectReviews:reviews,
+      // 旧形式の単一プロジェクト項目が新しい選択へ混ざらないよう、先頭だけを整合させる。
+      projectId:projectIds[0]||"",workItemId:"",project:projectNames[projectIds[0]]||"",workItem:"",
+      importedFrom:workLogImportDraft.name||"日報ファイル",importedAt:new Date().toISOString()
+    });
+    if(!hasPreviousTiming){
+      importedRecord.breakMinutes=Math.max(0,+data.breakMinutes||0);
+      importedRecord.actualWorkMinutes=data.actualWorkMinutes===""?null:Number(data.actualWorkMinutes);
+    }else{
+      // 既存の実作業時間が未計算(null/空欄)でも、既存セッションから再計算できる状態を保つ。
+      if(hasPreviousKey("breakMinutes"))importedRecord.breakMinutes=previous.breakMinutes;
+      else delete importedRecord.breakMinutes;
+      if(hasPreviousKey("actualWorkMinutes"))importedRecord.actualWorkMinutes=previous.actualWorkMinutes;
+      else delete importedRecord.actualWorkMinutes;
+    }
+    S.workLogs[data.date]=importedRecord;
+    const importedRecordForSync=JSON.parse(JSON.stringify(importedRecord));
     saveNow();
     // 日報専用の対象日マージが失敗したとき、古い端末全体を遅延送信して
     // 同期先を上書きしない。専用処理の成否だけを完了条件にする。
@@ -2236,9 +2265,9 @@
     workLogImportDraft=null; newAppRender();
     const syncCfgNow=typeof syncCfg==="function"?syncCfg():{};
     if(syncCfgNow.token&&syncCfgNow.gistId&&syncCfgNow.role!=="ro"&&typeof pushImportedWorkLog==="function"){
-      try{ localStorage.setItem("mainichi.pending-work-log-sync",JSON.stringify({day:data.date,record:importedRecord,createdAt:new Date().toISOString()})); }catch(e){}
+      try{ localStorage.setItem("mainichi.pending-work-log-sync",JSON.stringify({day:data.date,record:importedRecordForSync,createdAt:new Date().toISOString()})); }catch(e){}
       toast("日報を同期先へ反映中…");
-      const syncResult=await pushImportedWorkLog(data.date,importedRecord);
+      const syncResult=await pushImportedWorkLog(data.date,importedRecordForSync);
       if(syncResult.ok) successToast(overwrite?"日報を上書きし、同期先へ反映しました":"日報を取り込み、同期先へ反映しました");
       else toast("日報はこの端末に保存しましたが、同期先へ反映できませんでした");
     }else if(syncCfgNow.token&&syncCfgNow.gistId&&syncCfgNow.role==="ro"){
