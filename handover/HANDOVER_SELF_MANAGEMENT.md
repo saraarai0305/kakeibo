@@ -3,7 +3,7 @@
 更新日: 2026-09-03  
 部署: `開発｜自己管理アプリ`  
 正式パス: `D:\仕事用\会社｜codex\開発｜自己管理アプリ`  
-現行版: `0.32.9`
+現行版: `0.32.10`
 
 ## プロジェクトの目的
 
@@ -41,7 +41,8 @@
 - 保存済みの日報から案件別の分数と割合を表示。複数案件の未入力時間は推測しない。
 - `index.html`の正規化で、任意の案件別分数を安全に扱う。
 - `workAutoScheduleEndDate`で、案件カタログを削除せず仕事の自動枠だけを日付境界で停止する。
-- `BUILD`、`version.txt`、PWA資産・Service Workerキャッシュを`0.32.9`へ一致。
+- `BUILD`、`version.txt`、PWA資産・Service Workerキャッシュを`0.32.10`へ一致。
+- 旧版から更新した端末は、`workAutoScheduleEndDate`が未定義なら昨日を保存して、今日以降の自動仕事予定を初回表示から止める。手入力予定・過去記録は残す。
 - 通知本文へ予定の場所を追加し、予定変更後も通知時点の内容を読み直す。Service Workerの通知タップでアプリへ戻る。
 - `push-server/`へCloudflare Workerを追加し、`https://mainichi-schedule-push.mainichi-schedule-push-01.workers.dev`へ公開済み。端末作成にはサーバー作成者だけが知る`SETUP_KEY`を使い、端末ごとの購読・予定はSQLite Durable Objectに隔離する。今後90日分の通知内容だけを保存し、送信済み内容は削除する。VAPID鍵と`SETUP_KEY`はCloudflare Secretsのみ、端末の秘密値は`mainichi.schedule-push.v1`のみへ保存し、`mainichi.v1`・Gist同期・Gitへ混ぜない。
 - 日報取り込み、共有API、毎日仕事予定解除、ルーティーン、支払い項目CRUDなど既存機能を維持。
