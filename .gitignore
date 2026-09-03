@@ -11,3 +11,7 @@ TODO.md
 # 検査用の一時ファイル
 _check_tmp.html
 _test_*.html
+
+# 通知サーバーのローカル依存関係キャッシュ
+.pnpm-store/
+.wrangler-config/

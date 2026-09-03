@@ -6,7 +6,7 @@
 <title>LIFE NOTE</title>
 <link rel="manifest" href="manifest.webmanifest">
 <script src="design-system.js"></script>
-<link rel="stylesheet" href="ui-v2.css?v=0.31.82">
+<link rel="stylesheet" href="ui-v2.css?v=0.32.9">
 <meta name="theme-color" content="#F6EFDE">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -784,8 +784,8 @@ body[data-tab="cal"]:not([data-cal-page="check"]) #checklistPage{display:none!im
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:1ms!important;animation-iteration-count:1!important;transition-duration:1ms!important}}
 </style>
 <!-- 旧画面のインラインCSSより後に読み込み、紙面UIを最終スタイルとして適用する。 -->
-<link rel="stylesheet" href="ui-analog.css?v=0.31.82">
-<link rel="stylesheet" href="ui-paper-baseline.css?v=0.31.82">
+<link rel="stylesheet" href="ui-analog.css?v=0.32.9">
+<link rel="stylesheet" href="ui-paper-baseline.css?v=0.32.9">
 <link rel="stylesheet" href="design-foundation.css">
 </head>
 <body data-tab="home">
@@ -1421,7 +1421,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.31.82";         // version.txt と一致させること
+const BUILD = "0.32.9";         // version.txt と一致させること
 const KEY = "mainichi.v1";
 // 一日の流れを主役にし、週／月のカレンダーは必要なときだけその下に開く。
 (() => {
@@ -1471,6 +1471,8 @@ function seed(){
     plan: {},           // "2026-08-05" -> [{id, from:"13:30", to:"16:30", cat, text}]
     dailyTimeline: [],  // 毎日表示する時間指定の習慣 [{id, from, to, cat, lane, text}]
     dailyTimelineEndDate: "", // この日まで毎日表示。明後日以降終了などの境界を保存する
+    workAutoScheduleEndDate: "", // 仕事の自動枠をこの日まで表示。過去の日報・案件カタログは保持する
+    notificationSettings: { enabled:false, time:"21:00", lastScheduled:"" }, // 前日の予定通知（端末が開いている間の予約）
     subs: [],           // {id, name, amt, cycle:"m"|"y", day}
     appt: { date:"", time:"", place:"", alias:"", memo:"" },
     icsAmount: false,   // カレンダーに金額を入れるか
@@ -1549,6 +1551,11 @@ function normalize(o){
   }
   if(!s.ui || typeof s.ui !== "object") s.ui = b.ui;
   if(typeof s.dailyTimelineEndDate !== "string") s.dailyTimelineEndDate = "";
+  if(typeof s.workAutoScheduleEndDate !== "string") s.workAutoScheduleEndDate = "";
+  if(!s.notificationSettings || typeof s.notificationSettings !== "object") s.notificationSettings = Object.assign({},b.notificationSettings);
+  if(typeof s.notificationSettings.enabled !== "boolean") s.notificationSettings.enabled = false;
+  if(typeof s.notificationSettings.time !== "string" || !/^([01]\d|2[0-3]):[0-5]\d$/.test(s.notificationSettings.time)) s.notificationSettings.time = b.notificationSettings.time;
+  if(typeof s.notificationSettings.lastScheduled !== "string") s.notificationSettings.lastScheduled = "";
   if(!s.benefit || typeof s.benefit !== "object") s.benefit = Object.assign({},b.benefit);
   if(typeof s.benefit.start !== "string" || !/^\d{4}-\d{2}$/.test(s.benefit.start)) s.benefit.start = b.benefit.start;
   if(!Number.isFinite(+s.benefit.units) || +s.benefit.units < 1) s.benefit.units = b.benefit.units;
@@ -1594,6 +1601,12 @@ function normalize(o){
       if(typeof w[field] !== "string") w[field] = "";
     w.breakMinutes = Math.max(0, Math.min(720, Number(w.breakMinutes) || 0));
     if(!Array.isArray(w.checks)) w.checks = [];
+    if(!w.projectMinutes || typeof w.projectMinutes !== "object" || Array.isArray(w.projectMinutes)) w.projectMinutes = {};
+    for(const id of Object.keys(w.projectMinutes)){
+      const minutes = Number(w.projectMinutes[id]);
+      if(!Number.isFinite(minutes) || minutes < 0) delete w.projectMinutes[id];
+      else w.projectMinutes[id] = Math.round(minutes);
+    }
   }
 
   // 旧: 日ごとの tasks と やること が別々だった。1本のリストに寄せる
@@ -1633,6 +1646,7 @@ function persistNow(){
   catch(e){ toast("保存できませんでした"); console.error(e); }
   paintSaved();
   schedulePush();
+  if(typeof window.mainichiSchedulePushChanged === "function") window.mainichiSchedulePushChanged();
 }
 function save(){
   clearTimeout(saveTimer);
@@ -2048,6 +2062,7 @@ function flowOrder(key){
 
 // 枠ごとに「どの領域をやるか」。手動の割り当てがあればそれを使う
 function flowFor(key, mode){
+  if(!workAutoScheduleIsVisibleOn(key)) return [];
   const order = flowOrder(key);
   const man = (S.daily[key] && S.daily[key].flow) || {};
   const slots = mode === "light" ? [S.slots[1]] : S.slots;   // 軽い日は午後だけ
@@ -2320,6 +2335,10 @@ function errandsOn(key){
 const planOf = key => (S.plan && S.plan[key]) ? S.plan[key] : [];
 function dailyTimelineIsVisibleOn(key){
   const end=String(S.dailyTimelineEndDate||"");
+  return !end || !/^\d{4}-\d{2}-\d{2}$/.test(end) || key<=end;
+}
+function workAutoScheduleIsVisibleOn(key){
+  const end=String(S.workAutoScheduleEndDate||"");
   return !end || !/^\d{4}-\d{2}-\d{2}$/.test(end) || key<=end;
 }
 function allBlocks(key){
@@ -4539,6 +4558,6 @@ if("serviceWorker" in navigator &&
   navigator.serviceWorker.register("sw.js?v=" + BUILD, {updateViaCache:"none"}).catch(()=>{});
 }
 </script>
-<script defer src="ui-v2.js?v=0.31.82"></script>
+<script defer src="ui-v2.js?v=0.32.9"></script>
 </body>
 </html>

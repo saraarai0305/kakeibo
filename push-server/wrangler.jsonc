@@ -1,0 +1,16 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mainichi-schedule-push",
+  "account_id": "47ef761cacbdf48e4227d807ceeb4f50",
+  "main": "src/worker.mjs",
+  "compatibility_date": "2026-09-03",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": {
+    "bindings": [
+      { "name": "SCHEDULE_REMINDERS", "class_name": "ScheduleReminder" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["ScheduleReminder"] }
+  ]
+}

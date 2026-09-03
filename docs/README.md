@@ -3,8 +3,15 @@
 アプリの外部連携や端末設定の手順はここにまとめます。
 
 - [ヘルスケア自動取り込み](ヘルスケア連携/README.md)
+- [前日予定通知サーバー](../push-server/README.md) — 無料のCloudflare Workersを使い、iPhoneでアプリを閉じた状態にも予定通知を送るための公開・接続手順
 
 アプリ本体の設計資料は [`design/README.md`](../design/README.md) を参照してください。
+
+# 引き継ぎ入口
+
+Claude Codeへ引き継ぎ中です。作業開始時は、まず
+[`HANDOFF_TO_CLAUDE.md`](HANDOFF_TO_CLAUDE.md)を読み、そこから既存の設計正本と
+確認項目へ進んでください。既存の端末データとスマホ側の時間を初期化しないでください。
 
 ## 日報ファイル取り込み（mainichi.daily-report.v1）
 

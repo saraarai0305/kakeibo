@@ -1,0 +1,5 @@
+# ローカル開発用。実際の値は .dev.vars にだけ入れ、Gitへ追加しない。
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+VAPID_SUBJECT=mailto:your-address@example.com
+SETUP_KEY=

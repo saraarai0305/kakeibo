@@ -11,6 +11,7 @@ if (-not (Test-Path $chrome)) { Write-Error "Chromeが見つかりません: $ch
 
 # 版とversion.txtの一致
 $src = Get-Content "$root\index.html" -Raw -Encoding UTF8
+$sw = Get-Content "$root\sw.js" -Raw -Encoding UTF8
 $smoke = @'
 <script>
 window.addEventListener("load", () => setTimeout(async () => {
@@ -47,6 +48,10 @@ window.addEventListener("load", () => setTimeout(async () => {
   };
   const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
   try {
+    const homeShortcuts = document.querySelector('.an-home-shortcuts');
+    const homeGroups = document.querySelector('.an-home-groups');
+    if (document.querySelectorAll('.an-home-shortcut').length !== 3 || document.querySelectorAll('.an-home-group').length !== 3 || !homeShortcuts || !homeGroups || !(homeShortcuts.compareDocumentPosition(homeGroups) & Node.DOCUMENT_POSITION_FOLLOWING)) throw new Error("UI smoke: smartphone home layout");
+    if (document.querySelector('.an-home').textContent.includes('今やること') || document.querySelector('.an-home').textContent.includes('明日の予定') || document.querySelector('.an-home-focus,.an-home-tomorrow,.an-home-share')) throw new Error("UI smoke: compact home content");
     openHomeGroup('life', "home → life group");
     tap('[data-v2-go="moneyRecord"]', "home → 支出・収入");
     if (!document.querySelector('#v2Amount')) throw new Error("UI smoke: money form");
@@ -54,12 +59,8 @@ window.addEventListener("load", () => setTimeout(async () => {
     if (!document.querySelector('#v2Borrower') || !document.querySelector('[data-v2-money-save]')?.textContent.includes('借入')) throw new Error("UI smoke: borrowing form");
     tap('[data-v2-moneytype="expense"]', "borrowing → expense");
     tap('[data-v2-back]', "支出・収入 → home");
-    closeHomeGroup('life', "home → compact life group");
-    if (document.querySelectorAll('.an-home-group').length !== 3) throw new Error("UI smoke: home groups");
-    if (!document.querySelector('.an-home-group.work')?.textContent.includes('仕事') || !document.querySelector('.an-home-group.life')?.textContent.includes('生活') || !document.querySelector('.an-home-group.review')?.textContent.includes('見える化')) throw new Error("UI smoke: group labels");
-    if (document.querySelectorAll('.an-home-shortcut').length !== 3 || document.querySelectorAll('.an-home-group-list:not([hidden]) .an-choice').length) throw new Error("UI smoke: compact home defaults");
     openHomeGroup('work', "home → work group");
-    tap('[data-v2-go="workLog"]', "home → work log");
+    tap('[data-v2-go="workLog"]', "work group → work log");
     if (document.querySelectorAll('[data-v2-work-punch]').length !== 4) throw new Error("UI smoke: work punch controls");
     setValue('#v2WorkStart', '09:00', "work start");
     setValue('#v2WorkEnd', '18:00', "work end");
@@ -171,8 +172,8 @@ window.addEventListener("load", () => setTimeout(async () => {
     if (!document.querySelector('[data-v2-event-delete]')?.textContent.includes('毎日の予定から削除')) throw new Error("UI smoke: recurring delete label");
     tap('[data-v2-event-close]', "close recurring editor");
     tap('[data-v2-back]', "flow → home after work catalog");
-    openHomeGroup('work', "home → work group for board");
-    tap('[data-v2-go="workBoard"]', "home → work board");
+    openHomeGroup('work', "home → work group after work catalog");
+    tap('[data-v2-go="workBoard"]', "work group → work board");
     if (!document.querySelector('.an-work-group.next') || !document.querySelector('.an-work-group.now') || !document.querySelector('.an-work-group.someday') || !document.querySelector('.an-work-group.waiting')) throw new Error("UI smoke: work priority groups");
     const priorityOrder = Array.from(document.querySelectorAll('.an-work-group h2')).map(el => el.textContent.trim()).join('|');
     if (priorityOrder !== '今すぐやる|次にやる|いつかやる・たぶんやる|待ち') throw new Error("UI smoke: priority order");
@@ -200,13 +201,14 @@ window.addEventListener("load", () => setTimeout(async () => {
     await pause(100);
     if (!document.querySelector('.an-work-group.now')?.textContent.includes('UI smoke work')) throw new Error("UI smoke: work priority regroup");
     tap('[data-v2-back]', "work board → home");
+    openHomeGroup('work', "home → work group after work board");
     tap('[data-v2-go="flow"]', "home → flow after work board");
     tap('[data-v2-flow-filter="work"]', "flow → work priority color");
     const linkedPriorityEvent = Array.from(document.querySelectorAll('[data-v2-event-work-item-id]')).find(el => el.textContent.includes('UI smoke work'));
     if (!linkedPriorityEvent || !linkedPriorityEvent.getAttribute('style')?.includes('#c85d54')) throw new Error("UI smoke: linked priority color update");
     tap('[data-v2-back]', "flow → home before linked work log");
-    openHomeGroup('work', "home → work group for linked log");
-    tap('[data-v2-go="workLog"]', "today → linked work log");
+    openHomeGroup('work', "home → work group before linked work log");
+    tap('[data-v2-go="workLog"]', "work group → linked work log");
     if (!document.querySelector('#v2WorkProjectAdd') || !document.querySelector('[data-v2-work-project-row]') || !document.querySelector('[data-v2-work-item-for-project]') || document.querySelectorAll('.an-work-check').length || document.querySelectorAll('input[type="checkbox"][data-v2-work-project]').length) throw new Error("UI smoke: linked work catalog");
     if (!Array.from(document.querySelectorAll('[data-v2-work-item-for-project] option')).some(o => o.textContent.includes('UI smoke work'))) throw new Error("UI smoke: linked work item option");
     if (document.querySelectorAll('[data-v2-work-project-row]').length < 2) {
@@ -241,7 +243,7 @@ window.addEventListener("load", () => setTimeout(async () => {
     await pause(80);
     if (!document.querySelector('[data-v2-health-save="body"]')?.textContent.includes('変更')) throw new Error("UI smoke: health change label");
     tap('[data-v2-back]', "health record → home");
-    openHomeGroup('review', "home → review group for health analysis");
+    openHomeGroup('review', "home → visualize group");
     tap('[data-v2-go="healthAnalysis"]', "home → health analysis");
     if (!document.querySelector('.v2-line-chart')) throw new Error("UI smoke: health chart");
     if (document.querySelectorAll('[data-v2-metric]').length !== 4 || !document.querySelector('[data-v2-metric="sleep"]') || !document.querySelector('[data-v2-metric="steps"]') || !document.querySelector('[data-v2-metric="body"]') || !document.querySelector('[data-v2-metric="mind"]') || document.querySelector('[data-v2-metric="work"]') || document.querySelector('[data-v2-metric="break"]')) throw new Error("UI smoke: four health metrics only");
@@ -253,7 +255,7 @@ window.addEventListener("load", () => setTimeout(async () => {
     }
     if (!reportText.includes('AI連携未接続')) throw new Error("UI smoke: local-only analysis notice");
     tap('[data-v2-back]', "health analysis → home");
-    openHomeGroup('review', "home → review group for money analysis");
+    openHomeGroup('review', "home → visualize group before money analysis");
     tap('[data-v2-go="moneyAnalysis"]', "visualize → money analysis");
     if (!document.querySelector('.v2-chart-block') || !document.querySelector('[data-v2-money-month-label]')) throw new Error("UI smoke: monthly money analysis");
     tap('[data-v2-money-month="-1"]', "money analysis → previous month");
@@ -298,6 +300,18 @@ if ($uiV2 -notmatch 'function renameWorkProject' -or $uiV2 -notmatch 'function r
 "OK  仕事カタログのID保持編集契約あり"
 
 if ($uiV2 -notmatch 'function applyWorkTimeConfirmation' -or $uiV2 -notmatch 'data-v2-work-time-save' -or $uiV2 -notmatch 'workSessions:timeRecord\.workSessions') { Write-Error "作業時間の確定と勤務区間の連動契約がありません" }
+if ($uiV2 -notmatch 'function homeProjectShare' -or $uiV2 -notmatch 'projectMinutes' -or $src -notmatch 'projectMinutes' -or $uiV2 -notmatch 'an-home-shortcuts.*an-home-groups' -or $uiV2 -match 'an-home-groups-first|an-home-shortcuts-second|an-home-group-link' -or $uiV2 -notmatch 'const work=group\("work"') { Write-Error "案件別割合・スマホ版ホーム維持契約がありません" }
+"OK  案件別割合・スマホ版ホーム維持あり"
+if ($uiV2 -notmatch 'bodyParts' -or $uiV2 -notmatch 'currentItems' -or $uiV2 -notmatch '場所:' -or $uiV2 -notmatch '準備:' -or $uiV2 -notmatch '忘れない:' -or $uiV2 -notmatch 'showNotification' -or $sw -notmatch 'notificationclick') { Write-Error "前日通知の本文契約がありません" }
+"OK  前日通知の本文契約あり"
+${pushServer} = Join-Path $root "push-server"
+${pushWorker} = Join-Path $pushServer "src\worker.mjs"
+if (-not (Test-Path $pushWorker)) { Write-Error "Web Push通知サーバーがありません" }
+${pushWorkerSrc} = Get-Content $pushWorker -Raw -Encoding UTF8
+if ($uiV2 -notmatch 'mainichi\.schedule-push\.v1' -or $uiV2 -notmatch 'schedulePushConfig' -or $uiV2 -notmatch 'data-v2-notification-connect' -or $uiV2 -notmatch 'remoteSchedulePushPlan' -or $sw -notmatch 'self\.addEventListener\("push"' -or $pushWorkerSrc -notmatch 'class ScheduleReminder extends DurableObject' -or $pushWorkerSrc -notmatch 'setAlarm' -or $pushWorkerSrc -notmatch 'SETUP_KEY' -or $pushWorkerSrc -notmatch 'webpush\.sendNotification') { Write-Error "Web Push通知サーバーの契約がありません" }
+"OK  Web Push通知サーバー契約あり"
+if ($uiV2 -notmatch 'data-v2-work-auto-clear' -or $uiV2 -notmatch 'workAutoScheduleEndDate' -or $src -notmatch 'workAutoScheduleIsVisibleOn' -or $uiV2 -notmatch '過去の日報・案件カタログ・手動予定・生活／共通予定は残ります') { Write-Error "自動仕事予定の今日以降停止契約がありません" }
+"OK  自動仕事予定の今日以降停止契約あり"
 $healthSrc = $src + $uiV2
 if ($healthSrc -notmatch 'stepsSource\s*=\s*"sync"' -or $healthSrc -notmatch 'stepsSavedAt' -or $src -notmatch 'saveNow\(\);[\s\S]{0,300}?render\(\)' -or $healthSrc -notmatch 'mainichiHealthAutoSaved' -or $healthSrc -notmatch 'mainichiHealthAutoPullStarted' -or $healthSrc -notmatch 'mainichiHealthAutoPullFinished' -or $healthSrc -notmatch 'pullHealthInbox\(true,\s*"startup"\)' -or $uiV2 -notmatch 'an-health-auto-status') { Write-Error "歩数自動保存・次回起動時の自動確認契約がありません" }
 "OK  作業時間の確定・勤務区間連動と歩数自動保存あり"
@@ -320,7 +334,6 @@ if ($uiV2 -notmatch 'DAILY_REPORT_API_KEY' -or $uiV2 -notmatch 'dailyReportApiRe
 
 # PWAが古いCSS/JSをキャッシュすると、公開URLとホーム画面アプリの表示が食い違う。
 # 画面側とService Worker側の主要資産は、BUILDと同じクエリ版を必ず持たせる。
-$sw = Get-Content "$root\sw.js" -Raw -Encoding UTF8
 $assets = @("ui-v2.css", "ui-analog.css", "ui-paper-baseline.css", "ui-v2.js")
 foreach ($asset in $assets) {
   $expected = $asset + '?v=' + $build
