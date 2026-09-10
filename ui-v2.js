@@ -280,7 +280,9 @@
     if(!data?.ok)return;
     const unresolved=data.projects.some((item,index)=>!item.project&&!draft.resolutions?.[index]);
     const confirm=root.querySelector("[data-v2-work-log-import-confirm]");
-    if(confirm)confirm.disabled=Boolean(S.workLogs?.[data.date]&&Object.keys(S.workLogs[data.date]).length)||unresolved||!canWrite();
+    // 既存日報用の確定ボタンも、未解決の対応付けが済めば押せるようにする。
+    // 既存かどうかは専用の上書きボタン属性で判定しており、ここで無効化しない。
+    if(confirm)confirm.disabled=unresolved||!canWrite();
     const warning=root.querySelector("[data-v2-work-log-resolution-warning]");
     if(warning)warning.hidden=!unresolved;
     data.projects.forEach((item,index)=>{
