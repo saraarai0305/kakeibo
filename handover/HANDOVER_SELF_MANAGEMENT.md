@@ -3,7 +3,7 @@
 更新日: 2026-09-03  
 部署: `開発｜自己管理アプリ`  
 正式パス: `D:\仕事用\会社｜codex\開発｜自己管理アプリ`  
-現行版: `0.32.11`（Cloudflare公開待ち）
+現行版: `0.32.12`
 
 ## プロジェクトの目的
 
@@ -45,7 +45,8 @@
 - 旧版から更新した端末は、`workAutoScheduleEndDate`が未定義なら昨日を保存して、今日以降の自動仕事予定を初回表示から止める。手入力予定・過去記録は残す。
 - 通知本文へ予定の場所を追加し、予定変更後も通知時点の内容を読み直す。Service Workerの通知タップでアプリへ戻る。
 - `push-server/`へCloudflare Workerを追加し、`https://mainichi-schedule-push.mainichi-schedule-push-01.workers.dev`へ公開済み。端末作成にはサーバー作成者だけが知る`SETUP_KEY`を使い、端末ごとの購読・予定はSQLite Durable Objectに隔離する。今後90日分の通知内容だけを保存し、送信済み内容は削除する。VAPID鍵と`SETUP_KEY`はCloudflare Secretsのみ、端末の秘密値は`mainichi.schedule-push.v1`のみへ保存し、`mainichi.v1`・Gist同期・Gitへ混ぜない。
-- `0.32.11`で、既存のGitHub Gist同期へ接続コード方式を追加した。通知サーバー接続済みの既存端末が、AES-GCMで暗号化したGist接続情報を一時保管し、別端末はコードを貼るだけで双方向同期へ参加する。Workerには平文トークンを保存しない。Workerの`DeviceSyncPairing` Durable Object（`wrangler.jsonc` migration v2）を公開してからアプリ本体を公開すること。
+- `0.32.11`で、既存のGitHub Gist同期へ接続コード方式を追加した。通知サーバー接続済みの既存端末が、AES-GCMで暗号化したGist接続情報を一時保管し、別端末はコードを貼るだけで双方向同期へ参加する。Workerには平文トークンを保存しない。Workerの`DeviceSyncPairing` Durable Object（`wrangler.jsonc` migration v2）は公開済み。
+- `0.32.12`で、PCから日報を同期するときは同期先（iPhone）の開始・終了・休憩・実作業時間・打刻区間を必ず保持し、日報の案件内容・新規プロジェクト・別名だけを対象日へ統合するよう補強した。
 - 日報取り込み、共有API、毎日仕事予定解除、ルーティーン、支払い項目CRUDなど既存機能を維持。
 
 ### 確認済み
@@ -63,7 +64,7 @@
 
 - 検査環境のGPUプロセス終了により、`tools\check.ps1`内のヘッドレスDOMスモークは未実施。
 - Cloudflareアカウントへの公開、VAPID鍵・`SETUP_KEY`の登録は完了。公開用サブドメインの反映、iPhoneのホーム画面追加状態、アプリ完全終了状態での前日通知、および実機での準備メモ・重要事項の通知表示は未確認。
-- 2026-09-11、`0.32.11`の接続コード実装は静的検査・Worker dry-runを通過。Cloudflare APIトークンが期限切れのため、本WorkerとGitHub Pages本体は未公開。新しいWorkers編集権限のトークンでWorkerを先に公開し、その後アプリ本体を公開する。
+- 2026-09-11、`0.32.11`の接続コード用Workerは公開済み。アプリ本体もGitHub Pagesへ公開済み。`0.32.12`は日報対象日マージの追加公開待ち。
 - 自然文から予定を整理する入力、依存関係グラフ、請求金額計算は未実装。
 
 ## 重要な設計判断と理由

@@ -6,7 +6,7 @@
 <title>LIFE NOTE</title>
 <link rel="manifest" href="manifest.webmanifest">
 <script src="design-system.js"></script>
-<link rel="stylesheet" href="ui-v2.css?v=0.32.11">
+<link rel="stylesheet" href="ui-v2.css?v=0.32.12">
 <meta name="theme-color" content="#F6EFDE">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -784,8 +784,8 @@ body[data-tab="cal"]:not([data-cal-page="check"]) #checklistPage{display:none!im
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:1ms!important;animation-iteration-count:1!important;transition-duration:1ms!important}}
 </style>
 <!-- 旧画面のインラインCSSより後に読み込み、紙面UIを最終スタイルとして適用する。 -->
-<link rel="stylesheet" href="ui-analog.css?v=0.32.11">
-<link rel="stylesheet" href="ui-paper-baseline.css?v=0.32.11">
+<link rel="stylesheet" href="ui-analog.css?v=0.32.12">
+<link rel="stylesheet" href="ui-paper-baseline.css?v=0.32.12">
 <link rel="stylesheet" href="design-foundation.css">
 </head>
 <body data-tab="home">
@@ -1421,7 +1421,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.32.11";         // version.txt と一致させること
+const BUILD = "0.32.12";         // version.txt と一致させること
 const KEY = "mainichi.v1";
 // 一日の流れを主役にし、週／月のカレンダーは必要なときだけその下に開く。
 (() => {
@@ -4096,6 +4096,41 @@ async function pushRemote(){
   }finally{ syncing = false; }
 }
 
+const WORK_LOG_TIMING_FIELDS = ["start", "end", "breakMinutes", "actualWorkMinutes", "workSessions", "breakSessions"];
+function hasWorkLogTiming(record){
+  if(!record || typeof record !== "object") return false;
+  return Boolean(record.start || record.end || record.workSessions?.length || record.breakSessions?.length ||
+    Object.prototype.hasOwnProperty.call(record,"actualWorkMinutes") || Object.prototype.hasOwnProperty.call(record,"breakMinutes"));
+}
+function copyJson(value){ return value===undefined ? undefined : JSON.parse(JSON.stringify(value)); }
+function mergeImportedWorkCatalog(remote, record){
+  remote.workProjects=Array.isArray(remote.workProjects)?remote.workProjects:[];
+  remote.areas=Array.isArray(remote.areas)?remote.areas:[];
+  const localProjects=Array.isArray(S.workProjects)?S.workProjects:[];
+  const idMap={}, names=record.projectNames||{};
+  for(const sourceId of record.projectIds||[]){
+    const local=localProjects.find(project=>project&&project.id===sourceId);
+    const name=String(names[sourceId]||local?.name||"").trim();
+    if(!name) continue;
+    let target=remote.workProjects.find(project=>project&&project.id===sourceId) || remote.workProjects.find(project=>String(project?.name||"").trim()===name);
+    if(!target){
+      target=copyJson(local||{id:sourceId,name,color:"#7AA7F0",note:""});
+      target.id=target.id||sourceId; target.name=name;
+      remote.workProjects.push(target);
+    }
+    idMap[sourceId]=target.id;
+    if(!remote.areas.some(area=>area&&area.id===target.id)) remote.areas.push({id:target.id,label:target.name,color:target.color||"#7AA7F0",urgent:false,note:target.note||""});
+  }
+  const remap=value=>Object.fromEntries(Object.entries(value||{}).map(([id,item])=>[idMap[id]||id,item]));
+  const projectIds=[...new Set((record.projectIds||[]).map(id=>idMap[id]||id))];
+  const projectNames={};
+  for(const id of projectIds){ const project=remote.workProjects.find(item=>item&&item.id===id); if(project) projectNames[id]=project.name; }
+  const merged=Object.assign({},record,{projectIds,projectNames,projectId:idMap[record.projectId]||record.projectId||projectIds[0]||"",workDescriptions:remap(record.workDescriptions),projectReviews:remap(record.projectReviews)});
+  merged.project=projectNames[merged.projectId]||merged.project||"";
+  remote.workLogProjectAliases=remote.workLogProjectAliases&&typeof remote.workLogProjectAliases==="object"?remote.workLogProjectAliases:{};
+  for(const [name,id] of Object.entries(S.workLogProjectAliases||{})) if(idMap[id]) remote.workLogProjectAliases[name]=idMap[id];
+  return merged;
+}
 // 日報取り込み専用: 同期先の全体データをPCの古いスナップショットで置き換えず、対象日だけを正本へ反映する。
 async function pushImportedWorkLog(day, record){
   const c = syncCfg();
@@ -4107,9 +4142,16 @@ async function pushImportedWorkLog(day, record){
     const g = await gistFetch(`/gists/${c.gistId}`);
     const f = g.files && g.files[GIST_FILE];
     const remote = f && f.content ? normalize(JSON.parse(f.content)) : normalize({});
-    remote.workLogs = Object.assign({}, remote.workLogs || {}, {
-      [day]: JSON.parse(JSON.stringify(record))
-    });
+    remote.workLogs=remote.workLogs||{};
+    const existing=remote.workLogs[day]&&typeof remote.workLogs[day]==="object"?remote.workLogs[day]:{};
+    const imported=mergeImportedWorkCatalog(remote,copyJson(record));
+    const merged=Object.assign({},existing,imported);
+    // PCの日報ファイルは内容だけを足す。iPhoneで先に打刻した勤務時間は常に残す。
+    if(hasWorkLogTiming(existing)) for(const field of WORK_LOG_TIMING_FIELDS){
+      if(Object.prototype.hasOwnProperty.call(existing,field)) merged[field]=copyJson(existing[field]);
+      else delete merged[field];
+    }
+    remote.workLogs[day]=merged;
     remote.savedAt = new Date().toISOString();
     await gistFetch(`/gists/${c.gistId}`, {
       method:"PATCH",
@@ -4560,6 +4602,6 @@ if("serviceWorker" in navigator &&
   navigator.serviceWorker.register("sw.js?v=" + BUILD, {updateViaCache:"none"}).catch(()=>{});
 }
 </script>
-<script defer src="ui-v2.js?v=0.32.11"></script>
+<script defer src="ui-v2.js?v=0.32.12"></script>
 </body>
 </html>
