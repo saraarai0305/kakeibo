@@ -15,7 +15,7 @@ function cors(request, response) {
   const origin = request.headers.get("Origin");
   if (origin) headers.set("Access-Control-Allow-Origin", origin);
   headers.set("Vary", "Origin");
-  headers.set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Mainichi-Setup-Key");
+  headers.set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Mainichi-Setup-Key, X-Mainichi-Device-Id");
   headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
@@ -51,6 +51,18 @@ function sameText(a, b) {
 
 function validDeviceId(value) {
   return /^[a-f0-9]{32}$/i.test(String(value || ""));
+}
+
+function validPairingId(value) {
+  return /^[a-f0-9]{32}$/i.test(String(value || ""));
+}
+
+function validPairingEnvelope(value) {
+  return Boolean(
+    value &&
+      typeof value.iv === "string" && value.iv.length >= 12 && value.iv.length <= 200 &&
+      typeof value.ciphertext === "string" && value.ciphertext.length >= 24 && value.ciphertext.length <= 20_000,
+  );
 }
 
 function validSubscription(value) {
@@ -113,6 +125,38 @@ export default {
       if (!response.ok) return cors(request, response);
       return cors(request, json({ deviceId, deviceSecret }));
     }
+    if (request.method === "POST" && url.pathname === "/v1/sync/pairings") {
+      const sourceDeviceId = String(request.headers.get("X-Mainichi-Device-Id") || "");
+      if (!validDeviceId(sourceDeviceId)) return cors(request, json({ error: "通知接続を確認してください" }, 401));
+      const source = env.SCHEDULE_REMINDERS.getByName(sourceDeviceId);
+      const check = await source.fetch(new Request("https://reminder.internal/auth-check", {
+        method: "POST",
+        headers: { Authorization: request.headers.get("Authorization") || "" },
+      }));
+      if (!check.ok) return cors(request, json({ error: "通知接続を確認してください" }, 401));
+      const body = await request.json().catch(() => null);
+      if (!validPairingEnvelope(body?.envelope) || !/^[A-Za-z0-9_-]{40,100}$/.test(String(body?.pairingSecretHash || ""))) return cors(request, json({ error: "接続コードの内容を確認してください" }, 400));
+      const pairingId = crypto.randomUUID().replace(/-/g, "");
+      const pairing = env.DEVICE_SYNC_PAIRINGS.getByName(pairingId);
+      const response = await pairing.fetch(new Request("https://pairing.internal/init", {
+        method: "POST",
+        headers: JSON_TYPE,
+        body: JSON.stringify({ secretHash: body.pairingSecretHash, envelope: body.envelope }),
+      }));
+      if (!response.ok) return cors(request, response);
+      return cors(request, json({ pairingId }));
+    }
+    if (request.method === "POST" && url.pathname === "/v1/sync/pairings/join") {
+      const body = await request.json().catch(() => null);
+      const [pairingId, pairingSecret, ...extra] = String(body?.pairingCode || "").trim().split(".");
+      if (extra.length || !validPairingId(pairingId) || !pairingSecret) return cors(request, json({ error: "接続コードの形式を確認してください" }, 400));
+      const pairing = env.DEVICE_SYNC_PAIRINGS.getByName(pairingId);
+      const response = await pairing.fetch(new Request("https://pairing.internal/join", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${pairingSecret}` },
+      }));
+      return cors(request, response);
+    }
     const match = url.pathname.match(/^\/v1\/devices\/([a-f0-9]{32})\/(subscribe|plan)$/i);
     if (!match || request.method !== "POST") return cors(request, json({ error: "見つかりません" }, 404));
     const [, deviceId, action] = match;
@@ -154,6 +198,7 @@ export class ScheduleReminder extends DurableObject {
       return json({ ok: true });
     }
     if (!(await this.authorised(request))) return json({ error: "端末の認証を確認してください" }, 401);
+    if (action === "auth-check" && request.method === "POST") return json({ ok: true });
     if (action === "subscribe" && request.method === "POST") {
       const body = await request.json().catch(() => null);
       if (!validSubscription(body?.subscription)) return json({ error: "通知の受信情報を確認してください" }, 400);
@@ -225,5 +270,36 @@ export class ScheduleReminder extends DurableObject {
     await this.storage.put("lastDeliveredAt", new Date().toISOString());
     await this.storage.delete("lastError");
     await this.scheduleNext(remaining);
+  }
+}
+
+// GitHubトークンをブラウザ間で平文送信しないための、一回限りの接続コード用保管庫。
+// Workerには端末側でAES-GCM暗号化済みの小さな接続情報だけが保存される。
+export class DeviceSyncPairing extends DurableObject {
+  constructor(ctx, env) {
+    super(ctx, env);
+    this.storage = ctx.storage;
+  }
+
+  async authorised(request) {
+    const stored = await this.storage.get("secretHash");
+    return Boolean(stored && sameText(stored, await digest(bearer(request))));
+  }
+
+  async fetch(request) {
+    const action = new URL(request.url).pathname.replace(/^\//, "");
+    if (action === "init" && request.method === "POST") {
+      if (await this.storage.get("secretHash")) return json({ error: "接続コードを作成できませんでした" }, 409);
+      const body = await request.json().catch(() => null);
+      if (!body?.secretHash || !validPairingEnvelope(body?.envelope)) return json({ error: "接続コードの内容を確認してください" }, 400);
+      await this.storage.put({ secretHash: String(body.secretHash), envelope: body.envelope, createdAt: new Date().toISOString() });
+      return json({ ok: true });
+    }
+    if (action !== "join" || request.method !== "POST" || !(await this.authorised(request))) {
+      return json({ error: "接続コードを確認してください" }, 401);
+    }
+    const envelope = await this.storage.get("envelope");
+    if (!validPairingEnvelope(envelope)) return json({ error: "接続コードの内容を確認してください" }, 404);
+    return json({ envelope });
   }
 }

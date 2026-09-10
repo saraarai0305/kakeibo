@@ -7,10 +7,12 @@
   "compatibility_flags": ["nodejs_compat"],
   "durable_objects": {
     "bindings": [
-      { "name": "SCHEDULE_REMINDERS", "class_name": "ScheduleReminder" }
+      { "name": "SCHEDULE_REMINDERS", "class_name": "ScheduleReminder" },
+      { "name": "DEVICE_SYNC_PAIRINGS", "class_name": "DeviceSyncPairing" }
     ]
   },
   "migrations": [
-    { "tag": "v1", "new_sqlite_classes": ["ScheduleReminder"] }
+    { "tag": "v1", "new_sqlite_classes": ["ScheduleReminder"] },
+    { "tag": "v2", "new_sqlite_classes": ["DeviceSyncPairing"] }
   ]
 }

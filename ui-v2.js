@@ -59,6 +59,7 @@
   let healthChartIgnoreClickUntil = 0;
   let scheduleNotificationTimer = null;
   let schedulePushSyncTimer = null;
+  let deviceSyncPairingCode = "";
   const SCHEDULE_PUSH_STORAGE_KEY="mainichi.schedule-push.v1";
   const SCHEDULE_PUSH_SERVER_URL="https://mainichi-schedule-push.mainichi-schedule-push-01.workers.dev";
   const successToast = message => {
@@ -378,6 +379,58 @@
   function schedulePushReady(){const c=schedulePushConfig();return Boolean(c.url&&c.deviceId&&c.deviceSecret);}
   function schedulePushUrl(path){return new URL(path,`${schedulePushConfig().url}/`).toString();}
   function schedulePushHeaders(extra={}){const c=schedulePushConfig();return Object.assign({"Content-Type":"application/json","Authorization":`Bearer ${c.deviceSecret}`},extra);}
+  function bytesToBase64url(bytes){let binary="";for(const byte of bytes)binary+=String.fromCharCode(byte);return btoa(binary).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");}
+  async function pairingCryptoKey(secret){
+    const digest=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(String(secret||"")));
+    return crypto.subtle.importKey("raw",digest,{name:"AES-GCM"},false,["encrypt","decrypt"]);
+  }
+  async function pairingSecretHash(secret){
+    const digest=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(String(secret||"")));
+    return bytesToBase64url(new Uint8Array(digest));
+  }
+  async function encryptPairingConfig(config,secret){
+    const iv=crypto.getRandomValues(new Uint8Array(12)),key=await pairingCryptoKey(secret);
+    const data=new TextEncoder().encode(JSON.stringify(config));
+    const ciphertext=await crypto.subtle.encrypt({name:"AES-GCM",iv},key,data);
+    return {iv:bytesToBase64url(iv),ciphertext:bytesToBase64url(new Uint8Array(ciphertext))};
+  }
+  async function decryptPairingConfig(envelope,secret){
+    const key=await pairingCryptoKey(secret),iv=base64urlToBytes(envelope?.iv||""),ciphertext=base64urlToBytes(envelope?.ciphertext||"");
+    const clear=await crypto.subtle.decrypt({name:"AES-GCM",iv},key,ciphertext);
+    const config=JSON.parse(new TextDecoder().decode(clear));
+    if(!config?.token||!config?.gistId)throw new Error("接続コードの内容を確認してください");
+    return config;
+  }
+  function pairingCodeParts(value){
+    const [id,secret,...extra]=String(value||"").trim().split(".");
+    if(extra.length||!/^[a-f0-9]{32}$/i.test(id||"")||!secret)throw new Error("接続コードの形式を確認してください");
+    return {id,secret};
+  }
+  async function createDeviceSyncPairing(){
+    const sync=syncCfg(),push=schedulePushConfig();
+    if(!sync.token||!sync.gistId)throw new Error("先にこの端末の同期を確認してください");
+    if(!schedulePushReady())throw new Error("この端末で予定の通知サーバーを接続してから、接続コードを作成してください");
+    const localSecret=bytesToBase64url(crypto.getRandomValues(new Uint8Array(32)));
+    const envelope=await encryptPairingConfig({token:sync.token,gistId:sync.gistId},localSecret);
+    const response=await fetch(schedulePushUrl("/v1/sync/pairings"),{method:"POST",headers:schedulePushHeaders({"X-Mainichi-Device-Id":push.deviceId}),body:JSON.stringify({envelope,pairingSecretHash:await pairingSecretHash(localSecret)})});
+    if(!response.ok)throw new Error(`接続コードを作成できませんでした (${response.status})`);
+    const result=await response.json();
+    const suffix=String(result?.pairingId||"");
+    if(!suffix)throw new Error("接続コードを受け取れませんでした");
+    // このコードは接続先でだけ使い、端末データやGistには保存しない。
+    return `${suffix}.${localSecret}`;
+  }
+  async function joinDeviceSyncPairing(code){
+    const parts=pairingCodeParts(code),url=schedulePushConfig().url||SCHEDULE_PUSH_SERVER_URL;
+    const response=await fetch(new URL("/v1/sync/pairings/join",`${url}/`),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({pairingCode:code})});
+    if(!response.ok)throw new Error(`接続コードを確認できませんでした (${response.status})`);
+    const result=await response.json(),config=await decryptPairingConfig(result?.envelope,parts.secret);
+    const current=syncCfg();
+    setSyncCfg(Object.assign({},current,{token:config.token,gistId:config.gistId,role:"rw",pairedAt:new Date().toISOString()}));
+    await pullRemote(false,true);
+    startSyncLoop();
+    return true;
+  }
   function base64urlToBytes(value){
     const raw=String(value||"").replace(/-/g,"+").replace(/_/g,"/");
     const binary=atob(raw+"=".repeat((4-raw.length%4)%4));
@@ -2522,6 +2575,11 @@
     const last=c.lastReceipt ? `<p>最終受信：${esc2(c.lastReceipt.day)} ／ ${c.lastReceipt.steps ?? "—"}歩 ／ ${fmtSleep(c.lastReceipt.sleep)}</p>` : "";
     return `<p>ショートカットのURLを下記に変更してください。端末データ同期のGist IDは使いません。受信箱には最新の記録を残すため、再確認もできます。</p>${last}<label>ショートカットの送信先 URL</label><code class="an-sync-code">${url}</code><label>本文（JSON）</label><code class="an-sync-code">{"files":{"inbox.txt":{"content":"kenko|YYYY-MM-DD|歩数|就寝時刻|起床時刻"}}}</code>`;
   }
+  function deviceSyncPairingPanel(device){
+    const canMakeCode=Boolean(device.token&&device.gistId&&schedulePushReady());
+    const visibleCode=deviceSyncPairingCode?`<label>この端末の接続コード</label><textarea class="an-sync-code" readonly rows="3">${esc2(deviceSyncPairingCode)}</textarea><p class="an-settings-help">接続するPCだけへ渡してください。コードには暗号化を復号する鍵が含まれるため、チャット・日報・Gitには残しません。</p>`:"";
+    return `<p>一度ペアリングすると、PCとiPhoneのどちらで入力しても、開いたとき・前面へ戻ったとき・表示中45秒ごとに自動でそろいます。</p><p class="an-sync-note">初回だけ、すでに同期済みの端末で接続コードを作り、もう一方へ入力します。GitHubトークンは画面に表示されず、コード内で暗号化して渡されます。</p><button class="an-small-action" data-v2-device-sync-pair-create ${canMakeCode?"":"disabled"}>この端末の接続コードを作る</button>${canMakeCode?"":"<p class=\"an-settings-help\">コードを作る端末では、端末同期と予定の通知サーバーの両方を先に接続してください。</p>"}${visibleCode}<hr class="an-settings-divider"><label>別の端末で作った接続コード</label><textarea id="v2DeviceSyncPairCode" rows="3" placeholder="接続コードを貼り付け"></textarea><button class="an-small-action" data-v2-device-sync-pair-join>コードで自動接続する</button>`;
+  }
   function dailyReportApiPanel(){
     const c=dailyReportApiCfg(),ackError=c.lastAckError?`<p class="an-import-warning">${esc2(c.lastAckError)}</p>`:"";
     const pending=c.lastPending?"未確認の日報があります。下の日報取り込みで内容を確認してください。":"未確認の日報を待機中です。API受信後も自動保存はしません。";
@@ -2535,7 +2593,7 @@
     const deviceRole=device.role==="ro" ? "ro" : device.gistId ? "rw" : "ro";
     const settingsDate=(id,value)=>`<span class="an-settings-date-control"><input id="${id}" type="date" value="${esc2(value||"")}" aria-label="次回申請開始日"><span data-v2-settings-date-value aria-hidden="true">${esc2(String(value||"").replaceAll("-","/"))}</span></span>`;
     const sections=[
-      ["refresh","端末データ同期",deviceSyncStatus(device),`<p>PC・iPhone間で、予定・お金・記録などアプリ全体のデータを同期します。歩数・睡眠のショートカットは使いません。</p><p class="an-sync-note">iPhoneを正本にしてこのPCへ共有する場合は、読み取り専用で受信します。受信で置き換わるのはPC側だけで、iPhone側へ書き戻しません。</p><label for="v2DeviceSyncRole">このPCの役割</label><select id="v2DeviceSyncRole"><option value="ro" ${deviceRole==="ro"?"selected":""}>読み取り専用（iPhoneから受信する）</option><option value="rw" ${deviceRole==="rw"?"selected":""}>記録・送信もする</option></select><button class="an-small-action" data-v2-device-sync-role-save>役割を保存</button><label>GitHubトークン</label><input id="v2DeviceSyncToken" type="password" autocomplete="off" placeholder="この端末で入力"><label>端末データ用Gist ID</label><input id="v2DeviceSyncGist" value="${esc2(device.gistId||"")}" placeholder="iPhone側の既存IDを入力"><div class="an-sync-actions"><button class="an-small-action" data-v2-device-sync-start>端末同期を設定</button><button class="an-small-action" data-v2-device-sync-pull>今すぐ端末同期</button></div>`],
+      ["refresh","端末データ同期",deviceSyncStatus(device),`${deviceSyncPairingPanel(device)}<hr class="an-settings-divider"><details><summary>手動で設定する（予備）</summary><div class="an-settings-body"><label for="v2DeviceSyncRole">この端末の役割</label><select id="v2DeviceSyncRole"><option value="ro" ${deviceRole==="ro"?"selected":""}>読み取り専用（iPhoneから受信する）</option><option value="rw" ${deviceRole==="rw"?"selected":""}>記録・送信もする</option></select><button class="an-small-action" data-v2-device-sync-role-save>役割を保存</button><label>GitHubトークン</label><input id="v2DeviceSyncToken" type="password" autocomplete="off" placeholder="この端末で入力"><label>端末データ用Gist ID</label><input id="v2DeviceSyncGist" value="${esc2(device.gistId||"")}" placeholder="iPhone側の既存IDを入力"><div class="an-sync-actions"><button class="an-small-action" data-v2-device-sync-start>端末同期を設定</button><button class="an-small-action" data-v2-device-sync-pull>今すぐ端末同期</button></div></div></details>`],
       ["heart","ヘルスケア自動取り込み",healthSyncStatus(health),`<p>iPhoneショートカットから歩数・睡眠だけを受信します。端末データ同期とは別の専用Gistです。</p><label>GitHubトークン</label><input id="v2HealthSyncToken" type="password" autocomplete="off" placeholder="この端末で入力"><label>ヘルスケア受信用Gist ID</label><input id="v2HealthSyncGist" value="${esc2(health.gistId||"")}" placeholder="空欄なら新規作成"><div class="an-sync-actions"><button class="an-small-action" data-v2-health-sync-create>受信先を新規作成</button><button class="an-small-action" data-v2-health-sync-check>受信を確認</button></div>${healthSyncGuide(health)}`],
       ["download","日報API受信",dailyReportApiStatus(dailyReportApi),dailyReportApiPanel()],
       ["clock","予定の通知",scheduleNotificationStatus(),(()=>{const remote=schedulePushConfig(),connected=schedulePushReady();return `<p>翌日の仕事・生活の予定を、前日の夜に通知します。無料の通知サーバーを接続すると、iPhoneでアプリを閉じていても受信できます。</p><label>通知する時刻</label><input id="v2NotificationTime" type="time" value="${esc2(notifications.time)}"><button class="an-small-action" data-v2-notification-save>通知時刻を保存</button><hr class="an-settings-divider"><label>通知サーバーのURL</label><input id="v2NotificationServer" type="url" inputmode="url" autocomplete="url" value="${esc2(remote.url)}" placeholder="https://...workers.dev"><label>初回セットアップキー</label><input id="v2NotificationSetupKey" type="password" autocomplete="off" placeholder="初回接続時だけ入力"><div class="an-sync-actions"><button class="an-small-action" data-v2-notification-connect>${connected?"この端末を接続し直す":"通知サーバーを接続"}</button><button class="an-small-action" data-v2-notification-enable>${notifications.enabled?"通知を停止":"通知を有効にする"}</button></div><p class="an-settings-help">初回セットアップキーは、通知サーバーを作った本人だけが端末を追加するための鍵です。端末へは保存しません。通知する予定名・時刻・場所・準備メモだけを最大90日分サーバーへ置き、送信済みの内容は自動で消します。</p>${remote.connectedAt?`<p class="an-settings-help">この端末は ${esc2(new Date(remote.connectedAt).toLocaleString("ja-JP"))} に接続済みです。</p>`:""}`;})()],
@@ -2638,7 +2696,7 @@
     newAppRender();
   },true);
   root.addEventListener("click",async event=>{
-    const button=event.target.closest("[data-v2-device-sync-role-save],[data-v2-device-sync-start],[data-v2-device-sync-pull],[data-v2-health-sync-create],[data-v2-health-sync-check],[data-v2-daily-report-api-save],[data-v2-daily-report-api-check]");
+    const button=event.target.closest("[data-v2-device-sync-role-save],[data-v2-device-sync-start],[data-v2-device-sync-pull],[data-v2-device-sync-pair-create],[data-v2-device-sync-pair-join],[data-v2-health-sync-create],[data-v2-health-sync-check],[data-v2-daily-report-api-save],[data-v2-daily-report-api-check]");
     if(!button) return;
     event.stopImmediatePropagation();
     if(button.hasAttribute("data-v2-daily-report-api-save")){
@@ -2649,6 +2707,19 @@
     }
     if(button.hasAttribute("data-v2-daily-report-api-check")){
       await pullDailyReportApi(false);newAppRender();keepWorkLogImportDetailsOpen(Boolean(workLogImportDraft));
+      return;
+    }
+    if(button.hasAttribute("data-v2-device-sync-pair-create")){
+      try{deviceSyncPairingCode=await createDeviceSyncPairing();newAppRender();successToast("接続コードを作成しました。接続するPCへだけ渡してください");}
+      catch(error){toast(error?.message||"接続コードを作成できませんでした");}
+      return;
+    }
+    if(button.hasAttribute("data-v2-device-sync-pair-join")){
+      const code=document.getElementById("v2DeviceSyncPairCode")?.value.trim()||"";
+      if(!code)return toast("接続コードを貼り付けてください");
+      if(!confirm("この端末を双方向同期へ接続します。\n\n最初に、同期済み端末の最新データをこの端末へ受信します。現在この端末だけにある未同期データは置き換わるため、必要なら先にバックアップしてください。"))return;
+      try{await joinDeviceSyncPairing(code);deviceSyncPairingCode="";newAppRender();successToast("自動同期を開始しました。以後はPC・iPhoneの両方から更新できます");}
+      catch(error){toast(error?.message||"自動接続できませんでした");}
       return;
     }
     if(button.hasAttribute("data-v2-device-sync-role-save")){
