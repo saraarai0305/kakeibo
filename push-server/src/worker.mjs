@@ -76,6 +76,23 @@ function validSubscription(value) {
   );
 }
 
+const DAILY_REPORT_FORMAT = "mainichi.daily-report.v1";
+const MAX_DAILY_REPORT_BYTES = 64_000;
+const MAX_PENDING_DAILY_REPORTS = 60;
+
+function validDailyReport(value) {
+  return Boolean(
+    value &&
+      value.format === DAILY_REPORT_FORMAT &&
+      /^\d{4}-\d{2}-\d{2}$/.test(String(value.date || "")) &&
+      Array.isArray(value.projects) && value.projects.length >= 1 && value.projects.length <= 30,
+  );
+}
+
+function dailyReportInbox(env) {
+  return env.DAILY_REPORT_INBOX.getByName("inbox");
+}
+
 function normaliseReminders(value) {
   if (!Array.isArray(value) || value.length > MAX_REMINDERS) throw new Error("予定通知の件数を確認してください");
   const now = Date.now();
@@ -156,6 +173,39 @@ export default {
         headers: { Authorization: `Bearer ${pairingSecret}` },
       }));
       return cors(request, response);
+    }
+    if (url.pathname === "/v1/daily-reports" && request.method === "POST") {
+      // 送る側（PC の日報の送る道具）は、Worker の秘密の値 DAILY_REPORT_SENDER_KEY と同じ鍵で送る。
+      // 本文は先に読み切る（読み残したまま早く応答すると、Worker の終わりに例外になる）
+      const text = await request.text();
+      if (!env.DAILY_REPORT_SENDER_KEY) return cors(request, json({ error: "日報の送る鍵が未設定です" }, 503));
+      if (!sameText(bearer(request), env.DAILY_REPORT_SENDER_KEY)) return cors(request, json({ error: "日報の送る鍵が違います" }, 401));
+      if (encoder.encode(text).length > MAX_DAILY_REPORT_BYTES) return cors(request, json({ error: "日報が大きすぎます" }, 413));
+      let body = null;
+      try { body = JSON.parse(text); } catch { body = null; }
+      const report = body?.report || body;
+      if (!validDailyReport(report)) return cors(request, json({ error: "日報の形式を確認してください" }, 400));
+      return cors(request, await dailyReportInbox(env).fetch(new Request("https://inbox.internal/put", {
+        method: "POST",
+        headers: JSON_TYPE,
+        body: JSON.stringify({ report }),
+      })));
+    }
+    const reportMatch = url.pathname.match(/^\/v1\/daily-reports\/(?:pending|(\d{4}-\d{2}-\d{2})\/ack)$/);
+    if (reportMatch) {
+      // 読む側（アプリ）は、通知サーバーにつないだ端末の鍵で確かめる。受信箱が預かるのは日報 JSON だけ
+      if (request.method === "POST") await request.arrayBuffer();
+      const deviceId = String(request.headers.get("X-Mainichi-Device-Id") || "");
+      if (!validDeviceId(deviceId)) return cors(request, json({ error: "端末の認証を確認してください" }, 401));
+      const check = await env.SCHEDULE_REMINDERS.getByName(deviceId).fetch(new Request("https://reminder.internal/auth-check", {
+        method: "POST",
+        headers: { Authorization: request.headers.get("Authorization") || "" },
+      }));
+      if (!check.ok) return cors(request, json({ error: "端末の認証を確認してください" }, 401));
+      const date = reportMatch[1];
+      if (!date && request.method === "GET") return cors(request, await dailyReportInbox(env).fetch(new Request("https://inbox.internal/pending")));
+      if (date && request.method === "POST") return cors(request, await dailyReportInbox(env).fetch(new Request(`https://inbox.internal/ack/${date}`, { method: "POST" })));
+      return cors(request, json({ error: "見つかりません" }, 404));
     }
     const match = url.pathname.match(/^\/v1\/devices\/([a-f0-9]{32})\/(subscribe|plan)$/i);
     if (!match || request.method !== "POST") return cors(request, json({ error: "見つかりません" }, 404));
@@ -301,5 +351,45 @@ export class DeviceSyncPairing extends DurableObject {
     const envelope = await this.storage.get("envelope");
     if (!validPairingEnvelope(envelope)) return json({ error: "接続コードの内容を確認してください" }, 404);
     return json({ envelope });
+  }
+}
+
+// 秘書の日報を、社長のアプリが取り込むまで預かる受信箱。日付ごとに1件（同じ日を送り直すと置き換える）。
+// 取り込んで確認済みになった日報は消す。端末全体のデータや同期の情報は預からない。
+export class DailyReportInbox extends DurableObject {
+  constructor(ctx, env) {
+    super(ctx, env);
+    this.storage = ctx.storage;
+  }
+
+  async pendingCount() {
+    return (await this.storage.list({ prefix: "report:" })).size;
+  }
+
+  async fetch(request) {
+    const path = new URL(request.url).pathname;
+    if (path === "/put" && request.method === "POST") {
+      const body = await request.json().catch(() => null);
+      const report = body?.report;
+      if (!validDailyReport(report)) return json({ error: "日報の形式を確認してください" }, 400);
+      const key = `report:${report.date}`;
+      const replaced = Boolean(await this.storage.get(key));
+      if (!replaced && (await this.pendingCount()) >= MAX_PENDING_DAILY_REPORTS) return json({ error: "未確認の日報が多すぎます" }, 507);
+      await this.storage.put(key, { report, receivedAt: new Date().toISOString() });
+      return json({ ok: true, id: report.date, replaced, pending: await this.pendingCount() });
+    }
+    if (path === "/pending" && request.method === "GET") {
+      const entries = await this.storage.list({ prefix: "report:" });
+      const reports = [...entries.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([key, value]) => ({ id: key.slice("report:".length), report: value.report, receivedAt: value.receivedAt }));
+      return json({ reports });
+    }
+    const ack = path.match(/^\/ack\/(\d{4}-\d{2}-\d{2})$/);
+    if (ack && request.method === "POST") {
+      const existed = await this.storage.delete(`report:${ack[1]}`);
+      return json({ status: "imported", id: ack[1], existed, pending: await this.pendingCount() });
+    }
+    return json({ error: "見つかりません" }, 404);
   }
 }

@@ -34,3 +34,11 @@ Cloudflare Workers無料枠のDurable Object Alarmを使い、アプリが閉じ
 - iPhone Web Pushはホーム画面へ追加したPWAで許可する。Safariの通常タブでは検証完了にしない。
 - Durable Object Alarmは少し遅れる場合があり得る。アラーム失敗はCloudflare側が自動で再試行するが、端末の集中モード・通知設定で表示されない場合は別途端末設定を確認する。
 - URLを変えると既存iPhoneのPush購読は新しいサーバーへ移らない。旧URLを維持するか、アプリで接続し直す。
+
+## 日報の受信箱（2026-09-15）
+
+秘書が書いた日報JSON（`mainichi.daily-report.v1`）だけを、アプリで取り込むまで預かる。日付ごとに1件（同じ日を送り直すと置き換える）。アプリで取り込んで確認済みになった日報は消す。端末全体のデータ・家計・体調・同期の情報は預からない。
+
+- 送る: `POST /v1/daily-reports`。`Authorization: Bearer <DAILY_REPORT_SENDER_KEY>`、本文は日報JSON。送る鍵は `wrangler secret put DAILY_REPORT_SENDER_KEY` で置き、PC側はGit管理外の利用者フォルダのファイルに置く。Git・チャット・日報・スクリーンショットへ残さない。
+- 読む: `GET /v1/daily-reports/pending` → `{reports:[{id,report,receivedAt}]}`、取り込み後に `POST /v1/daily-reports/{YYYY-MM-DD}/ack`。通知サーバーにつないだ端末の `X-Mainichi-Device-Id` と `Authorization: Bearer <端末の秘密値>` で確かめる（アプリに別の鍵を入れない）。
+- 公開: Durable Object `DailyReportInbox` を足すので、`wrangler.jsonc` の migrations に `v3` が入る。

@@ -8,11 +8,13 @@
   "durable_objects": {
     "bindings": [
       { "name": "SCHEDULE_REMINDERS", "class_name": "ScheduleReminder" },
-      { "name": "DEVICE_SYNC_PAIRINGS", "class_name": "DeviceSyncPairing" }
+      { "name": "DEVICE_SYNC_PAIRINGS", "class_name": "DeviceSyncPairing" },
+      { "name": "DAILY_REPORT_INBOX", "class_name": "DailyReportInbox" }
     ]
   },
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["ScheduleReminder"] },
-    { "tag": "v2", "new_sqlite_classes": ["DeviceSyncPairing"] }
+    { "tag": "v2", "new_sqlite_classes": ["DeviceSyncPairing"] },
+    { "tag": "v3", "new_sqlite_classes": ["DailyReportInbox"] }
   ]
 }

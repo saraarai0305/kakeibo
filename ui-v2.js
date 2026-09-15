@@ -298,21 +298,31 @@
   function dailyReportApiCfg(){
     try{return JSON.parse(localStorage.getItem(DAILY_REPORT_API_KEY))||{};}catch{return {};}
   }
+  // 送り先と鍵。設定に手で入れた日報APIがあればそれを使い、無ければ予定の通知サーバーにつないだ端末の鍵で
+  // 通知サーバーの受信箱を尋ねる（2026-09-15 受信箱を通知サーバーに足した。アプリに別の鍵を入れない）
+  function dailyReportApiTarget(){
+    const c=dailyReportApiCfg();
+    if(c.endpoint&&c.token)return {endpoint:c.endpoint,headers:{"Authorization":"Bearer "+c.token}};
+    if(!schedulePushReady())return null;
+    const push=schedulePushConfig();
+    return {endpoint:push.url,headers:{"Authorization":"Bearer "+push.deviceSecret,"X-Mainichi-Device-Id":push.deviceId},device:true};
+  }
   function setDailyReportApiCfg(value){localStorage.setItem(DAILY_REPORT_API_KEY,JSON.stringify(value||{}));}
   function dailyReportApiStatus(c){
-    if(!(c.endpoint&&c.token))return "未設定";
+    if(!(c.endpoint&&c.token)&&!schedulePushReady())return "未設定";
     if(c.lastError)return "接続エラー（確認が必要）";
     if(c.lastCheck)return c.lastPending?"未確認の日報あり":"確認済み・待機中";
     return "設定済み（通信未確認）";
   }
   function dailyReportApiUrl(c,path=""){
-    return String(c.endpoint||"").trim().replace(/\/+$/,"/")+String(path||"").replace(/^\/+/,"");
+    // 送り先の末尾の「/」の有無に依らず、1つの「/」でつなぐ（通知サーバーの URL は末尾の「/」を外して持つ）
+    return String(c.endpoint||"").trim().replace(/\/+$/,"")+"/"+String(path||"").replace(/^\/+/,"");
   }
   async function dailyReportApiRequest(path,options={}){
-    const c=dailyReportApiCfg();
-    if(!c.endpoint||!c.token)throw new Error("日報APIの接続設定がありません");
-    const headers=Object.assign({"Accept":"application/json","Authorization":"Bearer "+c.token},options.headers||{});
-    const response=await fetch(dailyReportApiUrl(c,path),Object.assign({},options,{headers}));
+    const target=dailyReportApiTarget();
+    if(!target)throw new Error("日報APIの接続設定がありません");
+    const headers=Object.assign({"Accept":"application/json"},target.headers,options.headers||{});
+    const response=await fetch(dailyReportApiUrl(target,path),Object.assign({},options,{headers}));
     if(!response.ok)throw new Error(`日報API ${response.status}`);
     if(response.status===204)return null;
     return response.json();
@@ -336,7 +346,7 @@
   }
   async function pullDailyReportApi(silent=false){
     const c=dailyReportApiCfg();
-    if(!c.endpoint||!c.token||dailyReportApiBusy||workLogImportDraft)return {skipped:true};
+    if(!dailyReportApiTarget()||dailyReportApiBusy||workLogImportDraft)return {skipped:true};
     dailyReportApiBusy=true;
     try{
       const payload=await dailyReportApiRequest("/v1/daily-reports/pending"),entries=dailyReportApiEntryList(payload);
@@ -345,7 +355,9 @@
       const entry=entries[0],raw=entry.report||entry.payload||entry.data||entry;
       const data=parseWorkLogImport(typeof raw==="string"?raw:JSON.stringify(raw),`API日報${raw?.date||""}.json`);
       workLogImportDraft={name:`共有API：${raw?.date||"日報"}`,data,resolutions:{},apiId:String(entry.id||entry.reportId||"")};
-      newAppRender();keepWorkLogImportDetailsOpen(true);
+      // 定期の確認で届いたときは、ホームと設定を見ている間だけ描き直す（ほかの画面の入力中の字を消さない）。
+      // 描き直さなかった画面では、次に描いたときにホームの知らせが出る
+      if(!silent||page==="home"||page==="settings"){newAppRender();keepWorkLogImportDetailsOpen(true);}
       toast("未確認の日報を受信しました。内容を確認してください");
       return {pending:entries.length,data};
     }catch(error){
@@ -356,6 +368,7 @@
   }
   function startDailyReportApiLoop(){
     clearInterval(dailyReportApiTimer);
+    if(!document.hidden)setTimeout(()=>pullDailyReportApi(true),1500);
     dailyReportApiTimer=setInterval(()=>{if(!document.hidden)pullDailyReportApi(true);},60000);
   }
   function notificationConfig(){
@@ -1160,7 +1173,7 @@
     const work=group("work","work","work","仕事","予定・実績・日報をまとめる",[["flow","blue","calendar","仕事の時間割","予定と現在時刻を見る",`data-v2-open-flow-filter="work"`],["workBoard","blue","list","仕事の一覧","優先度ごとに次の行動を見る"],["workLog","blue","work","仕事の記録","作業・休憩・日報を残す"]]);
     const life=group("life","life","life","生活","お金・こころとからだを記録する",[["moneyRecord","green","money","支出・収入","金額、方法、カテゴリーを記録"],["healthRecord","green","heart","こころとからだ","今日の調子を記録"],["checklist","yellow","list","生活の習慣・やること","今日の習慣と予定を確認"]]);
     const review=group("review","review","chart","見える化","記録した変化を振り返る",[["moneyAnalysis","purple","money","お金の分析","支払い方法とカテゴリーの傾向"],["healthAnalysis","purple","body","体調の分析","睡眠・歩数・こころ・からだ"]]);
-    return `<section class="v2-page an-page an-home"><main class="an-home-content"><div class="an-home-brand">${appBrand()}</div><p class="an-home-positioning">${PRODUCT_PROMISE}</p><div class="an-home-meta"><div class="an-home-date"><span>今日</span><time data-v2-live-date>${dateLabel(ymd(d))}</time></div><strong data-v2-live-time>${time}</strong></div><section class="an-home-shortcuts" aria-label="ショートカット"><div><h2>ショートカット</h2><button type="button" data-v2-shortcuts-open>編集</button></div><div class="an-home-shortcut-grid">${shortcuts.map(tile).join("")}</div><div id="v2ShortcutArea"></div></section><div class="an-home-groups">${work}${life}${review}</div><button type="button" class="an-home-settings" data-v2-go="settings">${icon("settings")}<span>設定</span></button></main></section>`;
+    return `<section class="v2-page an-page an-home"><main class="an-home-content"><div class="an-home-brand">${appBrand()}</div><p class="an-home-positioning">${PRODUCT_PROMISE}</p><div class="an-home-meta"><div class="an-home-date"><span>今日</span><time data-v2-live-date>${dateLabel(ymd(d))}</time></div><strong data-v2-live-time>${time}</strong></div><section class="an-home-shortcuts" aria-label="ショートカット"><div><h2>ショートカット</h2><button type="button" data-v2-shortcuts-open>編集</button></div><div class="an-home-shortcut-grid">${shortcuts.map(tile).join("")}</div><div id="v2ShortcutArea"></div></section><div class="an-home-groups">${work}${life}${review}</div>${workLogImportDraft?.apiId?`<button type="button" class="an-home-report-notice" data-v2-go="settings" data-v2-daily-report-open><span>未確認の日報</span><strong>${esc2(workLogImportDraft.data?.date||"")}</strong><b>確認する</b></button>`:""}<button type="button" class="an-home-settings" data-v2-go="settings">${icon("settings")}<span>設定</span></button></main></section>`;
   }
   function branch(kind){
     const groups={
@@ -2585,7 +2598,7 @@
   function dailyReportApiPanel(){
     const c=dailyReportApiCfg(),ackError=c.lastAckError?`<p class="an-import-warning">${esc2(c.lastAckError)}</p>`:"";
     const pending=c.lastPending?"未確認の日報があります。下の日報取り込みで内容を確認してください。":"未確認の日報を待機中です。API受信後も自動保存はしません。";
-    return `<p>Claude Codeが送信した日報だけを受信します。受信後は内容を確認してから取り込みます。家計・残高・体調・端末全体データは送信しません。</p><label>日報APIのURL</label><input id="v2DailyReportApiEndpoint" type="url" value="${esc2(c.endpoint||"")}" placeholder="https://example.com"><label>日報APIトークン</label><input id="v2DailyReportApiToken" type="password" autocomplete="off" placeholder="この端末だけに保存"><div class="an-sync-actions"><button class="an-small-action" data-v2-daily-report-api-save>接続設定を保存</button><button class="an-small-action" data-v2-daily-report-api-check ${c.endpoint&&c.token?"":"disabled"}>未確認の日報を確認</button></div><p data-v2-daily-report-api-status>${esc2(pending)}</p>${ackError}`;
+    return `<p>Claude Codeが送信した日報だけを受信します。受信後は内容を確認してから取り込みます。家計・残高・体調・端末全体データは送信しません。</p>${!(c.endpoint&&c.token)&&schedulePushReady()?`<p class="an-settings-help">予定の通知サーバーにつないだ端末なので、URLとトークンを入れなくても通知サーバーの受信箱を確認します。</p>`:""}<label>日報APIのURL</label><input id="v2DailyReportApiEndpoint" type="url" value="${esc2(c.endpoint||"")}" placeholder="https://example.com"><label>日報APIトークン</label><input id="v2DailyReportApiToken" type="password" autocomplete="off" placeholder="この端末だけに保存"><div class="an-sync-actions"><button class="an-small-action" data-v2-daily-report-api-save>接続設定を保存</button><button class="an-small-action" data-v2-daily-report-api-check ${dailyReportApiTarget()?"":"disabled"}>未確認の日報を確認</button></div><p data-v2-daily-report-api-status>${esc2(pending)}</p>${ackError}`;
   }
   function settingsV2(){
     const device=syncCfg(), health=healthSyncCfg(), dailyReportApi=dailyReportApiCfg(), benefit=Object.assign({start:"2026-01",units:18,nextApplicationStart:"2026-08-01",applicationMonths:"",applicationDays:""},S.benefit||{});
@@ -3566,6 +3579,12 @@
   document.addEventListener("pointercancel",()=>{recordUiState.swipe=null;},true);
   // index.html の共通保存処理から呼ぶ。予定をどの画面で編集しても、次の通知計画を更新する。
   window.mainichiSchedulePushChanged=queueRemoteSchedulePush;
+  // ホームの「未確認の日報」の知らせは設定へ移る（data-v2-go）。移った後に日報の取り込みの欄を開いて見せる
+  root.addEventListener("click",event=>{
+    if(!event.target.closest("[data-v2-daily-report-open]"))return;
+    keepWorkLogImportDetailsOpen(true);
+    [...root.querySelectorAll("details")].find(details=>details.textContent.includes("日報ファイルを取り込む"))?.scrollIntoView({block:"start"});
+  });
   startDailyReportApiLoop();
   newAppRender();
 })();

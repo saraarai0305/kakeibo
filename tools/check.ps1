@@ -402,6 +402,8 @@ if ($uiV2 -notmatch 'DAILY_REPORT_API_KEY' -or $uiV2 -notmatch 'dailyReportApiRe
 "OK  共有APIの日報未確認受信契約あり"
 if ($src -notmatch 'function mergeSyncData' -or $src -notmatch 'function reconcileSync' -or $src -notmatch 'mainichi\.sync-base' -or ([regex]::Matches($src, 'reconcileSync\(S, remote(Raw)?, syncBase\(\)').Count -lt 2)) { Write-Error "端末同期の足し合わせ契約がありません" }
 "OK  端末同期の足し合わせ契約あり"
+if ($pushWorkerSrc -notmatch 'class DailyReportInbox extends DurableObject' -or $pushWorkerSrc -notmatch 'DAILY_REPORT_SENDER_KEY' -or $pushWorkerSrc -notmatch '/v1/daily-reports' -or (Get-Content (Join-Path $pushServer "wrangler.jsonc") -Raw -Encoding UTF8) -notmatch 'DailyReportInbox' -or $uiV2 -notmatch 'function dailyReportApiTarget' -or $uiV2 -notmatch 'X-Mainichi-Device-Id":push\.deviceId' -or $uiV2 -notmatch 'data-v2-daily-report-open') { Write-Error "日報の受信箱（通知サーバー・端末の鍵・ホームの知らせ）の契約がありません" }
+"OK  日報の受信箱の契約あり"
 
 # PWAが古いCSS/JSをキャッシュすると、公開URLとホーム画面アプリの表示が食い違う。
 # 画面側とService Worker側の主要資産は、BUILDと同じクエリ版を必ず持たせる。
