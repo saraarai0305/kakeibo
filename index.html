@@ -6,7 +6,7 @@
 <title>LIFE NOTE</title>
 <link rel="manifest" href="manifest.webmanifest">
 <script src="design-system.js"></script>
-<link rel="stylesheet" href="ui-v2.css?v=0.32.16">
+<link rel="stylesheet" href="ui-v2.css?v=0.32.17">
 <meta name="theme-color" content="#F6EFDE">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -784,8 +784,8 @@ body[data-tab="cal"]:not([data-cal-page="check"]) #checklistPage{display:none!im
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:1ms!important;animation-iteration-count:1!important;transition-duration:1ms!important}}
 </style>
 <!-- 旧画面のインラインCSSより後に読み込み、紙面UIを最終スタイルとして適用する。 -->
-<link rel="stylesheet" href="ui-analog.css?v=0.32.16">
-<link rel="stylesheet" href="ui-paper-baseline.css?v=0.32.16">
+<link rel="stylesheet" href="ui-analog.css?v=0.32.17">
+<link rel="stylesheet" href="ui-paper-baseline.css?v=0.32.17">
 <link rel="stylesheet" href="design-foundation.css">
 </head>
 <body data-tab="home">
@@ -1421,7 +1421,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.32.16";         // version.txt と一致させること
+const BUILD = "0.32.17";         // version.txt と一致させること
 const KEY = "mainichi.v1";
 // 一日の流れを主役にし、週／月のカレンダーは必要なときだけその下に開く。
 (() => {
@@ -1608,6 +1608,15 @@ function normalize(o){
       const minutes = Number(w.projectMinutes[id]);
       if(!Number.isFinite(minutes) || minutes < 0) delete w.projectMinutes[id];
       else w.projectMinutes[id] = Math.round(minutes);
+    }
+    // 勤怠の割合（2026-09-15）: 案件 ID → 0〜100 の整数。欄がある記録だけ整える（無い日に空の欄を足すと、開いただけで全日が変わった扱いになり同期先へ送る）
+    if(w.projectPercents !== undefined){
+      if(!w.projectPercents || typeof w.projectPercents !== "object" || Array.isArray(w.projectPercents)) delete w.projectPercents;
+      else for(const id of Object.keys(w.projectPercents)){
+        const percent = Number(w.projectPercents[id]);
+        if(!Number.isFinite(percent) || percent < 0 || percent > 100) delete w.projectPercents[id];
+        else w.projectPercents[id] = Math.round(percent);
+      }
     }
   }
 
@@ -4280,6 +4289,8 @@ function mergeImportedWorkCatalog(remote, record){
   const projectNames={};
   for(const id of projectIds){ const project=remote.workProjects.find(item=>item&&item.id===id); if(project) projectNames[id]=project.name; }
   const merged=Object.assign({},record,{projectIds,projectNames,projectId:idMap[record.projectId]||record.projectId||projectIds[0]||"",workDescriptions:remap(record.workDescriptions),projectReviews:remap(record.projectReviews)});
+  // 勤怠の割合（2026-09-15）: 中身・評価と同じく、案件の ID を同期先の ID に付け替える（付け替えないと別の端末で別の案件に付くか消える）
+  if(record.projectPercents && typeof record.projectPercents === "object") merged.projectPercents=remap(record.projectPercents);
   merged.project=projectNames[merged.projectId]||merged.project||"";
   remote.workLogProjectAliases=remote.workLogProjectAliases&&typeof remote.workLogProjectAliases==="object"?remote.workLogProjectAliases:{};
   for(const [name,id] of Object.entries(S.workLogProjectAliases||{})) if(idMap[id]) remote.workLogProjectAliases[name]=idMap[id];
@@ -4777,6 +4788,6 @@ if("serviceWorker" in navigator &&
   navigator.serviceWorker.register("sw.js?v=" + BUILD, {updateViaCache:"none"}).catch(()=>{});
 }
 </script>
-<script defer src="ui-v2.js?v=0.32.16"></script>
+<script defer src="ui-v2.js?v=0.32.17"></script>
 </body>
 </html>

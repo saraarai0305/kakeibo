@@ -411,6 +411,90 @@ window.addEventListener("load", () => setTimeout(async () => {
         S = normalize(savedS2); localStorage.setItem(KEY, JSON.stringify(S)); render();
       }
     }
+    // 勤怠の割合（2026-09-15 社長 案3）: 読み込みの整え・取り込み・その日の割合を残す・形の違い・月の分析・画面で直して保存・同期先への反映の付け替え
+    {
+      const tidy = normalize({workLogs:{"2099-04-01":{projectPercents:{a:150, b:-5, c:"あ", d:33.4, e:40}}, "2099-04-09":{start:"09:00"}}}).workLogs;
+      if (Object.keys(tidy["2099-04-01"].projectPercents || {}).sort().join(",") !== "d,e" || tidy["2099-04-01"].projectPercents.d !== 33 || tidy["2099-04-01"].projectPercents.e !== 40 || Object.prototype.hasOwnProperty.call(tidy["2099-04-09"], "projectPercents")) throw new Error("UI smoke: work percent normalize");
+      const INBOX3 = "https://smoke-inbox-percent.test", API_KEY3 = "mainichi.daily-report-api", DRAFT_KEY3 = "mainichi.worklog-draft.v1";
+      const savedFetch3 = window.fetch, savedApi3 = localStorage.getItem(API_KEY3), savedDraft3 = localStorage.getItem(DRAFT_KEY3), savedS3 = clone(S);
+      let inbox3 = [];
+      window.fetch = async (url, opts) => {
+        const u = String(url);
+        if (!u.startsWith(INBOX3)) return savedFetch3(url, opts);
+        if (u.endsWith("/v1/daily-reports/pending")) return {ok:true, status:200, json: async () => ({reports: inbox3.map(item => ({id:item.date, report:item}))})};
+        const ack = u.match(/\/v1\/daily-reports\/([^/]+)\/ack$/);
+        if (ack) { inbox3 = inbox3.filter(item => item.date !== decodeURIComponent(ack[1])); return {ok:true, status:200, json: async () => ({status:"imported"})}; }
+        return {ok:false, status:404, json: async () => ({})};
+      };
+      const pull3 = async label => {
+        newAppRender();
+        const button = document.querySelector('[data-v2-daily-report-api-check]');
+        if (!button || button.disabled) throw new Error("UI smoke: work percent check button (" + label + ")");
+        button.click();
+        await pause(60);
+      };
+      const report3 = (date, percentA, percentB) => ({format:"mainichi.daily-report.v1", date, start:"", end:"", breakMinutes:0, projects:[Object.assign({projectName:"UI smoke 割合A", done:"A の中身"}, percentA === undefined ? {} : {workPercent:percentA}), Object.assign({projectName:"UI smoke 割合B", done:"B の中身"}, percentB === undefined ? {} : {workPercent:percentB})]});
+      try {
+        localStorage.setItem(API_KEY3, JSON.stringify({endpoint:INBOX3, token:"smoke"}));
+        localStorage.removeItem(DRAFT_KEY3);
+        S.workProjects = (S.workProjects || []).concat([{id:"smoke-pct-a", name:"UI smoke 割合A", color:"#7AA7F0", note:""}, {id:"smoke-pct-b", name:"UI smoke 割合B", color:"#7AA7F0", note:""}]);
+        // 1) 取り込み: 日報の workPercent がその日の記録に入る
+        S.workLogs["2099-04-02"] = {start:"09:00", end:"19:00", breakMinutes:60, actualWorkMinutes:540};
+        inbox3 = [report3("2099-04-02", 70, 30)];
+        await pull3("import");
+        const p2 = S.workLogs["2099-04-02"]?.projectPercents || {};
+        if (p2["smoke-pct-a"] !== 70 || p2["smoke-pct-b"] !== 30) throw new Error("UI smoke: work percent import");
+        // 2) その日に割合がすでにあれば残す（中身は入る）
+        S.workLogs["2099-04-03"] = {start:"09:00", end:"13:00", breakMinutes:0, actualWorkMinutes:240, projectIds:["smoke-pct-a","smoke-pct-b"], projectPercents:{"smoke-pct-a":20, "smoke-pct-b":80}};
+        inbox3 = [report3("2099-04-03", 60, 40)];
+        await pull3("keep existing");
+        const d3 = S.workLogs["2099-04-03"] || {};
+        if (d3.projectPercents?.["smoke-pct-a"] !== 20 || d3.projectPercents?.["smoke-pct-b"] !== 80 || !JSON.stringify(d3.projectReviews || {}).includes("A の中身")) throw new Error("UI smoke: work percent import keeps existing");
+        // 3) 形の違う割合（小数）は取り込まず、読み込めない理由を出す
+        inbox3 = [report3("2099-04-04", 55.5, 30)];
+        await pull3("invalid");
+        const cancel3 = document.querySelector('[data-v2-work-log-import-cancel]');
+        if (S.workLogs["2099-04-04"] || !cancel3 || !document.body.textContent.includes("workPercentは0〜100の整数")) throw new Error("UI smoke: work percent invalid stops import");
+        cancel3.click();
+        inbox3 = [];
+        // 4) 月の分析（見本は手で計算）: 4/2 540分×70:30・4/3 240分×20:80・4/5 割合だけ＝時間の無い日・4/6 何も無い＝割合の無い日・4/7 手で入れた分 A100 B20・4/8 案件1つで60分
+        S.workLogs["2099-04-05"] = {projectIds:["smoke-pct-a","smoke-pct-b"], projectPercents:{"smoke-pct-a":50, "smoke-pct-b":50}};
+        S.workLogs["2099-04-06"] = {projectIds:["smoke-pct-a","smoke-pct-b"]};
+        S.workLogs["2099-04-07"] = {projectIds:["smoke-pct-a","smoke-pct-b"], projectMinutes:{"smoke-pct-a":100, "smoke-pct-b":20}, projectPercents:{"smoke-pct-a":10, "smoke-pct-b":90}, actualWorkMinutes:500};
+        S.workLogs["2099-04-08"] = {projectIds:["smoke-pct-a"], actualWorkMinutes:60};
+        const share = window.mainichiWorkShareForMonth("2099-04");
+        if (JSON.stringify(share.list.map(row => [row.name, row.minutes, row.percent])) !== JSON.stringify([["UI smoke 割合A", 586, 61], ["UI smoke 割合B", 374, 39]]) || share.total !== 960 || JSON.stringify(share.days) !== JSON.stringify({timed:4, untimed:1, none:1})) throw new Error("UI smoke: work percent month share " + JSON.stringify(share));
+        tap('[data-v2-back]', "settings → home (work analysis)");
+        openHomeGroup("review", "review group (work analysis)");
+        tap('[data-v2-go="workAnalysis"]', "review group → work analysis");
+        if (!document.querySelector('[data-v2-work-share-days]') || !document.querySelector('[data-v2-work-month-label]')) throw new Error("UI smoke: work analysis page");
+        tap('[data-v2-back]', "work analysis → home");
+        // 5) 仕事の記録の画面で割合を直して保存する（合計が100でないと知らせる）
+        const today = ymd(now());
+        S.workLogs[today] = {start:"09:00", end:"18:00", breakMinutes:0, projectIds:["smoke-pct-a","smoke-pct-b"], projectPercents:{"smoke-pct-a":50, "smoke-pct-b":50}};
+        localStorage.removeItem(DRAFT_KEY3);
+        openHomeGroup("work", "work group (work percent)");
+        tap('[data-v2-go="workLog"]', "work group → work log (work percent)");
+        if (document.querySelector('[data-v2-work-percent="smoke-pct-a"]')?.value !== "50" || !document.querySelector('[data-v2-work-percent-total]')?.textContent.includes("100%")) throw new Error("UI smoke: work percent field shows saved");
+        selectValue('[data-v2-work-percent="smoke-pct-a"]', "60", "percent A");
+        const total5 = document.querySelector('[data-v2-work-percent-total]');
+        if (!total5?.textContent.includes("110%") || !total5.classList.contains("is-off")) throw new Error("UI smoke: work percent total warns");
+        selectValue('[data-v2-work-percent="smoke-pct-b"]', "40", "percent B");
+        tap('[data-v2-work-save]', "work percent save");
+        const saved5 = S.workLogs[today]?.projectPercents || {};
+        if (saved5["smoke-pct-a"] !== 60 || saved5["smoke-pct-b"] !== 40) throw new Error("UI smoke: work percent save");
+        tap('[data-v2-back]', "work log → home (work percent)");
+        tap('[data-v2-go="settings"]', "home → settings (work percent)");
+        // 6) 日報を同期先へ反映するとき、案件の ID が同期先の ID に付け替わっても割合が付いてくる
+        const merged6 = mergeImportedWorkCatalog({workProjects:[{id:"remote-pct-a", name:"UI smoke 割合A", color:"#7AA7F0", note:""}], areas:[]}, {projectIds:["smoke-pct-a"], projectNames:{"smoke-pct-a":"UI smoke 割合A"}, projectPercents:{"smoke-pct-a":70}, workDescriptions:{}, projectReviews:{}});
+        if (merged6.projectPercents?.["remote-pct-a"] !== 70 || Object.prototype.hasOwnProperty.call(merged6.projectPercents || {}, "smoke-pct-a")) throw new Error("UI smoke: work percent sync remap");
+      } finally {
+        window.fetch = savedFetch3;
+        if (savedApi3 === null) localStorage.removeItem(API_KEY3); else localStorage.setItem(API_KEY3, savedApi3);
+        if (savedDraft3 === null) localStorage.removeItem(DRAFT_KEY3); else localStorage.setItem(DRAFT_KEY3, savedDraft3);
+        S = normalize(savedS3); localStorage.setItem(KEY, JSON.stringify(S)); render();
+      }
+    }
     document.documentElement.dataset.uiSmoke = "ok";
   } catch (error) {
     document.documentElement.dataset.uiSmoke = "failed: " + error.message;
