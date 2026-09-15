@@ -6,7 +6,7 @@
 <title>LIFE NOTE</title>
 <link rel="manifest" href="manifest.webmanifest">
 <script src="design-system.js"></script>
-<link rel="stylesheet" href="ui-v2.css?v=0.32.13">
+<link rel="stylesheet" href="ui-v2.css?v=0.32.14">
 <meta name="theme-color" content="#F6EFDE">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -784,8 +784,8 @@ body[data-tab="cal"]:not([data-cal-page="check"]) #checklistPage{display:none!im
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:1ms!important;animation-iteration-count:1!important;transition-duration:1ms!important}}
 </style>
 <!-- 旧画面のインラインCSSより後に読み込み、紙面UIを最終スタイルとして適用する。 -->
-<link rel="stylesheet" href="ui-analog.css?v=0.32.13">
-<link rel="stylesheet" href="ui-paper-baseline.css?v=0.32.13">
+<link rel="stylesheet" href="ui-analog.css?v=0.32.14">
+<link rel="stylesheet" href="ui-paper-baseline.css?v=0.32.14">
 <link rel="stylesheet" href="design-foundation.css">
 </head>
 <body data-tab="home">
@@ -1421,7 +1421,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.32.13";         // version.txt と一致させること
+const BUILD = "0.32.14";         // version.txt と一致させること
 const KEY = "mainichi.v1";
 // 一日の流れを主役にし、週／月のカレンダーは必要なときだけその下に開く。
 (() => {
@@ -4072,25 +4072,46 @@ async function pushRemote(){
   if(c.role === "ro"){ syncPaint("ok", "読み取り専用（送信しません）"); return; }
   syncing = true; syncPaint("busy", "送信中…");
   try{
-    // 送る前に相手を見る。こちらのほうが極端に記録が少ないなら送らない
-    try{
-      const g0 = await gistFetch(`/gists/${c.gistId}`);
-      const f0 = g0.files && g0.files[GIST_FILE];
-      if(f0 && f0.content){
-        const remote = JSON.parse(f0.content);
-        if(bigDrop(remote, S)){
-          syncPaint("err", `送信を止めました（この端末の記録が少なすぎます: ${richness(S)} < 相手 ${richness(remote)}）`);
-          return;
-        }
+    // 送る前に相手を読む。前にそろえた時から相手も変わっていれば、足し合わせてから送る。
+    // 相手が読めないときは送らない（相手を見ずに丸ごと置き換えると、ほかの端末の変更が消える）
+    const g0 = await gistFetch(`/gists/${c.gistId}`);
+    const f0 = g0.files && g0.files[GIST_FILE];
+    let remote = null, merged = false;
+    try{ remote = f0 && f0.content ? JSON.parse(f0.content) : null; }catch(e){ /* 壊れた同期先は、この端末の中身で直す */ }
+    if(remote && !syncReplacePending()){
+      const plan = reconcileSync(S, remote, syncBase(), false);
+      if(plan.kind === "same" || plan.kind === "adopt"){
+        // 送る変更が無い。相手のほうが変わっていれば受け取る
+        if(plan.kind === "same") setSyncBase(remote);
+        else if(!adoptSyncRemote(remote, true)) return;
+        c.lastSync = new Date().toISOString(); setSyncCfg(c);
+        syncPaint("ok", "同期済み " + new Date().toLocaleTimeString("ja-JP"));
+        return;
       }
-    }catch(e){ /* 相手が読めないときは通常どおり送る */ }
+      if(plan.kind === "merge"){
+        try{ localStorage.setItem("mainichi.before-sync", JSON.stringify(S)); }catch(e){}
+        S = normalize(plan.data);
+        S.savedAt = new Date().toISOString();
+        localStorage.setItem(KEY, JSON.stringify(S));
+        merged = true;
+      }
+    }
+    // こちらのほうが極端に記録が少ないなら送らない
+    if(remote && bigDrop(remote, S)){
+      syncPaint("err", `送信を止めました（この端末の記録が少なすぎます: ${richness(S)} < 相手 ${richness(remote)}）`);
+      return;
+    }
 
+    const body = payload();
     await gistFetch(`/gists/${c.gistId}`, {
       method: "PATCH",
-      body: JSON.stringify({ files: { [GIST_FILE]: { content: payload() } } })
+      body: JSON.stringify({ files: { [GIST_FILE]: { content: body } } })
     });
+    setSyncBase(body);
+    clearSyncReplace();
     c.lastSync = new Date().toISOString(); setSyncCfg(c);
     syncPaint("ok", "同期済み " + new Date().toLocaleTimeString("ja-JP"));
+    if(merged){ render(); toast("ほかの端末の変更と合わせました"); }
   }catch(e){
     syncPaint("err", "送信できませんでした（" + e.message + "）");
   }finally{ syncing = false; }
@@ -4103,6 +4124,139 @@ function hasWorkLogTiming(record){
     Object.prototype.hasOwnProperty.call(record,"actualWorkMinutes") || Object.prototype.hasOwnProperty.call(record,"breakMinutes"));
 }
 function copyJson(value){ return value===undefined ? undefined : JSON.parse(JSON.stringify(value)); }
+
+/* 端末どうしの足し合わせ（2026-09-15）
+   保存した端末が同期先を丸ごと置き換えると、もう片方の端末の変更が消えていた（PCで取り込んだ08-13の日報が、iPhoneを開いた時に消えた）。
+   端末ごとに「最後に同期先と同じだった時の姿」を持ち、それとの3者で比べる。保存の時刻の新旧では勝ち負けを決めない。
+   ・片方だけが変えた所はその変更を採る。id のある記録は1件ずつ、日報・体調などは日ごと・項目ごとに比べる
+   ・片方で消した記録は、もう片方が触っていなければ消したままにする
+   ・両方が同じ所を別々に変えたときは、中身のある側、次に新しく保存した側を採る
+   ・仕事の時間（打刻）は、打刻のある側をまとめて残す（日報の値で上書きしない） */
+const SYNC_BASE_KEY = "mainichi.sync-base";
+const SYNC_REPLACE_KEY = "mainichi.sync-replace";
+function syncCanon(value){
+  return JSON.stringify(value === undefined ? null : value, (k, x) =>
+    x && typeof x === "object" && !Array.isArray(x)
+      ? Object.keys(x).sort().reduce((o, key) => (o[key] = x[key], o), {})
+      : x);
+}
+function syncEq(a, b){ return syncCanon(a) === syncCanon(b); }
+function sameSyncData(a, b){ return syncEq(Object.assign({}, a || {}, {savedAt:null}), Object.assign({}, b || {}, {savedAt:null})); }
+function syncPlain(v){ return Boolean(v) && typeof v === "object" && !Array.isArray(v); }
+function syncEmpty(v){ return v === undefined || v === null || v === "" || (Array.isArray(v) && !v.length) || (syncPlain(v) && !Object.keys(v).length); }
+function syncBase(){
+  try{ const raw = localStorage.getItem(SYNC_BASE_KEY); return raw ? JSON.parse(raw) : null; }catch(e){ return null; }
+}
+function setSyncBase(content){
+  try{ localStorage.setItem(SYNC_BASE_KEY, JSON.stringify(typeof content === "string" ? JSON.parse(content) : content)); }
+  catch(e){ try{ localStorage.removeItem(SYNC_BASE_KEY); }catch(_){} }   // 残せなければ持たない（足し合わせは消さない側に倒れる）
+}
+// 復元・ファイルの読み込みは「この端末の中身にそろえる」操作。次の送信だけは足し合わせずに置き換える
+function markSyncReplace(){ try{ localStorage.setItem(SYNC_REPLACE_KEY, new Date().toISOString()); }catch(e){} }
+function syncReplacePending(){ try{ return Boolean(localStorage.getItem(SYNC_REPLACE_KEY)); }catch(e){ return false; } }
+function clearSyncReplace(){ try{ localStorage.removeItem(SYNC_REPLACE_KEY); }catch(e){} }
+function syncIdList(...lists){
+  return lists.every(list => list === undefined || (Array.isArray(list) &&
+    list.every(x => syncPlain(x) && typeof x.id === "string" && x.id) &&
+    new Set(list.map(x => x.id)).size === list.length));
+}
+function syncValueList(...lists){
+  return lists.every(list => list === undefined || (Array.isArray(list) &&
+    list.every(x => x === null || typeof x !== "object") && new Set(list.map(syncCanon)).size === list.length));
+}
+function mergeSyncValue(b, l, r, localNewer, path){
+  if(syncEq(l, r)) return l;
+  if(syncEq(l, b)) return r;
+  if(syncEq(r, b)) return l;
+  // 口座残高は記録のたびに足し引きする数。両方が動かしたら、両方の増減を足す（片方の値にすると1件分ずれる）
+  if(path.length === 3 && path[0] === "accounts" && path[2] === "bal"){
+    const nb = Number(b), nl = Number(l), nr = Number(r);
+    if(b !== undefined && b !== null && b !== "" && [nb, nl, nr].every(Number.isFinite)) return nb + (nl - nb) + (nr - nb);
+  }
+  if(Array.isArray(l) && Array.isArray(r)){
+    if(syncIdList(b, l, r)) return mergeSyncIdList(Array.isArray(b) ? b : [], l, r, localNewer, path);
+    if(syncValueList(b, l, r)) return mergeSyncValueList(Array.isArray(b) ? b : [], l, r);
+  }
+  if(syncPlain(l) && syncPlain(r)){
+    const base = syncPlain(b) ? b : undefined;
+    return path.length === 2 && path[0] === "workLogs"
+      ? mergeSyncWorkLog(base, l, r, localNewer, path)
+      : mergeSyncObject(base, l, r, localNewer, path);
+  }
+  if(syncEmpty(l) !== syncEmpty(r)) return syncEmpty(l) ? r : l;
+  return localNewer ? l : r;
+}
+function mergeSyncObject(b, l, r, localNewer, path){
+  const out = {};
+  for(const key of new Set([...Object.keys(l), ...Object.keys(r)])){
+    const value = mergeSyncValue(b ? b[key] : undefined, l[key], r[key], localNewer, path.concat(key));
+    if(value !== undefined) out[key] = value;
+  }
+  return out;
+}
+function mergeSyncIdList(b, l, r, localNewer, path){
+  const bm = new Map(b.map(x => [x.id, x])), lm = new Map(l.map(x => [x.id, x])), rm = new Map(r.map(x => [x.id, x]));
+  const pick = id => {
+    const bi = bm.get(id), li = lm.get(id), ri = rm.get(id);
+    if(li && ri) return mergeSyncValue(bi, li, ri, localNewer, path.concat(id));
+    const one = li || ri;
+    // 片方にしか無い記録: 前にそろえた姿に在り、残っている側も変えていなければ、もう片方が消した
+    return bi && syncEq(one, bi) ? undefined : one;
+  };
+  const out = [];
+  for(const x of l){ const v = pick(x.id); if(v !== undefined) out.push(v); }
+  for(const x of r){ if(lm.has(x.id)) continue; const v = pick(x.id); if(v !== undefined) out.push(v); }
+  return out;
+}
+function mergeSyncValueList(b, l, r){
+  const inB = new Set(b.map(syncCanon)), inL = new Set(l.map(syncCanon)), inR = new Set(r.map(syncCanon));
+  const out = l.filter(x => inR.has(syncCanon(x)) || !inB.has(syncCanon(x)));
+  for(const x of r) if(!inL.has(syncCanon(x)) && !inB.has(syncCanon(x))) out.push(x);
+  return out;
+}
+function syncHasPunch(w){ return Boolean(w && (w.start || w.end || w.workSessions?.length || w.breakSessions?.length)); }
+function mergeSyncWorkLog(b, l, r, localNewer, path){
+  const out = mergeSyncObject(b, l, r, localNewer, path);
+  const timing = w => WORK_LOG_TIMING_FIELDS.map(f => w && Object.prototype.hasOwnProperty.call(w, f) ? w[f] : undefined);
+  if(!syncEq(timing(l), timing(b)) && !syncEq(timing(r), timing(b)) && !syncEq(timing(l), timing(r))){
+    const src = syncHasPunch(l) !== syncHasPunch(r) ? (syncHasPunch(l) ? l : r) : (localNewer ? l : r);
+    for(const field of WORK_LOG_TIMING_FIELDS){
+      if(Object.prototype.hasOwnProperty.call(src, field)) out[field] = copyJson(src[field]);
+      else delete out[field];
+    }
+  }
+  return out;
+}
+function mergeSyncData(base, local, remote){
+  const localNewer = String(local?.savedAt || "") >= String(remote?.savedAt || "");
+  const merged = mergeSyncObject(syncPlain(base) ? base : undefined, local || {}, remote || {}, localNewer, []);
+  merged.savedAt = (localNewer ? local?.savedAt : remote?.savedAt) || null;
+  return merged;
+}
+// 同期先を読んだ後の扱いを1か所で決める。same=同じ／adopt=相手に合わせる／keep=こちらを送る／merge=足し合わせる
+function reconcileSync(local, remote, base, readOnly){
+  if(sameSyncData(local, remote)) return {kind:"same", data:local};
+  if(readOnly) return {kind:"adopt", data:remote};
+  if(base){
+    if(sameSyncData(local, base)) return {kind:"adopt", data:remote};
+    if(sameSyncData(remote, base)) return {kind:"keep", data:local};
+  }
+  return {kind:"merge", data:mergeSyncData(base, local, remote)};
+}
+// 相手に合わせる（この端末に送る変更が無いとき）。上書き直前の中身を1つだけ退避する
+function adoptSyncRemote(remote, checkDrop){
+  if(checkDrop && bigDrop(S, remote)){
+    syncPaint("err", `受信を止めました（相手の記録が少なすぎます: ${richness(remote)} < この端末 ${richness(S)}）`);
+    return false;
+  }
+  try{ localStorage.setItem("mainichi.before-sync", JSON.stringify(S)); }catch(e){}
+  S = normalize(copyJson(remote));
+  localStorage.setItem(KEY, JSON.stringify(S));
+  setSyncBase(remote);
+  render();
+  toast("最新のデータを受け取りました");
+  return true;
+}
 function mergeImportedWorkCatalog(remote, record){
   remote.workProjects=Array.isArray(remote.workProjects)?remote.workProjects:[];
   remote.areas=Array.isArray(remote.areas)?remote.areas:[];
@@ -4141,9 +4295,12 @@ async function pushImportedWorkLog(day, record){
   try{
     const g = await gistFetch(`/gists/${c.gistId}`);
     const f = g.files && g.files[GIST_FILE];
-    const remote = f && f.content ? normalize(JSON.parse(f.content)) : normalize({});
+    const remoteRaw = f && f.content ? JSON.parse(f.content) : null;
+    // 対象日の打刻は同期先の値を見る。ほかの日と、この端末のまだ送っていない変更は先に足し合わせる
+    const existingRaw = remoteRaw ? normalize(copyJson(remoteRaw)).workLogs[day] : undefined;
+    const remote = normalize(copyJson(remoteRaw ? reconcileSync(S, remoteRaw, syncBase(), false).data : S));
     remote.workLogs=remote.workLogs||{};
-    const existing=remote.workLogs[day]&&typeof remote.workLogs[day]==="object"?remote.workLogs[day]:{};
+    const existing=existingRaw&&typeof existingRaw==="object"?existingRaw:{};
     const imported=mergeImportedWorkCatalog(remote,copyJson(record));
     const merged=Object.assign({},existing,imported);
     // PCの日報ファイルは内容だけを足す。iPhoneで先に打刻した勤務時間は常に残す。
@@ -4159,6 +4316,7 @@ async function pushImportedWorkLog(day, record){
     });
     S = remote;
     localStorage.setItem(KEY, JSON.stringify(S));
+    setSyncBase(remote);
     clearWorkLogSyncPending();
     c.lastSync = new Date().toISOString();
     delete c.lastSyncError;
@@ -4190,19 +4348,31 @@ async function pullRemote(silent, force){
         toast("日報を同期先へ反映するまで、古い日報で置き換えません");
         return;
       }
-      // 記録が大きく減る方向の自動受信は止める（空の端末に負けないため）
-      if(!force && bigDrop(S, remote)){
-        syncPaint("err", `受信を止めました（相手の記録が少なすぎます: ${richness(remote)} < この端末 ${richness(S)}）`);
-        return;
-      }
-      // 通常は新しいほうを採用。force（2台目の参加時）は無条件で相手に合わせる
-      if(force || (remote.savedAt && (!S.savedAt || remote.savedAt > S.savedAt))){
-        // 上書き直前の中身を1つだけ退避しておく（取り違えたときの保険）
-        try{ localStorage.setItem("mainichi.before-sync", JSON.stringify(S)); }catch(e){}
-        S = normalize(remote);
-        localStorage.setItem(KEY, JSON.stringify(S));
-        render();
-        toast("最新のデータを受け取りました");
+      if(force){
+        // 2台目の参加時は無条件で相手に合わせる
+        adoptSyncRemote(remote, false);
+        clearSyncReplace();
+      }else if(syncReplacePending() && c.role !== "ro"){
+        // 復元・ファイルの読み込みの後は、この端末の中身で置き換える送信を先に済ませる
+        schedulePush();
+      }else{
+        // 前にそろえた姿と比べて、どちらが変わったかで決める（保存の時刻の新旧では決めない）
+        const plan = reconcileSync(S, remote, syncBase(), c.role === "ro");
+        if(plan.kind === "same") setSyncBase(remote);
+        else if(plan.kind === "adopt"){
+          // 記録が大きく減る方向の自動受信は止める（空の端末に負けないため）
+          if(!adoptSyncRemote(remote, true)) return;
+        }else if(plan.kind === "keep") schedulePush();
+        else{
+          try{ localStorage.setItem("mainichi.before-sync", JSON.stringify(S)); }catch(e){}
+          S = normalize(plan.data);
+          S.savedAt = new Date().toISOString();
+          localStorage.setItem(KEY, JSON.stringify(S));
+          setSyncBase(remote);
+          render();
+          toast("ほかの端末の変更と合わせました");
+          schedulePush();
+        }
       }
     }
     // 受信箱: ショートカットが置いていった行を取り込んで、空にする
@@ -4382,6 +4552,7 @@ document.getElementById("syncStart").addEventListener("click", async ()=>{
         })
       });
       setSyncCfg(Object.assign({}, syncCfg(), { token, gistId: g.id }));
+      setSyncBase(S);
       document.getElementById("syncGistOut").innerHTML =
         `できました。<b>2台目ではこのGist IDを入れてください:</b><br><code>${esc(g.id)}</code>`;
       syncPaint("ok", "同期を開始しました");
@@ -4417,6 +4588,7 @@ document.getElementById("restoreBtn").addEventListener("click", ()=>{
     S = normalize(JSON.parse(raw));
     S.savedAt = new Date().toISOString();      // これを最新として扱う
     localStorage.setItem(KEY, JSON.stringify(S));
+    markSyncReplace();                         // 次の送信は足し合わせずに、この中身で置き換える
     render(); restorePaint();
     toast("戻しました");
   }catch(e){ toast("戻せませんでした"); console.error(e); }
@@ -4551,6 +4723,8 @@ document.getElementById("syncIdCopy").addEventListener("click", async ()=>{
 
 document.getElementById("syncOff").addEventListener("click", ()=>{
   localStorage.removeItem(SYNC_KEY);
+  localStorage.removeItem(SYNC_BASE_KEY);
+  clearSyncReplace();
   clearInterval(pullTimer);
   syncPaint("", "この端末の同期を止めました。データは残っています。");
   toast("同期を止めました");
@@ -4572,6 +4746,7 @@ document.getElementById("impFile").addEventListener("change", async e => {
     const obj = JSON.parse(await f.text());
     if(!obj || !Array.isArray(obj.accounts)) throw new Error("形式が違います");
     S = normalize(obj);
+    markSyncReplace();
     save(); render(); toast("読み込みました");
   }catch(err){ toast("読み込めませんでした"); console.error(err); }
   e.target.value = "";
@@ -4602,6 +4777,6 @@ if("serviceWorker" in navigator &&
   navigator.serviceWorker.register("sw.js?v=" + BUILD, {updateViaCache:"none"}).catch(()=>{});
 }
 </script>
-<script defer src="ui-v2.js?v=0.32.13"></script>
+<script defer src="ui-v2.js?v=0.32.14"></script>
 </body>
 </html>

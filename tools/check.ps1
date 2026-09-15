@@ -113,7 +113,11 @@ window.addEventListener("load", () => setTimeout(async () => {
     if (!workEvent) throw new Error("UI smoke: editable work event");
     workEvent.click();
     await pause(100);
-    if (!document.querySelector('[data-v2-event-work-item-id].is-selected') || document.querySelectorAll('.v2-event.is-selected .v2-event-resize').length !== 2 || !document.querySelector('.v2-event.is-selected [data-v2-event-edit]')?.textContent.includes('予定を編集') || document.querySelector('.an-flow-edit-toolbar') || document.querySelector('[data-v2-event-sheet-layer]')) throw new Error("UI smoke: event select handles");
+    if (!document.querySelector('[data-v2-event-work-item-id].is-selected')) throw new Error("UI smoke: event select handles (selected card)");
+    if (document.querySelectorAll('.v2-event.is-selected .v2-event-resize').length !== 2) throw new Error("UI smoke: event select handles (resize handles)");
+    // 「予定を編集」は選んだ予定の枠の中でなく、選択中の予定の帯（an-flow-selection-panel）に出す
+    if (!document.querySelector('[data-v2-flow-selection-panel] [data-v2-flow-selection-edit]')?.textContent.includes('予定を編集')) throw new Error("UI smoke: event select handles (selection panel edit)");
+    if (document.querySelector('.an-flow-edit-toolbar') || document.querySelector('[data-v2-event-sheet-layer]')) throw new Error("UI smoke: event select handles (no sheet before edit)");
     document.querySelector('.an-flow-filter').click();
     await pause(100);
     if (document.querySelector('.v2-event.is-selected')) throw new Error("UI smoke: outside tap clears selection");
@@ -121,7 +125,7 @@ window.addEventListener("load", () => setTimeout(async () => {
     if (!selectedWorkEvent) throw new Error("UI smoke: reselect work event");
     selectedWorkEvent.click();
     await pause(80);
-    document.querySelector('[data-v2-event-work-item-id].is-selected [data-v2-event-edit]')?.click();
+    tap('[data-v2-flow-selection-panel] [data-v2-flow-selection-edit]', "selection panel → edit");
     await pause(100);
     if (!document.querySelector('#v2EventPriority') || !document.querySelector('#v2EventStatus')) throw new Error("UI smoke: event priority/status edit");
     tap('[data-v2-event-save]', "save selected event");
@@ -167,7 +171,7 @@ window.addEventListener("load", () => setTimeout(async () => {
     dailyEvent.click();
     await pause(80);
     if (!document.querySelector('.v2-event.is-selected') || document.querySelectorAll('.v2-event.is-selected .v2-event-resize').length !== 2) throw new Error("UI smoke: recurring event select");
-    document.querySelector('.v2-event.is-selected [data-v2-event-edit]')?.click();
+    tap('[data-v2-flow-selection-panel] [data-v2-flow-selection-edit]', "recurring selection panel → edit");
     await pause(80);
     if (!document.querySelector('[data-v2-event-delete]')?.textContent.includes('毎日の予定から削除')) throw new Error("UI smoke: recurring delete label");
     tap('[data-v2-event-close]', "close recurring editor");
@@ -209,8 +213,13 @@ window.addEventListener("load", () => setTimeout(async () => {
     tap('[data-v2-back]', "flow → home before linked work log");
     openHomeGroup('work', "home → work group before linked work log");
     tap('[data-v2-go="workLog"]', "work group → linked work log");
-    if (!document.querySelector('#v2WorkProjectAdd') || !document.querySelector('[data-v2-work-project-row]') || !document.querySelector('[data-v2-work-item-for-project]') || document.querySelectorAll('.an-work-check').length || document.querySelectorAll('input[type="checkbox"][data-v2-work-project]').length) throw new Error("UI smoke: linked work catalog");
-    if (!Array.from(document.querySelectorAll('[data-v2-work-item-for-project] option')).some(o => o.textContent.includes('UI smoke work'))) throw new Error("UI smoke: linked work item option");
+    if (!document.querySelector('#v2WorkProjectAdd')) throw new Error("UI smoke: linked work catalog (project add)");
+    if (!document.querySelector('[data-v2-work-project-row]')) throw new Error("UI smoke: linked work catalog (project row)");
+    // 仕事内容は選択でなく案件ごとの自由記述（c4579c0）。選んでいた仕事の id は行の data-v2-work-item に残る
+    if (!document.querySelector('[data-v2-work-project-row] [data-v2-work-description]')) throw new Error("UI smoke: linked work catalog (description)");
+    if (document.querySelectorAll('.an-work-check').length || document.querySelectorAll('input[type="checkbox"][data-v2-work-project]').length) throw new Error("UI smoke: linked work catalog (no legacy checks)");
+    const smokeWorkIds = (S.workItems || []).filter(item => item.name === 'UI smoke work').map(item => item.id);
+    if (!Array.from(document.querySelectorAll('[data-v2-work-project-row]')).some(row => smokeWorkIds.includes(row.dataset.v2WorkItem))) throw new Error("UI smoke: linked work item");
     if (document.querySelectorAll('[data-v2-work-project-row]').length < 2) {
       const projectAdd = document.querySelector('#v2WorkProjectAdd');
       const nextProject = Array.from(projectAdd?.options || []).find(option => option.value);
@@ -263,6 +272,66 @@ window.addEventListener("load", () => setTimeout(async () => {
     tap('[data-v2-back]', "money analysis → home");
     tap('[data-v2-go="settings"]', "home → settings");
     if (!document.querySelector('.v2-settings')) throw new Error("UI smoke: settings");
+    // 端末どうしの同期: 偽の同期先で、足し合わせ・消した記録・打刻・読み取り専用を確かめる
+    const clone = value => JSON.parse(JSON.stringify(value));
+    const idsOf = list => (list || []).map(item => item.id).sort().join(",");
+    const errand = (id, text) => ({id, text, note:"", due:"", from:"", to:"", prio:"n", done:false, doneAt:null, plan:null});
+    // 1) 片方で支出を足して1件消す／もう片方で予定を足して支出を直す
+    const base1 = {accounts:[{id:"a1", bal:1000}], spends:[{id:"s1", amt:100}, {id:"s2", amt:200}], plan:{"2099-01-01":[{id:"p1", text:"a"}]}, savedAt:"2099-01-01T00:00:00Z"};
+    const local1 = clone(base1); local1.spends.push({id:"s3", amt:300}); local1.spends = local1.spends.filter(item => item.id !== "s2"); local1.accounts[0].bal = 900; local1.savedAt = "2099-01-01T00:01:00Z";
+    const remote1 = clone(base1); remote1.plan["2099-01-01"].push({id:"p2", text:"b"}); remote1.spends[0].amt = 150; remote1.accounts[0].bal = 800; remote1.savedAt = "2099-01-01T00:02:00Z";
+    const merged1 = mergeSyncData(base1, local1, remote1);
+    if (idsOf(merged1.spends) !== "s1,s3" || merged1.spends.find(item => item.id === "s1").amt !== 150 || idsOf(merged1.plan["2099-01-01"]) !== "p1,p2") throw new Error("UI smoke: sync merge adds and deletes");
+    if (merged1.accounts?.[0]?.bal !== 700) throw new Error("UI smoke: sync merge adds both balance changes");
+    // 2) 同じ日の日報: PC で取り込んだ中身と、iPhone の打刻がぶつかる
+    const pc = {workLogs:{"2099-01-02":{implementation:"日報の中身", start:"", end:"", breakMinutes:60, actualWorkMinutes:300}}, savedAt:"2099-01-02T10:00:00Z"};
+    const phone = {workLogs:{"2099-01-02":{implementation:"", start:"09:00", end:"18:00", breakMinutes:45, actualWorkMinutes:495, workSessions:[{start:"09:00", end:"18:00"}]}}, savedAt:"2099-01-02T09:00:00Z"};
+    const day2 = mergeSyncData(null, pc, phone).workLogs["2099-01-02"];
+    if (day2.implementation !== "日報の中身" || day2.start !== "09:00" || day2.end !== "18:00" || day2.breakMinutes !== 45 || day2.actualWorkMinutes !== 495 || day2.workSessions?.length !== 1) throw new Error("UI smoke: sync merge keeps phone timing");
+    const savedFetch = window.fetch, savedCfg = localStorage.getItem(SYNC_KEY), savedBefore = localStorage.getItem("mainichi.before-sync"), savedS = clone(S);
+    let gistContent = null, patches = 0;
+    window.fetch = async (url, opts) => {
+      if (!String(url).startsWith("https://api.github.com/gists/smoke")) return savedFetch(url, opts);
+      if (opts && opts.method === "PATCH") { gistContent = JSON.parse(opts.body).files[GIST_FILE].content; patches++; }
+      return {ok:true, status:200, json: async () => ({files:{[GIST_FILE]:{content:gistContent}}})};
+    };
+    try {
+      localStorage.setItem(SYNC_KEY, JSON.stringify({token:"smoke", gistId:"smoke", role:"rw"}));
+      // 3) 08-13 の再現: 相手が日報を足した後に、こちらが体調を保存して送っても、相手の日報は消えない
+      const agreed = clone(S); agreed.savedAt = "2099-02-01T00:00:00Z";
+      S = normalize(clone(agreed)); setSyncBase(agreed);
+      const other = clone(agreed); other.workLogs["2099-02-02"] = {implementation:"相手の日報"}; other.savedAt = "2099-02-01T00:05:00Z";
+      gistContent = JSON.stringify(other);
+      S.health["2099-02-03"] = Object.assign({}, S.health["2099-02-03"], {steps:1234}); S.savedAt = "2099-02-01T00:06:00Z";
+      await pushRemote();
+      const sent = JSON.parse(gistContent);
+      if (patches !== 1 || sent.workLogs?.["2099-02-02"]?.implementation !== "相手の日報" || sent.health?.["2099-02-03"]?.steps !== 1234 || S.workLogs["2099-02-02"]?.implementation !== "相手の日報") throw new Error("UI smoke: sync push merges other device");
+      // 4) 受け取り: こちらが変えていなければ相手に合わせ、両方が変えていれば足し合わせる（相手が消した記録は戻さない）
+      const other2 = clone(sent); other2.errands = (other2.errands || []).concat([errand("smoke-remote", "相手の用事")]); other2.savedAt = "2099-02-01T00:07:00Z";
+      gistContent = JSON.stringify(other2);
+      await pullRemote(true);
+      if (!S.errands.some(item => item.id === "smoke-remote")) throw new Error("UI smoke: sync pull adopts remote");
+      S.errands.push(errand("smoke-local", "こちらの用事")); S.savedAt = "2099-02-01T00:08:00Z"; localStorage.setItem(KEY, JSON.stringify(S));
+      const other3 = JSON.parse(gistContent); other3.errands = other3.errands.filter(item => item.id !== "smoke-remote"); other3.savedAt = "2099-02-01T00:09:00Z";
+      gistContent = JSON.stringify(other3);
+      await pullRemote(true);
+      clearTimeout(syncTimer);
+      if (!S.errands.some(item => item.id === "smoke-local") || S.errands.some(item => item.id === "smoke-remote")) throw new Error("UI smoke: sync pull merges both sides");
+      // 5) 読み取り専用の端末は、自分の変更があっても相手に合わせ、送らない
+      localStorage.setItem(SYNC_KEY, JSON.stringify({token:"smoke", gistId:"smoke", role:"ro"}));
+      S.errands.push(errand("smoke-ro", "見るだけの端末の用事"));
+      const patchesBefore = patches;
+      await pullRemote(true);
+      await pushRemote();
+      if (S.errands.some(item => item.id === "smoke-ro") || S.errands.some(item => item.id === "smoke-local") || patches !== patchesBefore) throw new Error("UI smoke: sync read-only adopts remote");
+    } finally {
+      window.fetch = savedFetch;
+      clearTimeout(syncTimer);
+      if (savedCfg === null) localStorage.removeItem(SYNC_KEY); else localStorage.setItem(SYNC_KEY, savedCfg);
+      if (savedBefore === null) localStorage.removeItem("mainichi.before-sync"); else localStorage.setItem("mainichi.before-sync", savedBefore);
+      localStorage.removeItem(SYNC_BASE_KEY);
+      S = normalize(savedS); localStorage.setItem(KEY, JSON.stringify(S)); render();
+    }
     document.documentElement.dataset.uiSmoke = "ok";
   } catch (error) {
     document.documentElement.dataset.uiSmoke = "failed: " + error.message;
@@ -331,6 +400,8 @@ if ($uiV2 -notmatch 'function isWorkScheduleEvent' -or $uiV2 -notmatch 'function
 "OK  明日以降の仕事予定一括削除契約あり"
 if ($uiV2 -notmatch 'DAILY_REPORT_API_KEY' -or $uiV2 -notmatch 'dailyReportApiRequest\("/v1/daily-reports/pending"\)' -or $uiV2 -notmatch 'v1/daily-reports/.+?/ack' -or $uiV2 -notmatch 'data-v2-daily-report-api-check' -or $uiV2 -notmatch 'workLogImportDraft=\{name:`共有API') { Write-Error "共有APIの日報未確認受信契約がありません" }
 "OK  共有APIの日報未確認受信契約あり"
+if ($src -notmatch 'function mergeSyncData' -or $src -notmatch 'function reconcileSync' -or $src -notmatch 'mainichi\.sync-base' -or ([regex]::Matches($src, 'reconcileSync\(S, remote(Raw)?, syncBase\(\)').Count -lt 2)) { Write-Error "端末同期の足し合わせ契約がありません" }
+"OK  端末同期の足し合わせ契約あり"
 
 # PWAが古いCSS/JSをキャッシュすると、公開URLとホーム画面アプリの表示が食い違う。
 # 画面側とService Worker側の主要資産は、BUILDと同じクエリ版を必ず持たせる。
@@ -346,7 +417,9 @@ if ($sw -notmatch [regex]::Escape('const CACHE = "mainichi-v' + $build + '"')) {
 "OK  PWA資産とキャッシュ版が一致"
 
 # 実データがあればそれを流し込んで試す（無ければ空データ）
-$test = Join-Path $env:TEMP "kakeibo-check_tmp.html"
+# 試しのページはアプリ直下に置く（.gitignore で外してある）。一時フォルダに置くと
+# ui-v2.js などの相対の部品が読めず、新しい画面を見ないまま入口で止まる（2026-09-15 実測）。
+$test = Join-Path $root "_check_tmp.html"
 $dataFile = "$root\private\mainichi-data.json"
 if (Test-Path $dataFile) {
   $json = (Get-Content $dataFile -Raw -Encoding UTF8 | ConvertFrom-Json | ConvertTo-Json -Depth 20 -Compress)
