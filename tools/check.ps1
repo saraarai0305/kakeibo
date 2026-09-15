@@ -332,6 +332,85 @@ window.addEventListener("load", () => setTimeout(async () => {
       localStorage.removeItem(SYNC_BASE_KEY);
       S = normalize(savedS); localStorage.setItem(KEY, JSON.stringify(S)); render();
     }
+    // 日報の受信箱の自動取り込み（2026-09-15 社長 案1）: 偽の受信箱で、自動で入る日と、止める3つと、押す取り込みを確かめる
+    {
+      const INBOX = "https://smoke-inbox.test", REPORT_API_KEY = "mainichi.daily-report-api", DRAFT_KEY = "mainichi.worklog-draft.v1";
+      const savedFetch2 = window.fetch, savedApi = localStorage.getItem(REPORT_API_KEY), savedDraft = localStorage.getItem(DRAFT_KEY), savedS2 = clone(S);
+      let inbox = [], acks = [];
+      const report = (date, projectName, done) => ({format:"mainichi.daily-report.v1", date, start:"", end:"", breakMinutes:0, projects:[{projectName, done}]});
+      window.fetch = async (url, opts) => {
+        const u = String(url);
+        if (!u.startsWith(INBOX)) return savedFetch2(url, opts);
+        if (u.endsWith("/v1/daily-reports/pending")) return {ok:true, status:200, json: async () => ({reports: inbox.map(item => ({id:item.date, report:item}))})};
+        const ack = u.match(/\/v1\/daily-reports\/([^/]+)\/ack$/);
+        if (ack) { const id = decodeURIComponent(ack[1]); acks.push(id); inbox = inbox.filter(item => item.date !== id); return {ok:true, status:200, json: async () => ({status:"imported"})}; }
+        return {ok:false, status:404, json: async () => ({})};
+      };
+      const checkInbox = async label => {
+        newAppRender();
+        const button = document.querySelector('[data-v2-daily-report-api-check]');
+        if (!button || button.disabled) throw new Error("UI smoke: daily report check button (" + label + ")");
+        button.click();
+        // 偽の受信箱は時計を待たずに返す。検査の Chrome は仮想の時間4秒で DOM を書き出すので、待ちは短くする
+        await pause(60);
+      };
+      const cancelDraft = label => {
+        const button = document.querySelector('[data-v2-work-log-import-cancel]');
+        if (!button) throw new Error("UI smoke: daily report draft cancel (" + label + ")");
+        button.click();
+      };
+      const homeHas = (selector, label) => {
+        tap('[data-v2-back]', "settings → home (" + label + ")");
+        const found = Boolean(document.querySelector(selector));
+        tap('[data-v2-go="settings"]', "home → settings (" + label + ")");
+        return found;
+      };
+      try {
+        localStorage.setItem(REPORT_API_KEY, JSON.stringify({endpoint:INBOX, token:"smoke"}));
+        S.workProjects = (S.workProjects || []).concat([{id:"smoke-report-project", name:"UI smoke 日報の案件", color:"#7AA7F0", note:""}]);
+        const timing = {start:"09:00", end:"18:00", breakMinutes:45, actualWorkMinutes:495, workSessions:[{start:"09:00", end:"18:00"}]};
+        // 1) 打刻だけの日（字の無い下書きあり）は、押さずに入り、打刻が残り、受信箱へ確認済みを送る
+        S.workLogs["2099-03-01"] = clone(timing);
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({day:"2099-03-01", data:Object.assign(clone(timing), {projectIds:[], workItemIds:[], workDescriptions:{}, projectReviews:{}, done:""}), updatedAt:Date.now()}));
+        inbox = [report("2099-03-01", "UI smoke 日報の案件", "自動の中身")];
+        await checkInbox("auto");
+        const day1 = S.workLogs["2099-03-01"];
+        if (!JSON.stringify(day1?.projectReviews || {}).includes("自動の中身") || acks.join(",") !== "2099-03-01") throw new Error("UI smoke: daily report auto import");
+        if (day1.start !== "09:00" || day1.end !== "18:00" || day1.breakMinutes !== 45 || day1.actualWorkMinutes !== 495 || day1.workSessions?.length !== 1) throw new Error("UI smoke: daily report auto import keeps timing");
+        if (!homeHas('[data-v2-daily-report-imported]', "auto") ) throw new Error("UI smoke: daily report auto import home line");
+        // 2) その日に中身がある日は入れずに知らせを出す。確認画面で上書きを押すと入る（押す取り込みは今のまま）
+        S.workLogs["2099-03-02"] = Object.assign(clone(timing), {projectIds:["smoke-report-project"], projectReviews:{"smoke-report-project":{done:"手で書いた中身"}}});
+        const before2 = JSON.stringify(S.workLogs["2099-03-02"]);
+        inbox = [report("2099-03-02", "UI smoke 日報の案件", "日報の中身")];
+        await checkInbox("existing content");
+        const toastText = () => document.getElementById("toast")?.textContent || "";
+        if (JSON.stringify(S.workLogs["2099-03-02"]) !== before2 || acks.includes("2099-03-02") || !toastText().includes("理由: その日に中身がある")) throw new Error("UI smoke: daily report stops on existing content");
+        if (!homeHas('[data-v2-daily-report-open]', "existing content")) throw new Error("UI smoke: daily report notice on existing content");
+        const overwrite = document.querySelector('[data-v2-work-log-import-confirm][data-v2-work-log-import-overwrite]');
+        if (!overwrite || overwrite.disabled) throw new Error("UI smoke: daily report manual overwrite button");
+        overwrite.click();
+        await pause(60);
+        if (!JSON.stringify(S.workLogs["2099-03-02"]?.projectReviews || {}).includes("日報の中身") || S.workLogs["2099-03-02"].start !== "09:00" || !acks.includes("2099-03-02")) throw new Error("UI smoke: daily report manual import");
+        // 3) 知らない案件名は入れない
+        inbox = [report("2099-03-03", "UI smoke 知らない案件", "知らない案件の中身")];
+        await checkInbox("unknown project");
+        // 確定の処理も未解決の案件を断るので、止めた理由の字で自動の側の判定を見る
+        if (S.workLogs["2099-03-03"] || acks.includes("2099-03-03") || !document.querySelector('[data-v2-work-log-import-cancel]') || !toastText().includes("理由: 知らない案件名")) throw new Error("UI smoke: daily report stops on unknown project");
+        cancelDraft("unknown project");
+        // 4) その日の下書きに字がある日は入れない（取り込みは下書きを捨てるため）
+        S.workLogs["2099-03-04"] = clone(timing);
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({day:"2099-03-04", data:Object.assign(clone(timing), {done:"書きかけ"}), updatedAt:Date.now()}));
+        inbox = [report("2099-03-04", "UI smoke 日報の案件", "下書きの日の中身")];
+        await checkInbox("draft text");
+        if (JSON.stringify(S.workLogs["2099-03-04"]).includes("下書きの日の中身") || acks.includes("2099-03-04") || !String(localStorage.getItem(DRAFT_KEY)).includes("書きかけ") || !toastText().includes("理由: その日の下書きに字がある")) throw new Error("UI smoke: daily report stops on draft text");
+        cancelDraft("draft text");
+      } finally {
+        window.fetch = savedFetch2;
+        if (savedApi === null) localStorage.removeItem(REPORT_API_KEY); else localStorage.setItem(REPORT_API_KEY, savedApi);
+        if (savedDraft === null) localStorage.removeItem(DRAFT_KEY); else localStorage.setItem(DRAFT_KEY, savedDraft);
+        S = normalize(savedS2); localStorage.setItem(KEY, JSON.stringify(S)); render();
+      }
+    }
     document.documentElement.dataset.uiSmoke = "ok";
   } catch (error) {
     document.documentElement.dataset.uiSmoke = "failed: " + error.message;
@@ -398,7 +477,7 @@ if ($uiV2 -notmatch 'benefitOverview' -or $uiV2 -notmatch 'data-v2-benefit-flip'
 "OK  毎日の予定終了日と傷病手当パネルあり"
 if ($uiV2 -notmatch 'function isWorkScheduleEvent' -or $uiV2 -notmatch 'function futureWorkScheduleCount' -or $uiV2 -notmatch 'function deleteFutureWorkSchedules' -or $uiV2 -notmatch 'data-v2-work-future-clear' -or $paper -notmatch '\.an-flow-work-clear') { Write-Error "明日以降の仕事予定一括削除契約がありません" }
 "OK  明日以降の仕事予定一括削除契約あり"
-if ($uiV2 -notmatch 'DAILY_REPORT_API_KEY' -or $uiV2 -notmatch 'dailyReportApiRequest\("/v1/daily-reports/pending"\)' -or $uiV2 -notmatch 'v1/daily-reports/.+?/ack' -or $uiV2 -notmatch 'data-v2-daily-report-api-check' -or $uiV2 -notmatch 'workLogImportDraft=\{name:`共有API') { Write-Error "共有APIの日報未確認受信契約がありません" }
+if ($uiV2 -notmatch 'DAILY_REPORT_API_KEY' -or $uiV2 -notmatch 'dailyReportApiRequest\("/v1/daily-reports/pending"\)' -or $uiV2 -notmatch 'v1/daily-reports/.+?/ack' -or $uiV2 -notmatch 'data-v2-daily-report-api-check' -or $uiV2 -notmatch 'const draft=\{name:`共有API' -or $uiV2 -notmatch 'async function commitWorkLogImport' -or $uiV2 -notmatch 'function dailyReportAutoImportBlock' -or $uiV2 -notmatch 'data-v2-daily-report-imported') { Write-Error "共有APIの日報未確認受信契約（自動の取り込みと止める3つ）がありません" }
 "OK  共有APIの日報未確認受信契約あり"
 if ($src -notmatch 'function mergeSyncData' -or $src -notmatch 'function reconcileSync' -or $src -notmatch 'mainichi\.sync-base' -or ([regex]::Matches($src, 'reconcileSync\(S, remote(Raw)?, syncBase\(\)').Count -lt 2)) { Write-Error "端末同期の足し合わせ契約がありません" }
 "OK  端末同期の足し合わせ契約あり"

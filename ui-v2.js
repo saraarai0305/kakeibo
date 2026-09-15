@@ -203,6 +203,8 @@
   const DAILY_REPORT_API_KEY = "mainichi.daily-report-api";
   let dailyReportApiBusy = false;
   let dailyReportApiTimer = null;
+  // 自動で取り込んだ日（ホームに「日報を自動で取り込みました」の1行を出す。アプリを閉じるまで）
+  let dailyReportAutoImported = null;
   const WORK_LOG_IMPORT_FIELDS = [
     ["description", "仕事内容"], ["done", "やったこと・成果"], ["statusNote", "今の状況"],
     ["todo", "やること"], ["trial", "試行・メモ"], ["delivery", "納品・成果物"], ["next", "次回やること"]
@@ -344,27 +346,64 @@
       toast("日報は保存しましたが、APIへの確認済み通知に失敗しました");
     }
   }
+  // 届いた日報を押さずに取り込んでよいか。止める理由を返す（無ければ ""）。
+  // 2026-09-15 社長「取り込みは自動でやってほしい」→ 問いの画面 案1「開いたら自動・3つだけ止める」。止めたら今の知らせと確認画面に戻す
+  //   ①その日に中身がある: 取り込みは案件ごとの中身（workDescriptions・projectReviews）を置き換えるので、そこに字があれば止める
+  //   ②知らない案件名: 黙って新しい案件を作らない
+  //   ③その日を入力中か、その日の下書きに字がある: 取り込みはその日の下書きを捨てる。
+  //     打刻や開始・終了の確定もその日の下書きを書くので、下書きが在るだけでは止めない
+  const WORK_LOG_DRAFT_TEXT_FIELDS=["done","statusNote","todo","trial","delivery","next","implementation","quality","design","insight"];
+  function workLogFilledText(value){return typeof value==="string"&&value.trim()!=="";}
+  function workLogProjectTextFilled(record){
+    const descriptions=record?.workDescriptions&&typeof record.workDescriptions==="object"?record.workDescriptions:{};
+    const reviews=record?.projectReviews&&typeof record.projectReviews==="object"?record.projectReviews:{};
+    return Object.values(descriptions).some(workLogFilledText)||Object.values(reviews).some(review=>review&&typeof review==="object"&&Object.values(review).some(workLogFilledText));
+  }
+  function dailyReportAutoImportBlock(data){
+    // canWrite() は読み取り専用のとき毎回知らせを出すので、定期の確認では字を出さない isReadOnly() で見る
+    if(typeof isReadOnly==="function"&&isReadOnly())return "読み取り専用の端末";
+    if(!data?.ok)return "形が違う";
+    if(data.projects.some(item=>!item.project))return "知らない案件名";
+    if(workLogProjectTextFilled(S.workLogs?.[data.date]))return "その日に中身がある";
+    if(page==="workLog"&&workLogDate===data.date)return "その日を入力中";
+    const draft=workLogDraftFor(data.date);
+    if(draft&&(workLogProjectTextFilled(draft)||WORK_LOG_DRAFT_TEXT_FIELDS.some(key=>workLogFilledText(draft[key]))))return "その日の下書きに字がある";
+    return "";
+  }
+  // 端末同期の最中は、日報の同期先への反映（pushImportedWorkLog）が断られる。開いた直後は同期と重なりやすいので待つ
+  function deviceSyncBusy(){return (typeof syncing!=="undefined"&&syncing)||(typeof healthSyncing!=="undefined"&&healthSyncing);}
   async function pullDailyReportApi(silent=false){
     const c=dailyReportApiCfg();
     if(!dailyReportApiTarget()||dailyReportApiBusy||workLogImportDraft)return {skipped:true};
     dailyReportApiBusy=true;
+    let retry=false;
     try{
       const payload=await dailyReportApiRequest("/v1/daily-reports/pending"),entries=dailyReportApiEntryList(payload);
       c.lastCheck=new Date().toISOString();delete c.lastError;c.lastPending=entries.length>0;setDailyReportApiCfg(c);
       if(!entries.length){if(!silent)toast("未確認の日報はありません");return {pending:0};}
       const entry=entries[0],raw=entry.report||entry.payload||entry.data||entry;
       const data=parseWorkLogImport(typeof raw==="string"?raw:JSON.stringify(raw),`API日報${raw?.date||""}.json`);
-      workLogImportDraft={name:`共有API：${raw?.date||"日報"}`,data,resolutions:{},apiId:String(entry.id||entry.reportId||"")};
+      const draft={name:`共有API：${raw?.date||"日報"}`,data,resolutions:{},apiId:String(entry.id||entry.reportId||"")};
       // 定期の確認で届いたときは、ホームと設定を見ている間だけ描き直す（ほかの画面の入力中の字を消さない）。
-      // 描き直さなかった画面では、次に描いたときにホームの知らせが出る
-      if(!silent||page==="home"||page==="settings"){newAppRender();keepWorkLogImportDetailsOpen(true);}
-      toast("未確認の日報を受信しました。内容を確認してください");
-      return {pending:entries.length,data};
+      // 描き直さなかった画面では、次に描いたときにホームの知らせ（または取り込んだ1行）が出る
+      const redraw=!silent||page==="home"||page==="settings";
+      const block=dailyReportAutoImportBlock(data);
+      if(!block){
+        if(deviceSyncBusy()){retry=true;return {pending:entries.length,deferred:true};}
+        c.lastPending=entries.length>1;setDailyReportApiCfg(c);
+        const result=await commitWorkLogImport(draft,{overwrite:true,redraw,auto:true});
+        if(result.ok){if(entries.length>1)retry=true;return {pending:entries.length,imported:data.date};}
+        c.lastPending=true;setDailyReportApiCfg(c);
+      }
+      workLogImportDraft=draft;
+      if(redraw){newAppRender();keepWorkLogImportDetailsOpen(true);}
+      toast(block?`未確認の日報を受信しました。自動で取り込まなかった理由: ${block}。内容を確認してください`:"未確認の日報を受信しました。内容を確認してください");
+      return {pending:entries.length,data,block};
     }catch(error){
       c.lastCheck=new Date().toISOString();c.lastError=error.message||"日報APIを確認できませんでした";setDailyReportApiCfg(c);
       if(!silent)toast(`日報APIを確認できませんでした: ${c.lastError}`);
       return {pending:0,error};
-    }finally{dailyReportApiBusy=false;}
+    }finally{dailyReportApiBusy=false;if(retry)setTimeout(()=>pullDailyReportApi(true),3000);}
   }
   function startDailyReportApiLoop(){
     clearInterval(dailyReportApiTimer);
@@ -1173,7 +1212,7 @@
     const work=group("work","work","work","仕事","予定・実績・日報をまとめる",[["flow","blue","calendar","仕事の時間割","予定と現在時刻を見る",`data-v2-open-flow-filter="work"`],["workBoard","blue","list","仕事の一覧","優先度ごとに次の行動を見る"],["workLog","blue","work","仕事の記録","作業・休憩・日報を残す"]]);
     const life=group("life","life","life","生活","お金・こころとからだを記録する",[["moneyRecord","green","money","支出・収入","金額、方法、カテゴリーを記録"],["healthRecord","green","heart","こころとからだ","今日の調子を記録"],["checklist","yellow","list","生活の習慣・やること","今日の習慣と予定を確認"]]);
     const review=group("review","review","chart","見える化","記録した変化を振り返る",[["moneyAnalysis","purple","money","お金の分析","支払い方法とカテゴリーの傾向"],["healthAnalysis","purple","body","体調の分析","睡眠・歩数・こころ・からだ"]]);
-    return `<section class="v2-page an-page an-home"><main class="an-home-content"><div class="an-home-brand">${appBrand()}</div><p class="an-home-positioning">${PRODUCT_PROMISE}</p><div class="an-home-meta"><div class="an-home-date"><span>今日</span><time data-v2-live-date>${dateLabel(ymd(d))}</time></div><strong data-v2-live-time>${time}</strong></div><section class="an-home-shortcuts" aria-label="ショートカット"><div><h2>ショートカット</h2><button type="button" data-v2-shortcuts-open>編集</button></div><div class="an-home-shortcut-grid">${shortcuts.map(tile).join("")}</div><div id="v2ShortcutArea"></div></section><div class="an-home-groups">${work}${life}${review}</div>${workLogImportDraft?.apiId?`<button type="button" class="an-home-report-notice" data-v2-go="settings" data-v2-daily-report-open><span>未確認の日報</span><strong>${esc2(workLogImportDraft.data?.date||"")}</strong><b>確認する</b></button>`:""}<button type="button" class="an-home-settings" data-v2-go="settings">${icon("settings")}<span>設定</span></button></main></section>`;
+    return `<section class="v2-page an-page an-home"><main class="an-home-content"><div class="an-home-brand">${appBrand()}</div><p class="an-home-positioning">${PRODUCT_PROMISE}</p><div class="an-home-meta"><div class="an-home-date"><span>今日</span><time data-v2-live-date>${dateLabel(ymd(d))}</time></div><strong data-v2-live-time>${time}</strong></div><section class="an-home-shortcuts" aria-label="ショートカット"><div><h2>ショートカット</h2><button type="button" data-v2-shortcuts-open>編集</button></div><div class="an-home-shortcut-grid">${shortcuts.map(tile).join("")}</div><div id="v2ShortcutArea"></div></section><div class="an-home-groups">${work}${life}${review}</div>${workLogImportDraft?.apiId?`<button type="button" class="an-home-report-notice" data-v2-go="settings" data-v2-daily-report-open><span>未確認の日報</span><strong>${esc2(workLogImportDraft.data?.date||"")}</strong><b>確認する</b></button>`:dailyReportAutoImported?`<p class="an-home-report-notice is-imported" role="status" data-v2-daily-report-imported><span>日報を自動で取り込みました</span><strong>${esc2(dailyReportAutoImported.date||"")}</strong></p>`:""}<button type="button" class="an-home-settings" data-v2-go="settings">${icon("settings")}<span>設定</span></button></main></section>`;
   }
   function branch(kind){
     const groups={
@@ -2597,8 +2636,8 @@
   }
   function dailyReportApiPanel(){
     const c=dailyReportApiCfg(),ackError=c.lastAckError?`<p class="an-import-warning">${esc2(c.lastAckError)}</p>`:"";
-    const pending=c.lastPending?"未確認の日報があります。下の日報取り込みで内容を確認してください。":"未確認の日報を待機中です。API受信後も自動保存はしません。";
-    return `<p>Claude Codeが送信した日報だけを受信します。受信後は内容を確認してから取り込みます。家計・残高・体調・端末全体データは送信しません。</p>${!(c.endpoint&&c.token)&&schedulePushReady()?`<p class="an-settings-help">予定の通知サーバーにつないだ端末なので、URLとトークンを入れなくても通知サーバーの受信箱を確認します。</p>`:""}<label>日報APIのURL</label><input id="v2DailyReportApiEndpoint" type="url" value="${esc2(c.endpoint||"")}" placeholder="https://example.com"><label>日報APIトークン</label><input id="v2DailyReportApiToken" type="password" autocomplete="off" placeholder="この端末だけに保存"><div class="an-sync-actions"><button class="an-small-action" data-v2-daily-report-api-save>接続設定を保存</button><button class="an-small-action" data-v2-daily-report-api-check ${dailyReportApiTarget()?"":"disabled"}>未確認の日報を確認</button></div><p data-v2-daily-report-api-status>${esc2(pending)}</p>${ackError}`;
+    const pending=c.lastPending?"未確認の日報があります。下の日報取り込みで内容を確認してください。":"未確認の日報を待機中です。届いた日報は、開いている間に自動で取り込みます（その日に中身がある・知らない案件名・その日を入力中のときは確認を待ちます）。";
+    return `<p>Claude Codeが送信した日報だけを受信し、開いている間に自動で取り込みます。確認が要る日だけ、内容を確認してから取り込みます。家計・残高・体調・端末全体データは送信しません。</p>${!(c.endpoint&&c.token)&&schedulePushReady()?`<p class="an-settings-help">予定の通知サーバーにつないだ端末なので、URLとトークンを入れなくても通知サーバーの受信箱を確認します。</p>`:""}<label>日報APIのURL</label><input id="v2DailyReportApiEndpoint" type="url" value="${esc2(c.endpoint||"")}" placeholder="https://example.com"><label>日報APIトークン</label><input id="v2DailyReportApiToken" type="password" autocomplete="off" placeholder="この端末だけに保存"><div class="an-sync-actions"><button class="an-small-action" data-v2-daily-report-api-save>接続設定を保存</button><button class="an-small-action" data-v2-daily-report-api-check ${dailyReportApiTarget()?"":"disabled"}>未確認の日報を確認</button></div><p data-v2-daily-report-api-status>${esc2(pending)}</p>${ackError}`;
   }
   function settingsV2(){
     const device=syncCfg(), health=healthSyncCfg(), dailyReportApi=dailyReportApiCfg(), benefit=Object.assign({start:"2026-01",units:18,nextApplicationStart:"2026-08-01",applicationMonths:"",applicationDays:""},S.benefit||{});
@@ -2632,19 +2671,23 @@
     if(!confirm){ return; }
     event.stopImmediatePropagation();
     if(!canWrite()||confirm.disabled||!workLogImportDraft?.data?.ok) return;
-    const data=workLogImportDraft.data,apiId=workLogImportDraft.apiId||"";
+    await commitWorkLogImport(workLogImportDraft,{overwrite:confirm.hasAttribute("data-v2-work-log-import-overwrite")});
+  },true);
+  // 日報の取り込みの確定。確認画面で押したときと、届いた日報を自動で取り込むとき（pullDailyReportApi）の共通（2026-09-15 切り出し）。
+  // redraw: 描き直すか（定期の確認でほかの画面にいるときは描き直さない）／auto: 自動で取り込んだ（ホームに1行・知らせの字）
+  async function commitWorkLogImport(draft,{overwrite=false,redraw=true,auto=false}={}){
+    const data=draft.data,apiId=draft.apiId||"";
     const existingRecord=S.workLogs?.[data.date];
-    const overwrite=confirm.hasAttribute("data-v2-work-log-import-overwrite");
-    if(existingRecord&&Object.keys(existingRecord).length&&!overwrite) return toast("既存の日報を上書きする場合は専用ボタンを使ってください");
+    if(existingRecord&&Object.keys(existingRecord).length&&!overwrite){toast("既存の日報を上書きする場合は専用ボタンを使ってください");return {ok:false};}
     const reviews={},descriptions={},projectNames={},projectIds=[];
     const aliases=workLogProjectAliases();
     for(const [index,item] of data.projects.entries()){
       let project=item.project;
       if(!project){
-        const resolution=workLogImportDraft.resolutions?.[index]||"";
+        const resolution=draft.resolutions?.[index]||"";
         if(resolution==="new") project=ensureWorkProject(item.projectName);
         else if(resolution.startsWith("existing:")) project=workProjectOf(resolution.slice("existing:".length));
-        if(!project)return toast("未解決のプロジェクトがあります");
+        if(!project){toast("未解決のプロジェクトがあります");return {ok:false};}
         const name=String(item.projectName||"").trim();
         if(name)aliases[name]=project.id;
       }
@@ -2666,7 +2709,7 @@
       projectIds,projectNames,workItemIds:[],workDescriptions:descriptions,projectReviews:reviews,
       // 旧形式の単一プロジェクト項目が新しい選択へ混ざらないよう、先頭だけを整合させる。
       projectId:projectIds[0]||"",workItemId:"",project:projectNames[projectIds[0]]||"",workItem:"",
-      importedFrom:workLogImportDraft.name||"日報ファイル",importedAt:new Date().toISOString()
+      importedFrom:draft.name||"日報ファイル",importedAt:new Date().toISOString()
     });
     if(!hasPreviousTiming){
       importedRecord.breakMinutes=Math.max(0,+data.breakMinutes||0);
@@ -2686,21 +2729,24 @@
     try{ clearTimeout(syncTimer); syncTimer=null; }catch(e){}
     // 取り込み前の日付下書きが保存値を隠さないよう、確定した日だけ破棄する。
     clearWorkLogDraft(data.date);
-    workLogImportDraft=null; newAppRender();
+    workLogImportDraft=null;
+    if(auto)dailyReportAutoImported={date:data.date};
+    if(redraw)newAppRender();
     const syncCfgNow=typeof syncCfg==="function"?syncCfg():{};
     if(syncCfgNow.token&&syncCfgNow.gistId&&syncCfgNow.role!=="ro"&&typeof pushImportedWorkLog==="function"){
       try{ localStorage.setItem("mainichi.pending-work-log-sync",JSON.stringify({day:data.date,record:importedRecordForSync,createdAt:new Date().toISOString()})); }catch(e){}
       toast("日報を同期先へ反映中…");
       const syncResult=await pushImportedWorkLog(data.date,importedRecordForSync);
-      if(syncResult.ok) successToast(overwrite?"日報を上書きし、同期先へ反映しました":"日報を取り込み、同期先へ反映しました");
+      if(syncResult.ok) successToast(auto?`日報（${data.date}）を自動で取り込み、同期先へ反映しました`:overwrite?"日報を上書きし、同期先へ反映しました":"日報を取り込み、同期先へ反映しました");
       else toast("日報はこの端末に保存しましたが、同期先へ反映できませんでした");
     }else if(syncCfgNow.token&&syncCfgNow.gistId&&syncCfgNow.role==="ro"){
       toast("読み取り専用のため、同期先へ反映できませんでした");
     }else{
-      successToast(overwrite?"日報を上書きしました（端末内保存）":"日報を取り込みました（端末内保存）");
+      successToast(auto?`日報（${data.date}）を自動で取り込みました（端末内保存）`:overwrite?"日報を上書きしました（端末内保存）":"日報を取り込みました（端末内保存）");
     }
     if(apiId)void acknowledgeDailyReportApi(apiId);
-  },true);
+    return {ok:true};
+  }
   root.addEventListener("click",event=>{
     const toggle=event.target.closest("[data-v2-success-notices]");
     if(!toggle) return;

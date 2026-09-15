@@ -1334,3 +1334,6 @@ body[data-app-shell="v2"]{min-height:100dvh!important}
 .an-home-report-notice{display:flex!important;align-items:center!important;gap:8px!important;width:100%!important;margin:10px 0 0!important;padding:10px 12px!important;border:0!important;border-left:4px solid #d2a449!important;border-radius:8px!important;background:#fbf4df!important;color:#856d2f!important;font-family:inherit!important;font-size:12px!important;font-weight:800!important;text-align:left!important;cursor:pointer!important}
 .an-home-report-notice strong{color:#6f5a26!important;font-weight:800!important}
 .an-home-report-notice b{margin-left:auto!important;color:#315674!important;font-weight:800!important}
+/* 自動で取り込んだ日報の1行（2026-09-15）: 押す物ではないので、知らせの形のまま色を落ち着いた緑にする */
+.an-home-report-notice.is-imported{border-left-color:#4f986f!important;background:#e9f3ec!important;color:#3d6b50!important;cursor:default!important}
+.an-home-report-notice.is-imported strong{color:#2f5a42!important}
