@@ -502,6 +502,14 @@ window.addEventListener("load", () => setTimeout(async () => {
       const names7 = Object.fromEntries(renamed.workProjects.map(p => [p.id, p.name]));
       if (names7.r1 !== "制作｜IRIAM" || names7.r2 !== "開発｜モーション自動化" || names7.r3 !== "PC・環境の整備" || names7.r4 !== "日本語入力" || renamed.workLogProjectAliases["モーション自動化"] !== "r2" || renamed.workLogProjectAliases["IRIAM"] !== "old-id" || renamed.areas.find(a => a.id === "r1")?.label !== "制作｜IRIAM") throw new Error("UI smoke: department rename " + JSON.stringify([names7, renamed.workLogProjectAliases]));
       if (JSON.stringify(normalize(clone(renamed)).workProjects) !== JSON.stringify(renamed.workProjects)) throw new Error("UI smoke: department rename twice");
+      // 仕組みづくりの部署を一度だけ足す（2026-09-21 社長「動いている6部署」）: 決まった ID・同じ名があれば足さない・印があれば消した部署を戻さない
+      const seeded = normalize({workProjects:[{id:"x-bunseki", name:"分析"}]});
+      const seedNames = n => seeded.workProjects.filter(p => p.name === n).length;
+      if (["情報システム","分析","秘書","参謀","総務","企画"].some(n => seedNames(n) !== 1) || seeded.workProjects.find(p => p.name === "情報システム")?.id !== "dept-joho-system" || seeded.workProjects.some(p => p.id === "dept-bunseki") || seeded.workProjectSeeds?.["departments-2026-09-21"] !== true || !seeded.areas.some(a => a.id === "dept-hisho" && a.label === "秘書")) throw new Error("UI smoke: department seed " + JSON.stringify(seeded.workProjects.map(p => [p.id, p.name])));
+      const removed = clone(seeded); removed.workProjects = removed.workProjects.filter(p => p.name !== "参謀");
+      if (normalize(removed).workProjects.some(p => p.name === "参謀")) throw new Error("UI smoke: department seed comes back after delete");
+      const otherDevice = normalize({workProjects:[]}), thisDevice = normalize({workProjects:[]});
+      if (JSON.stringify(otherDevice.workProjects.map(p => p.id)) !== JSON.stringify(thisDevice.workProjects.map(p => p.id))) throw new Error("UI smoke: department seed ids differ by device");
       const tidy7 = normalize({workLogs:{"2099-05-01":{projectAiMinutes:{a:1500, b:-1, c:"あ", d:30.6, e:0}, projectHandMinutes:{f:20}}, "2099-05-09":{start:"09:00"}}}).workLogs;
       if (Object.keys(tidy7["2099-05-01"].projectAiMinutes || {}).sort().join(",") !== "d,e" || tidy7["2099-05-01"].projectAiMinutes.d !== 31 || tidy7["2099-05-01"].projectHandMinutes?.f !== 20 || Object.prototype.hasOwnProperty.call(tidy7["2099-05-09"], "projectAiMinutes") || Object.prototype.hasOwnProperty.call(tidy7["2099-05-09"], "projectHandMinutes")) throw new Error("UI smoke: ai hand normalize");
       const INBOX7 = "https://smoke-inbox-aihand.test", API_KEY7 = "mainichi.daily-report-api", DRAFT_KEY7 = "mainichi.worklog-draft.v1";

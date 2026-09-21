@@ -6,7 +6,7 @@
 <title>LIFE NOTE</title>
 <link rel="manifest" href="manifest.webmanifest">
 <script src="design-system.js"></script>
-<link rel="stylesheet" href="ui-v2.css?v=0.32.18">
+<link rel="stylesheet" href="ui-v2.css?v=0.32.19">
 <meta name="theme-color" content="#F6EFDE">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -784,8 +784,8 @@ body[data-tab="cal"]:not([data-cal-page="check"]) #checklistPage{display:none!im
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:1ms!important;animation-iteration-count:1!important;transition-duration:1ms!important}}
 </style>
 <!-- 旧画面のインラインCSSより後に読み込み、紙面UIを最終スタイルとして適用する。 -->
-<link rel="stylesheet" href="ui-analog.css?v=0.32.18">
-<link rel="stylesheet" href="ui-paper-baseline.css?v=0.32.18">
+<link rel="stylesheet" href="ui-analog.css?v=0.32.19">
+<link rel="stylesheet" href="ui-paper-baseline.css?v=0.32.19">
 <link rel="stylesheet" href="design-foundation.css">
 </head>
 <body data-tab="home">
@@ -1421,7 +1421,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.32.18";         // version.txt と一致させること
+const BUILD = "0.32.19";         // version.txt と一致させること
 const KEY = "mainichi.v1";
 // 仕事の案件を部署名へ付け替える表（2026-09-21 社長「日報の案件を部署名に合わせる」→ 問いの画面「部署名に付け替える」）。
 // 09-21 に社長の案件にあった名だけ。ここに無い名（PC・環境の整備など）は触らない。新しい部署は日報の projectKind="department" で足す
@@ -1432,6 +1432,17 @@ const WORK_PROJECT_DEPARTMENT_RENAMES = [
   ["Text engine", "開発｜Text engine"],
   ["日本語入力", "開発｜日本語入力"],
   ["自己管理アプリ", "アプリ開発｜くらしのしるし"],
+];
+// 仕組みづくりの部署を案件として一度だけ足す（2026-09-21 社長「仕組みづくりの方もすべて部署ごとに」→ 問いの画面「動いている6部署」）。
+// ID は決まった字＝どの端末で足しても同じ案件になり、同期で2つに増えない。足した印（workProjectSeeds）も同期するので、社長が後で消した部署は戻らない
+const WORK_PROJECT_DEPARTMENT_SEED_ID = "departments-2026-09-21";
+const WORK_PROJECT_DEPARTMENT_SEEDS = [
+  ["dept-joho-system", "情報システム"],
+  ["dept-bunseki", "分析"],
+  ["dept-hisho", "秘書"],
+  ["dept-sanbou", "参謀"],
+  ["dept-soumu", "総務"],
+  ["dept-kikaku", "企画"],
 ];
 // 一日の流れを主役にし、週／月のカレンダーは必要なときだけその下に開く。
 (() => {
@@ -1557,6 +1568,16 @@ function normalize(o){
     p.name = to;
     if(!s.workLogProjectAliases[from]) s.workLogProjectAliases[from] = p.id;
     if(Array.isArray(s.areas)) for(const a of s.areas) if(a && a.id===p.id && String(a.label||"").trim()===from) a.label = to;
+  }
+  if(!s.workProjectSeeds || typeof s.workProjectSeeds !== "object" || Array.isArray(s.workProjectSeeds)) s.workProjectSeeds = {};
+  if(!s.workProjectSeeds[WORK_PROJECT_DEPARTMENT_SEED_ID]){
+    if(!Array.isArray(s.areas)) s.areas = [];
+    for(const [id,name] of WORK_PROJECT_DEPARTMENT_SEEDS){
+      if(s.workProjects.some(x=>x && (x.id===id || String(x.name||"").trim()===name))) continue;
+      s.workProjects.push({id, name, color:"#7AA7F0", note:""});
+      if(!s.areas.some(a=>a && a.id===id)) s.areas.push({id, label:name, color:"#7AA7F0", urgent:false, note:""});
+    }
+    s.workProjectSeeds[WORK_PROJECT_DEPARTMENT_SEED_ID] = true;
   }
   for(const item of s.workItems){
     if(!item || typeof item !== "object") continue;
@@ -4821,6 +4842,6 @@ if("serviceWorker" in navigator &&
   navigator.serviceWorker.register("sw.js?v=" + BUILD, {updateViaCache:"none"}).catch(()=>{});
 }
 </script>
-<script defer src="ui-v2.js?v=0.32.18"></script>
+<script defer src="ui-v2.js?v=0.32.19"></script>
 </body>
 </html>
