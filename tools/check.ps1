@@ -495,6 +495,102 @@ window.addEventListener("load", () => setTimeout(async () => {
         S = normalize(savedS3); localStorage.setItem(KEY, JSON.stringify(S)); render();
       }
     }
+    // AI の分＋手の分（2026-09-21 社長 案1「AI＋手の和」・「部署名に付け替える」）: 案件名の付け替え・整え・部署の日報の取り込み・
+    // 古い形の日報は今までどおり止める・形の違い・手の分を残す・月の分析・分析の画面の2色・仕事の記録で手の分を直して保存・同期先への付け替え
+    {
+      const renamed = normalize({workProjects:[{id:"r1", name:"IRIAM"}, {id:"r2", name:"モーション自動化"}, {id:"r3", name:"PC・環境の整備"}, {id:"r4", name:"日本語入力"}, {id:"r5", name:"開発｜日本語入力"}], areas:[{id:"r1", label:"IRIAM"}], workLogProjectAliases:{"IRIAM":"old-id"}});
+      const names7 = Object.fromEntries(renamed.workProjects.map(p => [p.id, p.name]));
+      if (names7.r1 !== "制作｜IRIAM" || names7.r2 !== "開発｜モーション自動化" || names7.r3 !== "PC・環境の整備" || names7.r4 !== "日本語入力" || renamed.workLogProjectAliases["モーション自動化"] !== "r2" || renamed.workLogProjectAliases["IRIAM"] !== "old-id" || renamed.areas.find(a => a.id === "r1")?.label !== "制作｜IRIAM") throw new Error("UI smoke: department rename " + JSON.stringify([names7, renamed.workLogProjectAliases]));
+      if (JSON.stringify(normalize(clone(renamed)).workProjects) !== JSON.stringify(renamed.workProjects)) throw new Error("UI smoke: department rename twice");
+      const tidy7 = normalize({workLogs:{"2099-05-01":{projectAiMinutes:{a:1500, b:-1, c:"あ", d:30.6, e:0}, projectHandMinutes:{f:20}}, "2099-05-09":{start:"09:00"}}}).workLogs;
+      if (Object.keys(tidy7["2099-05-01"].projectAiMinutes || {}).sort().join(",") !== "d,e" || tidy7["2099-05-01"].projectAiMinutes.d !== 31 || tidy7["2099-05-01"].projectHandMinutes?.f !== 20 || Object.prototype.hasOwnProperty.call(tidy7["2099-05-09"], "projectAiMinutes") || Object.prototype.hasOwnProperty.call(tidy7["2099-05-09"], "projectHandMinutes")) throw new Error("UI smoke: ai hand normalize");
+      const INBOX7 = "https://smoke-inbox-aihand.test", API_KEY7 = "mainichi.daily-report-api", DRAFT_KEY7 = "mainichi.worklog-draft.v1";
+      const savedFetch7 = window.fetch, savedApi7 = localStorage.getItem(API_KEY7), savedDraft7 = localStorage.getItem(DRAFT_KEY7), savedS7 = clone(S);
+      const toast7 = () => document.getElementById("toast")?.textContent || "";
+      let inbox7 = [];
+      window.fetch = async (url, opts) => {
+        const u = String(url);
+        if (!u.startsWith(INBOX7)) return savedFetch7(url, opts);
+        if (u.endsWith("/v1/daily-reports/pending")) return {ok:true, status:200, json: async () => ({reports: inbox7.map(item => ({id:item.date, report:item}))})};
+        const ack = u.match(/\/v1\/daily-reports\/([^/]+)\/ack$/);
+        if (ack) { inbox7 = inbox7.filter(item => item.date !== decodeURIComponent(ack[1])); return {ok:true, status:200, json: async () => ({status:"imported"})}; }
+        return {ok:false, status:404, json: async () => ({})};
+      };
+      const pull7 = async label => {
+        newAppRender();
+        const button = document.querySelector('[data-v2-daily-report-api-check]');
+        if (!button || button.disabled) throw new Error("UI smoke: ai hand check button (" + label + ")");
+        button.click();
+        await pause(60);
+      };
+      const dept7 = (date, projects, kind = "department") => Object.assign({format:"mainichi.daily-report.v1", date, start:"", end:"", breakMinutes:0, projects}, kind ? {projectKind:kind} : {});
+      try {
+        localStorage.setItem(API_KEY7, JSON.stringify({endpoint:INBOX7, token:"smoke"}));
+        localStorage.removeItem(DRAFT_KEY7);
+        S.workProjects = (S.workProjects || []).concat([{id:"smoke-dep-a", name:"UI smoke 部署A", color:"#7AA7F0", note:""}]);
+        // 1) 部署の日報: 知らない名は新しい案件として足し、2つの分がその日の記録に入る（押さずに入る）
+        inbox7 = [dept7("2099-05-02", [{projectName:"UI smoke 部署A", aiMinutes:120, handMinutes:30, done:"A の中身"}, {projectName:"UI smoke 部署B", aiMinutes:60, done:"B の中身"}])];
+        await pull7("department");
+        const d2 = S.workLogs["2099-05-02"] || {}, newB = (S.workProjects || []).find(p => p && p.name === "UI smoke 部署B");
+        if (!newB) throw new Error("UI smoke: department import creates project");
+        if (d2.projectAiMinutes?.["smoke-dep-a"] !== 120 || d2.projectAiMinutes?.[newB.id] !== 60 || d2.projectHandMinutes?.["smoke-dep-a"] !== 30 || Object.prototype.hasOwnProperty.call(d2.projectHandMinutes || {}, newB.id)) throw new Error("UI smoke: ai hand import " + JSON.stringify(d2));
+        // 2) 古い形の日報（projectKind 無し）は、知らない名で今までどおり止める
+        inbox7 = [dept7("2099-05-03", [{projectName:"UI smoke 知らない", done:"中身"}], "")];
+        await pull7("old unknown");
+        if (S.workLogs["2099-05-03"] || (S.workProjects || []).some(p => p && p.name === "UI smoke 知らない") || !toast7().includes("理由: 知らない案件名")) throw new Error("UI smoke: old format unknown still stops");
+        document.querySelector('[data-v2-work-log-import-cancel]')?.click();
+        // 3) 形の違う分（小数）は取り込まず、読み込めない理由を出す
+        inbox7 = [dept7("2099-05-04", [{projectName:"UI smoke 部署A", aiMinutes:30.5}])];
+        await pull7("invalid");
+        if (S.workLogs["2099-05-04"] || !document.body.textContent.includes("aiMinutes・handMinutesは0〜1440の整数")) throw new Error("UI smoke: ai hand invalid stops import");
+        document.querySelector('[data-v2-work-log-import-cancel]')?.click();
+        // 4) 送り直し: AI の分は新しい値に替え、手の分はその日にすでにあれば残す
+        S.workLogs["2099-05-05"] = {projectIds:["smoke-dep-a"], projectAiMinutes:{"smoke-dep-a":10}, projectHandMinutes:{"smoke-dep-a":45}};
+        inbox7 = [dept7("2099-05-05", [{projectName:"UI smoke 部署A", aiMinutes:200, handMinutes:5}])];
+        await pull7("resend");
+        document.querySelector('[data-v2-work-log-import-overwrite]')?.click();
+        await pause(60);
+        const d5 = S.workLogs["2099-05-05"] || {};
+        if (d5.projectAiMinutes?.["smoke-dep-a"] !== 200 || d5.projectHandMinutes?.["smoke-dep-a"] !== 45) throw new Error("UI smoke: ai hand resend " + JSON.stringify(d5));
+        inbox7 = [];
+        // 5) 月の分析（見本は手で計算）: 5/2 A=120+30・B=60／5/5 A=200+45／5/6 割合の日 100分×50:50／5/7 欄はあるが0分＝割合も時間も無い日
+        S.workLogs["2099-05-06"] = {projectIds:["smoke-dep-a", newB.id], projectPercents:{"smoke-dep-a":50, [newB.id]:50}, actualWorkMinutes:100};
+        S.workLogs["2099-05-07"] = {projectIds:["smoke-dep-a"], projectAiMinutes:{"smoke-dep-a":0}};
+        const share7 = window.mainichiWorkShareForMonth("2099-05");
+        const want7 = [["UI smoke 部署A", 445, 80, 320, 75], ["UI smoke 部署B", 110, 20, 60, 0]];
+        if (JSON.stringify(share7.list.map(row => [row.name, row.minutes, row.percent, row.ai, row.hand])) !== JSON.stringify(want7) || share7.total !== 555 || JSON.stringify(share7.days) !== JSON.stringify({timed:3, untimed:0, none:1})) throw new Error("UI smoke: ai hand month share " + JSON.stringify(share7));
+        // 6) 分析の画面: 今月に AI の分・手の分の日があれば、帯に手の色と凡例が出る
+        const today7 = ymd(now());
+        S.workLogs[today7] = {projectIds:["smoke-dep-a"], projectAiMinutes:{"smoke-dep-a":90}, projectHandMinutes:{"smoke-dep-a":30}};
+        localStorage.removeItem(DRAFT_KEY7);
+        tap('[data-v2-back]', "settings → home (ai hand analysis)");
+        openHomeGroup("review", "review group (ai hand analysis)");
+        tap('[data-v2-go="workAnalysis"]', "review group → work analysis (ai hand)");
+        const row7 = [...document.querySelectorAll('[data-v2-work-share-row]')].find(row => row.textContent.includes("UI smoke 部署A"));
+        if (!row7 || row7.dataset.v2WorkShareAi !== "90" || row7.dataset.v2WorkShareHand !== "30" || !row7.querySelector("b.is-hand") || !document.querySelector('[data-v2-work-share-legend]')) throw new Error("UI smoke: ai hand analysis page");
+        tap('[data-v2-back]', "work analysis → home (ai hand)");
+        // 7) 仕事の記録の画面: AI の分は読むだけで出て、割合の欄は出ない。手の分を直して保存すると AI の分は残る
+        openHomeGroup("work", "work group (ai hand)");
+        tap('[data-v2-go="workLog"]', "work group → work log (ai hand)");
+        const ai7 = document.querySelector('[data-v2-work-ai="smoke-dep-a"]'), hand7 = document.querySelector('[data-v2-work-hand="smoke-dep-a"]');
+        if (!ai7?.textContent.includes("1時間30分") || hand7?.value !== "30" || document.querySelector('[data-v2-work-percent="smoke-dep-a"]') || !document.querySelector('[data-v2-work-ai-hand-total]')?.textContent.includes("2時間0分")) throw new Error("UI smoke: ai hand fields");
+        hand7.value = "25"; hand7.dispatchEvent(new Event("input", {bubbles:true}));
+        if (!document.querySelector('[data-v2-work-ai-hand-total]')?.textContent.includes("1時間55分")) throw new Error("UI smoke: ai hand total follows input");
+        tap('[data-v2-work-save]', "ai hand save");
+        const saved7 = S.workLogs[today7] || {};
+        if (saved7.projectAiMinutes?.["smoke-dep-a"] !== 90 || saved7.projectHandMinutes?.["smoke-dep-a"] !== 25) throw new Error("UI smoke: ai hand save " + JSON.stringify(saved7));
+        tap('[data-v2-back]', "work log → home (ai hand)");
+        tap('[data-v2-go="settings"]', "home → settings (ai hand)");
+        // 8) 日報を同期先へ反映するとき、案件の ID が同期先の ID に付け替わっても2つの分が付いてくる
+        const merged8 = mergeImportedWorkCatalog({workProjects:[{id:"remote-dep-a", name:"UI smoke 部署A", color:"#7AA7F0", note:""}], areas:[]}, {projectIds:["smoke-dep-a"], projectNames:{"smoke-dep-a":"UI smoke 部署A"}, projectAiMinutes:{"smoke-dep-a":120}, projectHandMinutes:{"smoke-dep-a":30}, workDescriptions:{}, projectReviews:{}});
+        if (merged8.projectAiMinutes?.["remote-dep-a"] !== 120 || merged8.projectHandMinutes?.["remote-dep-a"] !== 30 || Object.prototype.hasOwnProperty.call(merged8.projectAiMinutes || {}, "smoke-dep-a")) throw new Error("UI smoke: ai hand sync remap");
+      } finally {
+        window.fetch = savedFetch7;
+        if (savedApi7 === null) localStorage.removeItem(API_KEY7); else localStorage.setItem(API_KEY7, savedApi7);
+        if (savedDraft7 === null) localStorage.removeItem(DRAFT_KEY7); else localStorage.setItem(DRAFT_KEY7, savedDraft7);
+        S = normalize(savedS7); localStorage.setItem(KEY, JSON.stringify(S)); render();
+      }
+    }
     document.documentElement.dataset.uiSmoke = "ok";
   } catch (error) {
     document.documentElement.dataset.uiSmoke = "failed: " + error.message;

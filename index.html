@@ -6,7 +6,7 @@
 <title>LIFE NOTE</title>
 <link rel="manifest" href="manifest.webmanifest">
 <script src="design-system.js"></script>
-<link rel="stylesheet" href="ui-v2.css?v=0.32.17">
+<link rel="stylesheet" href="ui-v2.css?v=0.32.18">
 <meta name="theme-color" content="#F6EFDE">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -784,8 +784,8 @@ body[data-tab="cal"]:not([data-cal-page="check"]) #checklistPage{display:none!im
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:1ms!important;animation-iteration-count:1!important;transition-duration:1ms!important}}
 </style>
 <!-- 旧画面のインラインCSSより後に読み込み、紙面UIを最終スタイルとして適用する。 -->
-<link rel="stylesheet" href="ui-analog.css?v=0.32.17">
-<link rel="stylesheet" href="ui-paper-baseline.css?v=0.32.17">
+<link rel="stylesheet" href="ui-analog.css?v=0.32.18">
+<link rel="stylesheet" href="ui-paper-baseline.css?v=0.32.18">
 <link rel="stylesheet" href="design-foundation.css">
 </head>
 <body data-tab="home">
@@ -1421,8 +1421,18 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.32.17";         // version.txt と一致させること
+const BUILD = "0.32.18";         // version.txt と一致させること
 const KEY = "mainichi.v1";
+// 仕事の案件を部署名へ付け替える表（2026-09-21 社長「日報の案件を部署名に合わせる」→ 問いの画面「部署名に付け替える」）。
+// 09-21 に社長の案件にあった名だけ。ここに無い名（PC・環境の整備など）は触らない。新しい部署は日報の projectKind="department" で足す
+const WORK_PROJECT_DEPARTMENT_RENAMES = [
+  ["IRIAM", "制作｜IRIAM"],
+  ["【新規】Nintendo インディーゲーム", "制作｜Nintendo PV"],
+  ["モーション自動化", "開発｜モーション自動化"],
+  ["Text engine", "開発｜Text engine"],
+  ["日本語入力", "開発｜日本語入力"],
+  ["自己管理アプリ", "アプリ開発｜くらしのしるし"],
+];
 // 一日の流れを主役にし、週／月のカレンダーは必要なときだけその下に開く。
 (() => {
   const day = document.getElementById("calendarDayPage");
@@ -1537,6 +1547,17 @@ function normalize(o){
     if(typeof p.color !== "string" || !p.color) p.color="#7AA7F0";
     if(typeof p.note !== "string") p.note="";
   }
+  // 案件を部署名へ付け替える（2026-09-21 社長 問いの画面「部署名に付け替える」）。ID はそのまま＝過去の記録も新しい名で並ぶ。
+  // 旧い名は日報の読み替え（workLogProjectAliases）に残す＝秘書が部署名に切り替えるまでの日報も「知らない案件名」で止めない。
+  // 名前が旧い名と一字一句同じ案件だけを替える（社長が自分で付け直した名は触らない）。一度替えれば当たらなくなるので、何度読み込んでも同じ
+  if(!s.workLogProjectAliases || typeof s.workLogProjectAliases !== "object" || Array.isArray(s.workLogProjectAliases)) s.workLogProjectAliases = {};
+  for(const [from,to] of WORK_PROJECT_DEPARTMENT_RENAMES){
+    const p = s.workProjects.find(x=>x && typeof x === "object" && String(x.name||"").trim()===from);
+    if(!p || s.workProjects.some(x=>x && String(x.name||"").trim()===to)) continue;
+    p.name = to;
+    if(!s.workLogProjectAliases[from]) s.workLogProjectAliases[from] = p.id;
+    if(Array.isArray(s.areas)) for(const a of s.areas) if(a && a.id===p.id && String(a.label||"").trim()===from) a.label = to;
+  }
   for(const item of s.workItems){
     if(!item || typeof item !== "object") continue;
     if(typeof item.id !== "string" || !item.id) item.id=uid();
@@ -1616,6 +1637,16 @@ function normalize(o){
         const percent = Number(w.projectPercents[id]);
         if(!Number.isFinite(percent) || percent < 0 || percent > 100) delete w.projectPercents[id];
         else w.projectPercents[id] = Math.round(percent);
+      }
+    }
+    // AI の分・手の分（2026-09-21 社長 案1「AI＋手の和」）: 案件 ID → 0〜1440 の整数の分。割合と同じく、欄がある記録だけ整える
+    for(const key of ["projectAiMinutes","projectHandMinutes"]){
+      if(w[key] === undefined) continue;
+      if(!w[key] || typeof w[key] !== "object" || Array.isArray(w[key])){ delete w[key]; continue; }
+      for(const id of Object.keys(w[key])){
+        const minutes = Number(w[key][id]);
+        if(!Number.isFinite(minutes) || minutes < 0 || minutes > 1440) delete w[key][id];
+        else w[key][id] = Math.round(minutes);
       }
     }
   }
@@ -4291,6 +4322,8 @@ function mergeImportedWorkCatalog(remote, record){
   const merged=Object.assign({},record,{projectIds,projectNames,projectId:idMap[record.projectId]||record.projectId||projectIds[0]||"",workDescriptions:remap(record.workDescriptions),projectReviews:remap(record.projectReviews)});
   // 勤怠の割合（2026-09-15）: 中身・評価と同じく、案件の ID を同期先の ID に付け替える（付け替えないと別の端末で別の案件に付くか消える）
   if(record.projectPercents && typeof record.projectPercents === "object") merged.projectPercents=remap(record.projectPercents);
+  // AI の分・手の分（2026-09-21）も同じ理由で付け替える
+  for(const key of ["projectAiMinutes","projectHandMinutes"]) if(record[key] && typeof record[key] === "object") merged[key]=remap(record[key]);
   merged.project=projectNames[merged.projectId]||merged.project||"";
   remote.workLogProjectAliases=remote.workLogProjectAliases&&typeof remote.workLogProjectAliases==="object"?remote.workLogProjectAliases:{};
   for(const [name,id] of Object.entries(S.workLogProjectAliases||{})) if(idMap[id]) remote.workLogProjectAliases[name]=idMap[id];
@@ -4788,6 +4821,6 @@ if("serviceWorker" in navigator &&
   navigator.serviceWorker.register("sw.js?v=" + BUILD, {updateViaCache:"none"}).catch(()=>{});
 }
 </script>
-<script defer src="ui-v2.js?v=0.32.17"></script>
+<script defer src="ui-v2.js?v=0.32.18"></script>
 </body>
 </html>

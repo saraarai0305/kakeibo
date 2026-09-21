@@ -380,6 +380,10 @@ body[data-app-shell="v2"]{min-height:100dvh!important}
 .an-work-project-percent{margin-top:2px!important}.an-work-project-percent select{font-variant-numeric:tabular-nums!important}
 .an-work-percent-total{margin:8px 0 0!important;color:#315674!important;font-size:12px!important;font-weight:800!important;font-variant-numeric:tabular-nums!important}.an-work-percent-total.is-off{color:#a4553f!important}
 .an-work-share-days{margin:6px 0 0!important;color:#68726a!important;font-size:11px!important;line-height:1.5!important}
+/* AI の分・手の分（2026-09-21）: 仕事の分析の帯を AI（濃い色）と手（薄い色）に分けて横に並べる。仕事の記録では AI の分を読むだけで出し、手の分を入れる欄を置く */
+.an-bar[data-v2-work-share-row] i{display:flex!important}.an-bar[data-v2-work-share-row] i b{flex:none!important;border-radius:0!important}.an-bar[data-v2-work-share-row] i b.is-hand{opacity:.42!important}
+.an-work-share-legend{display:flex!important;flex-wrap:wrap!important;align-items:center!important;gap:4px 8px!important;margin:6px 0 0!important;color:#68726a!important;font-size:11px!important;line-height:1.5!important}.an-work-share-legend span{display:inline-block!important;width:14px!important;height:8px!important;border-radius:2px!important;background:#4d80ad!important}.an-work-share-legend span.is-hand{opacity:.42!important}
+.an-work-ai-hand{display:grid!important;gap:6px!important;margin:8px 0 0!important}.an-work-ai-minutes{margin:0!important;color:#315674!important;font-size:12px!important;font-weight:750!important}.an-work-ai-minutes strong{font-variant-numeric:tabular-nums!important}.an-work-ai-minutes small{margin-left:4px!important;color:#68726a!important;font-size:11px!important;font-weight:650!important}
 @media(max-width:390px){.an-home-focus{padding:12px!important}.an-home-focus>header h1{font-size:20px!important}.an-home-focus-action strong{font-size:15px!important}.an-home-share-row{grid-template-columns:minmax(0,1fr) auto!important}.an-home-share-row small{grid-column:1/-1}}
 
 /* 2026-08-10: direct schedule editing, unified health comparison and a
