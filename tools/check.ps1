@@ -716,6 +716,11 @@ $args = @("--headless","--disable-gpu","--virtual-time-budget=4000",
 $psi = New-Object System.Diagnostics.ProcessStartInfo
 $psi.FileName = $chrome
 $psi.UseShellExecute = $false
+# Chrome が %TEMP% に残す scoped_dir*・部品の包み *.tmp も専用プロファイルの中へ（下で消える）。
+# 2026-09-23 情報システム: 画面なしの Chrome の残りが Temp に1万個・34GB たまっていた
+$null = New-Item -ItemType Directory -Force $profile
+$psi.EnvironmentVariables["TEMP"] = $profile
+$psi.EnvironmentVariables["TMP"] = $profile
 $psi.CreateNoWindow = $true
 $psi.RedirectStandardOutput = $true
 $psi.RedirectStandardError = $true
