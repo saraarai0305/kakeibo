@@ -531,7 +531,9 @@ window.addEventListener("load", () => setTimeout(async () => {
         button.click();
         await pause(60);
       };
-      const dept7 = (date, projects, kind = "department") => Object.assign({format:"mainichi.daily-report.v1", date, start:"", end:"", breakMinutes:0, projects}, kind ? {projectKind:kind} : {});
+      // 部署の日報には、送る道具（nippou_okuru.py）が会社の部署名の一覧を departmentNames で添える（2026-09-25 社長「部署名にある名前だけ足す」）
+      const LIST7 = ["UI smoke 部署A", "UI smoke 部署B"];
+      const dept7 = (date, projects, kind = "department", names = LIST7) => Object.assign({format:"mainichi.daily-report.v1", date, start:"", end:"", breakMinutes:0, projects}, kind ? {projectKind:kind} : {}, kind && names ? {departmentNames:names} : {});
       try {
         localStorage.setItem(API_KEY7, JSON.stringify({endpoint:INBOX7, token:"smoke"}));
         localStorage.removeItem(DRAFT_KEY7);
@@ -547,26 +549,55 @@ window.addEventListener("load", () => setTimeout(async () => {
         await pull7("old unknown");
         if (S.workLogs["2099-05-03"] || (S.workProjects || []).some(p => p && p.name === "UI smoke 知らない") || !toast7().includes("理由: 知らない案件名")) throw new Error("UI smoke: old format unknown still stops");
         document.querySelector('[data-v2-work-log-import-cancel]')?.click();
+        // 2b) 部署の日報でも、添えた部署名の一覧に無い名（書き違い）は足さずに止める
+        inbox7 = [dept7("2099-05-13", [{projectName:"UI smoke 部署A", aiMinutes:10}, {projectName:"UI smoke 部署Ｂ", aiMinutes:5}])];
+        await pull7("department typo");
+        if (S.workLogs["2099-05-13"] || (S.workProjects || []).some(p => p && p.name === "UI smoke 部署Ｂ") || !toast7().includes("理由: 知らない案件名")) throw new Error("UI smoke: department name not in list stops");
+        document.querySelector('[data-v2-work-log-import-cancel]')?.click();
+        // 2c) 部署名の一覧が無い部署の日報も、知らない名は足さずに止める
+        inbox7 = [dept7("2099-05-14", [{projectName:"UI smoke 部署C", aiMinutes:10}], "department", null)];
+        await pull7("department no list");
+        if (S.workLogs["2099-05-14"] || (S.workProjects || []).some(p => p && p.name === "UI smoke 部署C") || !toast7().includes("理由: 知らない案件名")) throw new Error("UI smoke: department report without list stops");
+        document.querySelector('[data-v2-work-log-import-cancel]')?.click();
+        // 2f) 確認画面（その日に中身があって自動では入らない日）でも、一覧にある新しい部署名は「新しい部署として追加」と出て、選ばずに押せる
+        S.workLogs["2099-05-15"] = {projectIds:["smoke-dep-a"], workDescriptions:{"smoke-dep-a":"前の中身"}};
+        inbox7 = [dept7("2099-05-15", [{projectName:"UI smoke 部署D", aiMinutes:10}], "department", LIST7.concat(["UI smoke 部署D"]))];
+        await pull7("department confirm screen");
+        const confirm2f = document.querySelector('[data-v2-work-log-import-overwrite]') || document.querySelector('[data-v2-work-log-import-confirm]');
+        if (!document.querySelector('[data-v2-work-log-import-department]') || !confirm2f || confirm2f.disabled || (S.workProjects || []).some(p => p && p.name === "UI smoke 部署D")) throw new Error("UI smoke: department confirm screen");
+        document.querySelector('[data-v2-work-log-import-cancel]')?.click();
+        inbox7 = []; delete S.workLogs["2099-05-15"];
+        // 2d) 手で入れた実作業分だけがある日に部署の日報が入ると、古い実作業分は外れ、月の分析は AI＋手で数える
+        S.workLogs["2099-06-01"] = {projectIds:["smoke-dep-a"], projectMinutes:{"smoke-dep-a":500}, actualWorkMinutes:500};
+        inbox7 = [dept7("2099-06-01", [{projectName:"UI smoke 部署A", aiMinutes:100, handMinutes:20}])];
+        await pull7("stale minutes");
+        const d61 = S.workLogs["2099-06-01"] || {}, share61 = window.mainichiWorkShareForMonth("2099-06");
+        if (d61.projectAiMinutes?.["smoke-dep-a"] !== 100 || Object.prototype.hasOwnProperty.call(d61, "projectMinutes") || share61.total !== 120) throw new Error("UI smoke: stale work minutes on ai hand day " + JSON.stringify([d61, share61]));
+        // 2e) 前から実作業分と AI の分が並んでいた日も、分析は AI＋手で数える
+        S.workLogs["2099-06-02"] = {projectIds:["smoke-dep-a"], projectMinutes:{"smoke-dep-a":500}, projectAiMinutes:{"smoke-dep-a":40}};
+        if (window.mainichiWorkShareForMonth("2099-06").total !== 160) throw new Error("UI smoke: analysis prefers ai hand over stored minutes");
+        delete S.workLogs["2099-06-01"]; delete S.workLogs["2099-06-02"];
         // 3) 形の違う分（小数）は取り込まず、読み込めない理由を出す
         inbox7 = [dept7("2099-05-04", [{projectName:"UI smoke 部署A", aiMinutes:30.5}])];
         await pull7("invalid");
         if (S.workLogs["2099-05-04"] || !document.body.textContent.includes("aiMinutes・handMinutesは0〜1440の整数")) throw new Error("UI smoke: ai hand invalid stops import");
         document.querySelector('[data-v2-work-log-import-cancel]')?.click();
-        // 4) 送り直し: AI の分は新しい値に替え、手の分はその日にすでにあれば残す
-        S.workLogs["2099-05-05"] = {projectIds:["smoke-dep-a"], projectAiMinutes:{"smoke-dep-a":10}, projectHandMinutes:{"smoke-dep-a":45}};
-        inbox7 = [dept7("2099-05-05", [{projectName:"UI smoke 部署A", aiMinutes:200, handMinutes:5}])];
+        // 4) 送り直し: AI の分は新しい値に替え、手の分はその日にすでにある案件だけ残す（前に無い案件の手の分は日報の値を足す）
+        S.workLogs["2099-05-05"] = {projectIds:["smoke-dep-a"], projectAiMinutes:{"smoke-dep-a":10}, projectHandMinutes:{"smoke-dep-a":45}, workDescriptions:{"smoke-dep-a":"前の中身"}};
+        inbox7 = [dept7("2099-05-05", [{projectName:"UI smoke 部署A", aiMinutes:200, handMinutes:5}, {projectName:"UI smoke 部署B", handMinutes:20}])];
         await pull7("resend");
         document.querySelector('[data-v2-work-log-import-overwrite]')?.click();
         await pause(60);
         const d5 = S.workLogs["2099-05-05"] || {};
-        if (d5.projectAiMinutes?.["smoke-dep-a"] !== 200 || d5.projectHandMinutes?.["smoke-dep-a"] !== 45) throw new Error("UI smoke: ai hand resend " + JSON.stringify(d5));
+        if (d5.projectAiMinutes?.["smoke-dep-a"] !== 200 || d5.projectHandMinutes?.["smoke-dep-a"] !== 45 || d5.projectHandMinutes?.[newB.id] !== 20) throw new Error("UI smoke: ai hand resend " + JSON.stringify(d5));
         inbox7 = [];
-        // 5) 月の分析（見本は手で計算）: 5/2 A=120+30・B=60／5/5 A=200+45／5/6 割合の日 100分×50:50／5/7 欄はあるが0分＝割合も時間も無い日
+        // 5) 月の分析（見本は手で計算）: 5/2 A=120+30・B=60／5/5 A=200+45・B=0+20／5/6 割合の日 100分×50:50／5/7 欄はあるが0分＝割合も時間も無い日
+        //    A=150+245+50=445（AI 320・手 75）・B=60+20+50=130（AI 60・手 20）・計575＝A 77%・B 23%
         S.workLogs["2099-05-06"] = {projectIds:["smoke-dep-a", newB.id], projectPercents:{"smoke-dep-a":50, [newB.id]:50}, actualWorkMinutes:100};
         S.workLogs["2099-05-07"] = {projectIds:["smoke-dep-a"], projectAiMinutes:{"smoke-dep-a":0}};
         const share7 = window.mainichiWorkShareForMonth("2099-05");
-        const want7 = [["UI smoke 部署A", 445, 80, 320, 75], ["UI smoke 部署B", 110, 20, 60, 0]];
-        if (JSON.stringify(share7.list.map(row => [row.name, row.minutes, row.percent, row.ai, row.hand])) !== JSON.stringify(want7) || share7.total !== 555 || JSON.stringify(share7.days) !== JSON.stringify({timed:3, untimed:0, none:1})) throw new Error("UI smoke: ai hand month share " + JSON.stringify(share7));
+        const want7 = [["UI smoke 部署A", 445, 77, 320, 75], ["UI smoke 部署B", 130, 23, 60, 20]];
+        if (JSON.stringify(share7.list.map(row => [row.name, row.minutes, row.percent, row.ai, row.hand])) !== JSON.stringify(want7) || share7.total !== 575 || JSON.stringify(share7.days) !== JSON.stringify({timed:3, untimed:0, none:1})) throw new Error("UI smoke: ai hand month share " + JSON.stringify(share7));
         // 6) 分析の画面: 今月に AI の分・手の分の日があれば、帯に手の色と凡例が出る
         const today7 = ymd(now());
         S.workLogs[today7] = {projectIds:["smoke-dep-a"], projectAiMinutes:{"smoke-dep-a":90}, projectHandMinutes:{"smoke-dep-a":30}};
@@ -587,6 +618,23 @@ window.addEventListener("load", () => setTimeout(async () => {
         tap('[data-v2-work-save]', "ai hand save");
         const saved7 = S.workLogs[today7] || {};
         if (saved7.projectAiMinutes?.["smoke-dep-a"] !== 90 || saved7.projectHandMinutes?.["smoke-dep-a"] !== 25) throw new Error("UI smoke: ai hand save " + JSON.stringify(saved7));
+        // 7b) 手の分に 0〜1440 の整数でない値（2000）を入れて保存しても、丸めて入れず、理由を出して前の値を残す
+        //     保存すると入力欄は空の形に戻るので、ホームへ戻って開き直す
+        tap('[data-v2-back]', "work log → home (ai hand reopen)");
+        openHomeGroup("work", "work group (ai hand reopen)");
+        tap('[data-v2-go="workLog"]', "work group → work log (ai hand reopen)");
+        const hand7b = document.querySelector('[data-v2-work-hand="smoke-dep-a"]');
+        if (!hand7b || hand7b.value !== "25") throw new Error("UI smoke: ai hand field after reopen");
+        hand7b.value = "2000"; hand7b.dispatchEvent(new Event("input", {bubbles:true}));
+        tap('[data-v2-work-save]', "ai hand save invalid");
+        if (S.workLogs[today7]?.projectHandMinutes?.["smoke-dep-a"] !== 25 || !toast7().includes("0〜1440の整数")) throw new Error("UI smoke: ai hand invalid input is not clamped " + JSON.stringify([S.workLogs[today7]?.projectHandMinutes, toast7()]));
+        // 7c) 行を全部外してから足し直しても、AI・手の日は AI・手の欄で出る（割合・実作業分の欄は出ない）
+        //     （流し込んだ本物のデータの今日の予定から別の案件の行も出るので、1つずつ全部外す）
+        for (let i = 0; i < 20 && document.querySelector('[data-v2-work-project-remove]'); i++) document.querySelector('[data-v2-work-project-remove]').click();
+        if (document.querySelector('[data-v2-work-hand]') || document.querySelector('[data-v2-work-project-row]')) throw new Error("UI smoke: ai hand rows removed " + JSON.stringify([...document.querySelectorAll('[data-v2-work-project-row]')].map(r => r.dataset.v2WorkProject)));
+        selectValue('#v2WorkProjectAdd', "smoke-dep-a", "ai hand add row again");
+        const again7 = document.querySelector('[data-v2-work-project-row][data-v2-work-project="smoke-dep-a"]');
+        if (!again7 || again7.querySelector('[data-v2-work-hand]')?.value !== "25" || again7.querySelector('[data-v2-work-percent],[data-v2-work-minutes]') || again7.querySelector('[data-v2-work-ai]')?.dataset.v2WorkAiValue !== "90") throw new Error("UI smoke: ai hand row added again keeps ai hand fields");
         tap('[data-v2-back]', "work log → home (ai hand)");
         tap('[data-v2-go="settings"]', "home → settings (ai hand)");
         // 8) 日報を同期先へ反映するとき、案件の ID が同期先の ID に付け替わっても2つの分が付いてくる

@@ -278,24 +278,28 @@
     if(projects.some(item=>item.aiMinutes===false||item.handMinutes===false)) errors.push("aiMinutes・handMinutesは0〜1440の整数で指定してください");
     const actualRaw=raw?.actualWorkMinutes==null?"":String(raw.actualWorkMinutes).trim();
     if(actualRaw!==""&&!/^\d+$/.test(actualRaw)) errors.push("actualWorkMinutesは0以上の分数で指定してください");
-    const resolved=projects.map(item=>{
-      const project=resolveWorkLogProject(item.projectId,item.projectName);
-      return Object.assign({},item,{project});
-    });
     // 案件名が部署名の日報（2026-09-21 社長「案件を部署名に合わせる・仕組みづくりの席も部署ごとに」）: 知らない名を新しい案件として足してよい印
     const projectKind=String(raw?.projectKind||"").trim()==="department"?"department":"";
+    // 足してよいのは、日報に添えた会社の部署名の一覧（departmentNames・送る道具が会社の見出しと席から作る）にある名前だけ（2026-09-25 社長 01:48「部署名にある名前だけ足す形にしてください」）。
+    // 一覧に無い名・一覧の無い日報は、古い形と同じく「知らない案件名」で止める（書き違いで案件が二重にならない）
+    const departmentNames=projectKind==="department"&&Array.isArray(raw?.departmentNames)?raw.departmentNames.map(name=>String(name||"").trim()).filter(Boolean):[];
+    const resolved=projects.map(item=>{
+      const project=resolveWorkLogProject(item.projectId,item.projectName);
+      return Object.assign({},item,{project,addAsDepartment:!project&&departmentNames.includes(item.projectName)});
+    });
     return {ok:errors.length===0,errors,date,filename,projectKind,format:raw?.format||"markdown",start:String(raw?.start||raw?.workStart||"").trim(),end:String(raw?.end||raw?.workEnd||"").trim(),breakMinutes:raw?.breakMinutes==null?"":String(raw.breakMinutes).trim(),actualWorkMinutes:actualRaw,projects:resolved};
   }
   function workLogImportResolution(draft,item,index){
     const selected=draft.resolutions?.[index]||"";
     if(item.project)return `<span class="an-import-project-status is-linked">既存プロジェクトに自動紐付け</span>`;
+    if(item.addAsDepartment)return `<span class="an-import-project-status is-linked" data-v2-work-log-import-department>新しい部署として追加</span>`;
     const options=workProjects().map(project=>`<option value="existing:${esc2(project.id)}" ${selected===`existing:${project.id}`?"selected":""}>既存：${esc2(project.name)}</option>`).join("");
     return `<label class="an-import-project-resolution"><span>対応付け</span><select data-v2-work-log-project-resolution="${index}" ${canWrite()?"":"disabled"}><option value="" ${selected?"":"selected"}>選択してください</option>${options}${item.projectName?`<option value="new" ${selected==="new"?"selected":""}>新規プロジェクトとして登録</option>`:""}</select></label>`;
   }
   function syncWorkLogImportResolutionUI(){
     const draft=workLogImportDraft,data=draft?.data;
     if(!data?.ok)return;
-    const unresolved=data.projects.some((item,index)=>!item.project&&!draft.resolutions?.[index]);
+    const unresolved=data.projects.some((item,index)=>!item.project&&!item.addAsDepartment&&!draft.resolutions?.[index]);
     const confirm=root.querySelector("[data-v2-work-log-import-confirm]");
     // 既存日報用の確定ボタンも、未解決の対応付けが済めば押せるようにする。
     // 既存かどうかは専用の上書きボタン属性で判定しており、ここで無効化しない。
@@ -378,8 +382,8 @@
     // canWrite() は読み取り専用のとき毎回知らせを出すので、定期の確認では字を出さない isReadOnly() で見る
     if(typeof isReadOnly==="function"&&isReadOnly())return "読み取り専用の端末";
     if(!data?.ok)return "形が違う";
-    // 部署名の日報（projectKind="department"）だけは、知らない名を取り込みのときに新しい案件として足す（2026-09-21）
-    if(data.projectKind!=="department"&&data.projects.some(item=>!item.project))return "知らない案件名";
+    // 部署名の日報（projectKind="department"）で、添えた部署名の一覧にある名だけは、取り込みのときに新しい案件として足す（2026-09-21・09-25 一覧に絞った）
+    if(data.projects.some(item=>!item.project&&!item.addAsDepartment))return "知らない案件名";
     if(workLogProjectTextFilled(S.workLogs?.[data.date]))return "その日に中身がある";
     if(page==="workLog"&&workLogDate===data.date)return "その日を入力中";
     const draft=workLogDraftFor(data.date);
@@ -672,7 +676,7 @@
     const draft=workLogImportDraft;
     if(!draft) return `<p>指定した日報ファイルをこの端末で読み取り、内容を確認してから取り込みます。常時監視や自動上書きはしません。</p><label class="an-file-pick"><span class="an-file-pick-content">${icon("upload")}<span>日報ファイルを選ぶ</span></span><input id="v2WorkLogFile" type="file" accept=".json,.md,.markdown,.txt,application/json,text/markdown,text/plain"></label><small>JSON（mainichi.daily-report.v1）または定型Markdownに対応します。</small>`;
     if(!draft.data?.ok) return `<div class="an-import-preview is-error"><strong>読み込めません</strong><p>${esc2((draft.data?.errors||["形式を確認してください"]).join("／"))}</p><button type="button" class="an-small-action" data-v2-work-log-import-cancel>ファイルを選び直す</button></div>`;
-    const data=draft.data,existingRecord=S.workLogs?.[data.date],existing=Boolean(existingRecord&&Object.keys(existingRecord).length),unknown=data.projects.filter(item=>!item.project),unresolved=data.projects.some((item,index)=>!item.project&&!draft.resolutions?.[index]);
+    const data=draft.data,existingRecord=S.workLogs?.[data.date],existing=Boolean(existingRecord&&Object.keys(existingRecord).length),unknown=data.projects.filter(item=>!item.project&&!item.addAsDepartment),unresolved=data.projects.some((item,index)=>!item.project&&!item.addAsDepartment&&!draft.resolutions?.[index]);
     const confirmLabel=existing?"既存の日報を上書きして取り込む":"この内容を日報に取り込む";
     const confirmClass=existing?" an-import-overwrite":"";
     const confirmAttr=existing?" data-v2-work-log-import-overwrite":"";
@@ -680,7 +684,7 @@
       Boolean(existingRecord.start||existingRecord.end||existingRecord.workSessions?.length||existingRecord.breakSessions?.length)||
       Object.prototype.hasOwnProperty.call(existingRecord,"actualWorkMinutes")
     );
-    return `<div class="an-import-preview"><strong>取り込み内容を確認</strong><p><b>${esc2(data.date)}</b> ／ ${data.projects.length}プロジェクト ／ 休憩 ${esc2(data.breakMinutes||"0")}分 ／ 実作業時間 ${data.actualWorkMinutes===""?"未申告":formatWorkMinutes(data.actualWorkMinutes)}</p>${hasExistingTiming?`<p class="an-import-note">開始・終了・休憩・実作業時間は、この端末に保存されているスマホ側の値を保持します。</p>`:""}<ul>${data.projects.map((item,index)=>`<li><div><b>${esc2(item.projectName||item.projectId)}</b>${item.project?`<small>既存プロジェクトに自動紐付け</small>`:`<small data-v2-work-log-project-status="${index}">未解決のプロジェクト名</small>`}</div>${workLogImportResolution(draft,item,index)}</li>`).join("")}</ul>${existing?`<p class="an-import-warning">この日付には既存の日報があります。内容を確認すると、下のボタンで置き換えできます。</p>`:""}${unknown.length?`<p class="an-import-warning" data-v2-work-log-resolution-warning>未解決のプロジェクトは、既存への対応付けか新規登録を選んでください。</p>`:""}${!canWrite()?`<p class="an-import-warning">この端末は読み取り専用のため、取り込みはできません。</p>`:""}<div class="an-import-actions"><button type="button" class="an-small-action" data-v2-work-log-import-cancel>取り消す</button><button type="button" class="an-small-action an-import-confirm${confirmClass}" data-v2-work-log-import-confirm${confirmAttr} ${unresolved||!canWrite()?"disabled":""}>${confirmLabel}</button></div></div>`;
+    return `<div class="an-import-preview"><strong>取り込み内容を確認</strong><p><b>${esc2(data.date)}</b> ／ ${data.projects.length}プロジェクト ／ 休憩 ${esc2(data.breakMinutes||"0")}分 ／ 実作業時間 ${data.actualWorkMinutes===""?"未申告":formatWorkMinutes(data.actualWorkMinutes)}</p>${hasExistingTiming?`<p class="an-import-note">開始・終了・休憩・実作業時間は、この端末に保存されているスマホ側の値を保持します。</p>`:""}<ul>${data.projects.map((item,index)=>`<li><div><b>${esc2(item.projectName||item.projectId)}</b>${item.project?`<small>既存プロジェクトに自動紐付け</small>`:item.addAsDepartment?`<small>会社の部署名の一覧にある名前</small>`:`<small data-v2-work-log-project-status="${index}">未解決のプロジェクト名</small>`}</div>${workLogImportResolution(draft,item,index)}</li>`).join("")}</ul>${existing?`<p class="an-import-warning">この日付には既存の日報があります。内容を確認すると、下のボタンで置き換えできます。</p>`:""}${unknown.length?`<p class="an-import-warning" data-v2-work-log-resolution-warning>未解決のプロジェクトは、既存への対応付けか新規登録を選んでください。</p>`:""}${!canWrite()?`<p class="an-import-warning">この端末は読み取り専用のため、取り込みはできません。</p>`:""}<div class="an-import-actions"><button type="button" class="an-small-action" data-v2-work-log-import-cancel>取り消す</button><button type="button" class="an-small-action an-import-confirm${confirmClass}" data-v2-work-log-import-confirm${confirmAttr} ${unresolved||!canWrite()?"disabled":""}>${confirmLabel}</button></div></div>`;
   }
   // iOS/Safari can scroll a focused date input into view before `focusin`.
   // Keep a short history so a date change can restore the viewport from before
@@ -1263,7 +1267,12 @@
   // 画面の手の分の欄。欄が1つも無い（割合の日）なら null＝保存のとき前の値を残す
   function selectedWorkLogHandMinutes(){
     const inputs=[...root.querySelectorAll("[data-v2-work-hand]")];if(!inputs.length)return null;
-    const minutes={};inputs.forEach(input=>{const id=input.dataset.v2WorkHand,value=String(input.value||"").trim();if(id&&value!==""&&Number.isFinite(Number(value))&&Number(value)>=0)minutes[id]=Math.min(1440,Math.round(Number(value)));});return minutes;
+    // 取り込み（workImportMinutes）と同じ決まり＝0〜1440 の整数だけ。合わない値は丸めずに入れない（保存は invalidWorkLogHandInput で止めて理由を出す・2026-09-25 秘書の /code-review の4件目）
+    const minutes={};inputs.forEach(input=>{const id=input.dataset.v2WorkHand,value=workImportMinutes(String(input.value||"").trim());if(id&&Number.isInteger(value))minutes[id]=value;});return minutes;
+  }
+  function invalidWorkLogHandInput(){
+    // 数の欄に数でない字を打つと value は "" になる＝badInput で見分ける
+    return [...root.querySelectorAll("[data-v2-work-hand]")].find(input=>input.validity?.badInput||workImportMinutes(String(input.value||"").trim())===false)||null;
   }
   function workLogHandDraftField(){const hand=selectedWorkLogHandMinutes();return hand?{projectHandMinutes:hand}:{};}
   function paintWorkAiHandTotal(){
@@ -1279,11 +1288,11 @@
     element.textContent=total.text;element.classList.toggle("is-off",total.off);
   }
   // 月の仕事の分析。1日ずつ、案件ごとの分を決めて足す（時間を推測配分しない）:
+  //   AI の分・手の分がある日（2026-09-21 社長 案1）→ 案件ごとに AI の分＋手の分（実作業分・割合・実作業時間は使わない）
   //   その日の案件の全部に手で入れた実作業分がある日 → その分
   //   割合がある日で、その日の実作業時間がある日 → 実作業時間×割合÷その日の割合の合計
   //   案件が1つだけで割合が無く、実作業時間がある日 → その案件に実作業時間の全部
   //   割合はあるが実作業時間が無い日 → 時間の無い日（分に足さない）／割合も手の分も無い日 → 割合の無い日
-  //   AI の分・手の分がある日（2026-09-21 社長 案1）→ 案件ごとに AI の分＋手の分（割合と実作業時間は使わない）
   function workShareForMonth(monthKey){
     const byProject={},split={},days={timed:0,untimed:0,none:0};let total=0;
     for(const [date,record] of Object.entries(S.workLogs||{})){
@@ -1292,12 +1301,13 @@
       const stored=record.projectMinutes&&typeof record.projectMinutes==="object"&&!Array.isArray(record.projectMinutes)?record.projectMinutes:{};
       const dayMinutes=workLogMinutes(record);
       let rows=null;
-      if(ids.every(id=>Object.prototype.hasOwnProperty.call(stored,id)&&Number.isFinite(Number(stored[id])))&&ids.some(id=>Number(stored[id])>0))rows=ids.map(id=>[id,Number(stored[id])]);
-      else if(workLogUsesAiHand(record)){
+      // AI・手の日を先に見る: この日の画面には実作業分の欄が出ない＝残っていた実作業分は社長が見えず直せない値（2026-09-25 秘書の /code-review の1件目）
+      if(workLogUsesAiHand(record)){
         const parts=ids.map(id=>{const ai=workMinutesFor(record,"projectAiMinutes",id),hand=workMinutesFor(record,"projectHandMinutes",id),a=Number.isFinite(ai)?ai:0,h=Number.isFinite(hand)?hand:0;return [id,a+h,a,h];}).filter(([,minutes])=>minutes>0);
         if(!parts.length){days.none++;continue;}
         rows=parts;
       }
+      else if(ids.every(id=>Object.prototype.hasOwnProperty.call(stored,id)&&Number.isFinite(Number(stored[id])))&&ids.some(id=>Number(stored[id])>0))rows=ids.map(id=>[id,Number(stored[id])]);
       else{
         const percents=ids.map(id=>[id,workPercentFor(record,id)]).filter(([,percent])=>Number.isFinite(percent)&&percent>0),sum=percents.reduce((a,[,percent])=>a+percent,0);
         if(!sum&&ids.length===1&&Number.isFinite(dayMinutes)&&dayMinutes>0)rows=[[ids[0],dayMinutes]];
@@ -2845,7 +2855,7 @@
         const resolution=draft.resolutions?.[index]||"";
         if(resolution==="new") project=ensureWorkProject(item.projectName);
         else if(resolution.startsWith("existing:")) project=workProjectOf(resolution.slice("existing:".length));
-        else if(data.projectKind==="department") project=ensureWorkProject(item.projectName);
+        else if(item.addAsDepartment) project=ensureWorkProject(item.projectName);
         if(!project){toast("未解決のプロジェクトがあります");return {ok:false};}
         const name=String(item.projectName||"").trim();
         if(name)aliases[name]=project.id;
@@ -2871,20 +2881,21 @@
       importedFrom:draft.name||"日報ファイル",importedAt:new Date().toISOString()
     });
     // 勤怠の割合（2026-09-15 社長 案3）: 日報の案件の順と projectIds の順は同じ（上の繰り返しで1件ずつ足す）。
-    // その日に割合がすでにあれば残す（時間と同じく1回目が勝つ・アプリで付けた割合を黙って消さない）
+    // その日に割合がすでにある案件は前の値を残す（時間と同じく1回目が勝つ・アプリで付けた割合を黙って消さない）。
+    // 残すのは案件ごと＝前に無い案件の割合は日報の値を足す（2026-09-25 秘書の /code-review の2件目）
     const percents={};
     data.projects.forEach((item,index)=>{if(Number.isInteger(item.percent)&&projectIds[index])percents[projectIds[index]]=item.percent;});
-    const previousPercents=previous.projectPercents&&typeof previous.projectPercents==="object"&&!Array.isArray(previous.projectPercents)?previous.projectPercents:{};
-    if(Object.keys(previousPercents).length)importedRecord.projectPercents=Object.assign({},previousPercents);
-    else if(Object.keys(percents).length)importedRecord.projectPercents=percents;
+    const previousPercents=workMinutesMapOf(previous,"projectPercents");
+    if(Object.keys(previousPercents).length||Object.keys(percents).length)importedRecord.projectPercents=Object.assign({},percents,previousPercents);
     // AI の分・手の分（2026-09-21 社長 案1）: AI の分は会社が記録から数えた値なので、送り直せば新しい値に替える。
-    // 手の分は社長が iPhone で直せるので、その日にすでにあれば残す（割合と同じく1回目が勝つ）
+    // 手の分は社長が iPhone で直せるので、その日にすでにある案件は前の値を残す（割合と同じく案件ごと・09-25）
     const aiMinutes={},handMinutes={};
     data.projects.forEach((item,index)=>{const id=projectIds[index];if(!id)return;if(Number.isInteger(item.aiMinutes))aiMinutes[id]=item.aiMinutes;if(Number.isInteger(item.handMinutes))handMinutes[id]=item.handMinutes;});
     if(Object.keys(aiMinutes).length)importedRecord.projectAiMinutes=aiMinutes;
-    const previousHand=previous.projectHandMinutes&&typeof previous.projectHandMinutes==="object"&&!Array.isArray(previous.projectHandMinutes)?previous.projectHandMinutes:{};
-    if(Object.keys(previousHand).length)importedRecord.projectHandMinutes=Object.assign({},previousHand);
-    else if(Object.keys(handMinutes).length)importedRecord.projectHandMinutes=handMinutes;
+    const previousHand=workMinutesMapOf(previous,"projectHandMinutes");
+    if(Object.keys(previousHand).length||Object.keys(handMinutes).length)importedRecord.projectHandMinutes=Object.assign({},handMinutes,previousHand);
+    // AI・手の日は実作業分の欄を出さない＝前に手で入れた実作業分は見えず直せない。残すと月の分析を古い値で数えるので外す（09-25 1件目）
+    if(workLogUsesAiHand(importedRecord))delete importedRecord.projectMinutes;
     if(!hasPreviousTiming){
       importedRecord.breakMinutes=Math.max(0,+data.breakMinutes||0);
       importedRecord.actualWorkMinutes=data.actualWorkMinutes===""?null:Number(data.actualWorkMinutes);
@@ -3405,8 +3416,10 @@
       const list=root.querySelector("[data-v2-work-catalog-list]");
       if(projectId&&list&&!root.querySelector(`[data-v2-work-project-row][data-v2-work-project=\"${CSS.escape(projectId)}\"]`)){
         root.querySelector("[data-v2-work-project-empty]")?.remove();
-        const pageIndex=root.querySelectorAll("[data-v2-work-project-review]").length;
-        list.insertAdjacentHTML("beforeend",workProjectReviewHtml(projectId,document.getElementById("v2WorkDate")?.value||workLogDate||ymd(now()),"","",{},pageIndex,"",null,root.querySelector("[data-v2-work-hand]")?{ai:null,hand:null}:null));
+        const pageIndex=root.querySelectorAll("[data-v2-work-project-review]").length,dateKey=document.getElementById("v2WorkDate")?.value||workLogDate||ymd(now());
+        // AI・手の欄にするかは、その日の記録で決める（行を全部外した後でも同じ形・2026-09-25 秘書の /code-review の3件目）
+        const aiHandDay=workLogUsesAiHand(S.workLogs?.[dateKey])||workLogUsesAiHand(workLogDraftFor(dateKey))||Boolean(root.querySelector("[data-v2-work-hand]"));
+        list.insertAdjacentHTML("beforeend",workProjectReviewHtml(projectId,dateKey,"","",{},pageIndex,"",null,aiHandDay?workAiHandFor(S.workLogs?.[dateKey],projectId)||{ai:null,hand:null}:null));
       }
       event.target.value="";normalizeWorkLogDescriptions();syncWorkLogCatalog();syncWorkLogProjectPage(root.querySelectorAll("[data-v2-work-project-review]").length-1);persistWorkLogDraft(document.getElementById("v2WorkDate")?.value||workLogDate||ymd(now()));return;
     }
@@ -3508,6 +3521,8 @@
     const date=document.getElementById("v2WorkDate")?.value||workLogDate||ymd(now()),start=document.getElementById("v2WorkStart")?.value||"",end=document.getElementById("v2WorkEnd")?.value||"",breakMinutes=Math.max(0,Math.min(720,Math.round(Number(document.getElementById("v2WorkBreak")?.value)||0))),span=workLogSpan({start,end});
     if(span==null)return toast("作業開始と作業終了を入力してください");
     if(breakMinutes>span)return toast("休憩分は作業時間以内にしてください");
+    const badHand=invalidWorkLogHandInput();
+    if(badHand){badHand.focus();return toast("打ち合わせ・手作業の分は0〜1440の整数（分）で入れてください");}
     S.workLogs=S.workLogs&&typeof S.workLogs==="object"?S.workLogs:{};
     const previous=S.workLogs[date]||{},projectIds=selectedWorkLogProjects(),workItemIds=selectedWorkLogItems(),projectMinutes=selectedWorkLogMinutes(),workDescriptions=selectedWorkLogDescriptions(),projectReviews=selectedWorkLogReviews(),projectId=projectIds[0]||"",workItemId=workItemIds[0]||"",project=workProjectOf(projectId),item=workItemOf(workItemId),timeRecord=Object.assign({},previous,{start,end,breakMinutes});
     applyWorkTimeConfirmation(timeRecord,"start",start);applyWorkTimeConfirmation(timeRecord,"end",end);
