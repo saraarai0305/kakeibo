@@ -55,6 +55,8 @@ window.addEventListener("load", () => setTimeout(async () => {
     openHomeGroup('life', "home → life group");
     tap('[data-v2-go="moneyRecord"]', "home → 支出・収入");
     if (!document.querySelector('#v2Amount')) throw new Error("UI smoke: money form");
+    if (document.activeElement?.id !== 'v2Amount') throw new Error("UI smoke: money amount focus on open");
+    if (!document.querySelector('#v2Amount')?.closest('.mr-form-row')?.nextElementSibling?.matches('[data-v2-money-save]')) throw new Error("UI smoke: money save right under amount");
     tap('[data-v2-moneytype="borrowing"]', "money → borrowing");
     if (!document.querySelector('#v2Borrower') || !document.querySelector('[data-v2-money-save]')?.textContent.includes('借入')) throw new Error("UI smoke: borrowing form");
     tap('[data-v2-moneytype="expense"]', "borrowing → expense");
@@ -247,10 +249,11 @@ window.addEventListener("load", () => setTimeout(async () => {
     selectValue('#v2HealthDate', '2099-01-02', "health record date");
     if (document.querySelector('#v2HealthDate')?.value !== '2099-01-02') throw new Error("UI smoke: health later-date switch");
     if (!document.querySelector('[data-v2-health-save="steps"]')?.textContent.includes('保存')) throw new Error("UI smoke: health save label");
-    tap('[data-v2-rate="body"][data-v2-value="3"]', "health body rating");
-    tap('[data-v2-health-save="body"]', "save later-date health body");
+    if (document.querySelector('[data-v2-health-save="body"]') || document.querySelector('[data-v2-health-save="mind"]')) throw new Error("UI smoke: body/mind save buttons removed");
+    tap('[data-v2-rate="body"][data-v2-value="3"]', "health body rating saves");
     await pause(80);
-    if (!document.querySelector('[data-v2-health-save="body"]')?.textContent.includes('変更')) throw new Error("UI smoke: health change label");
+    if (!document.querySelector('.an-health-rating.body .an-health-saved')?.textContent.includes('3 / 5')) throw new Error("UI smoke: health body saved on rating");
+    if (!document.querySelector('.an-health-rating.body [data-v2-rate="body"][data-v2-value="3"]')?.matches('.on,[aria-pressed="true"],.is-on,.active,.selected')) throw new Error("UI smoke: health body saved dot filled");
     tap('[data-v2-back]', "health record → home");
     openHomeGroup('review', "home → visualize group");
     tap('[data-v2-go="healthAnalysis"]', "home → health analysis");
