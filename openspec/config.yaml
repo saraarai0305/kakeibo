@@ -1,0 +1,47 @@
+schema: spec-driven
+
+# Project context (optional)
+# Add only constraints that should guide OpenSpec artifacts and workflows.
+# Include constraints an agent cannot infer by reading the code.
+# Keep general project documentation and discoverable codebase facts out.
+# Example:
+#   context: |
+#     Designs and tasks must cover Windows, macOS, and Linux
+#     Write all artifacts in Spanish
+context: |
+  成果物（proposal・specs・design・tasks）は日本語で書く。社内の略号を使わず、中身の言い方で書く
+  使う人は1人（持ち主）。完成の判定は持ち主が自分の iPhone の公開版で行う。画面の幅は 390px を基準に見る
+  ビルドの無い素の JavaScript（index.html・ui-v2.js）。外の枠組み（React・Tailwind など）を足さない
+  利用者のデータはブラウザの localStorage["mainichi.v1"] だけにある。消える・上書きされる変更は、戻し方を design に書く
+  日報の取り込みで、スマホで入れた時刻（開始・終了・休憩・実作業）を上書きしない
+  公開は GitHub Pages。版を上げる所は version.txt・index.html（BUILD と ?v=）・sw.js（CACHE と ?v=）
+  公開の前に tools/check.ps1 が終了 0 になること
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always state what is out of scope
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
+rules:
+  proposal:
+    - なぜ・誰が使うか・やらない事を書く。500字まで
+  specs:
+    - 完成の条件は、持ち主が iPhone で見て判定できる形（何を押すと何が見えるか）で書く
+  tasks:
+    - 最後の2つは「tools/check.ps1 を終了 0 にする」「390px の実表示を確かめる」にする
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing
