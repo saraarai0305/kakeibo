@@ -1380,12 +1380,16 @@
     const visible=items.slice(0,5);
     return `<section class="an-home-tomorrow"><header><div><h2>明日の予定</h2><p>${esc2(dateLabel(key))}</p></div><button type="button" data-v2-go="flow" data-v2-home-flow-date="${esc2(key)}">全部を見る</button></header>${visible.length?`<div class="an-home-tomorrow-list">${visible.map(item=>`<button type="button" data-v2-go="${item.kind}" data-v2-home-flow-date="${esc2(key)}"><time>${esc2(item.time||"—")}</time><span><strong>${esc2(item.title)}</strong><small>${esc2(item.sub)}</small></span><b>›</b></button>`).join("")}</div>`:`<p class="an-home-empty">明日の予定はありません。</p>`}</section>`;
   }
-  function homeV2(){
+  function homeShortcutIds(){
     const catalog=HOME_SHORTCUT_CATALOG;
     const fallback=["moneyRecord","flow","healthRecord"];
     const legacyFallback=["moneyAnalysis","healthAnalysis","calendar"];
     const stored=Array.isArray(S.homeShortcuts)&&S.homeShortcuts.length===3&&S.homeShortcuts.every(x=>catalog[x])?S.homeShortcuts:null;
-    const shortcuts=stored&&stored.join("|")!==legacyFallback.join("|")?stored:fallback;
+    return stored&&stored.join("|")!==legacyFallback.join("|")?stored:fallback;
+  }
+  function homeV2(){
+    const catalog=HOME_SHORTCUT_CATALOG;
+    const shortcuts=homeShortcutIds();
     const d=now(),time=toHHMM(d.getHours()*60+d.getMinutes());
     const tile=id=>`<button class="an-home-shortcut" data-v2-go="${id}">${icon(catalog[id][0])}<span>${catalog[id][1]}</span></button>`;
     const group=(id,tone,iconName,title,sub,items)=>{const open=homeOpenGroups.has(id);return `<section class="an-home-group ${tone}${open?" is-open":""}"><button type="button" class="an-home-group-toggle" data-v2-home-group-toggle="${id}" aria-expanded="${open}"><span class="an-home-group-icon">${icon(iconName)}</span><span><h2>${title}</h2><p>${sub}</p></span><b>${open?"閉じる":"開く"}</b></button><div class="an-home-group-list"${open?"":" hidden"}>${items.map(x=>analogChoice(...x)).join("")}</div></section>`;};
@@ -2725,7 +2729,7 @@
     if(!box) return;
     if(box.dataset.open==="1"){box.innerHTML="";delete box.dataset.open;return;}
     const catalog=Object.entries(HOME_SHORTCUT_CATALOG);
-    const current=Array.isArray(S.homeShortcuts)&&S.homeShortcuts.length===3?S.homeShortcuts:["moneyAnalysis","healthAnalysis","calendar"];
+    const current=homeShortcutIds();
     const select=n=>`<label>${n+1}<select data-v2-shortcut-select>${catalog.map(([id,[,label]])=>`<option value="${id}" ${current[n]===id?"selected":""}>${label}</option>`).join("")}</select></label>`;
     box.dataset.open="1";
     box.innerHTML=`<div class="an-shortcut-editor">${[0,1,2].map(select).join("")}<button type="button" data-v2-shortcuts-save>保存</button></div>`;
