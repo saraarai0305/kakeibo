@@ -28,7 +28,10 @@ context: |
 #       - Break tasks into chunks of max 2 hours
 rules:
   proposal:
+    - 頭に3行を書く（持ち主に手を動かす前に見せる字と同じ）＝「何をするか」「どこに効くか（画面・データ・公開のどれ）」「何が見えたら効いたか（持ち主の iPhone で何を押すと何が出れば当たり）」
     - なぜ・誰が使うか・やらない事を書く。500字まで
+  design:
+    - 画面を変える時は、UI PATTERNS（envydesign.jp/patterns）のどの型を選んだか・選ばなかった型を1行ずつ書く
   specs:
     - 完成の条件は、持ち主が iPhone で見て判定できる形（何を押すと何が見えるか）で書く
   tasks:
