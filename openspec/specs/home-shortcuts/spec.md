@@ -1,7 +1,7 @@
 # home-shortcuts Specification
 
 ## Purpose
-TBD - created by archiving change two-tap-clock-in. Update Purpose after archive.
+ホームの3つのショートカットを、利用者がよく使う記録（支出・こころとからだ・仕事の打刻など）へ2タップ以下で届く入口として保つ。入れ替えても、選ばなかった物を勝手に消さない。
 
 ## Requirements
 
