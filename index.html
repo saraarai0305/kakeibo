@@ -4129,45 +4129,48 @@ const payload = () => JSON.stringify(S, null, 2);
 
 async function pushRemote(){
   const c = syncCfg();
-  if(!c.token || !c.gistId || syncing || healthSyncing || staleBuild) return;
+  if(!syncConfigured(c) || syncing || healthSyncing || staleBuild) return;
   if(c.role === "ro"){ syncPaint("ok", "読み取り専用（送信しません）"); return; }
   syncing = true; syncPaint("busy", "送信中…");
   try{
     // 送る前に相手を読む。前にそろえた時から相手も変わっていれば、足し合わせてから送る。
-    // 相手が読めないときは送らない（相手を見ずに丸ごと置き換えると、ほかの端末の変更が消える）
-    const g0 = await gistFetch(`/gists/${c.gistId}`);
-    const f0 = g0.files && g0.files[GIST_FILE];
-    let remote = null, merged = false;
-    try{ remote = f0 && f0.content ? JSON.parse(f0.content) : null; }catch(e){ /* 壊れた同期先は、この端末の中身で直す */ }
-    if(remote && !syncReplacePending()){
-      const plan = reconcileSync(S, remote, syncBase(), false);
-      if(plan.kind === "same" || plan.kind === "adopt"){
-        // 送る変更が無い。相手のほうが変わっていれば受け取る
-        if(plan.kind === "same") setSyncBase(remote);
-        else if(!adoptSyncRemote(remote, true)) return;
-        c.lastSync = new Date().toISOString(); setSyncCfg(c);
-        syncPaint("ok", "同期済み " + new Date().toLocaleTimeString("ja-JP"));
+    // 相手が読めないときは送らない（相手を見ずに丸ごと置き換えると、ほかの端末の変更が消える）。
+    // 同期の置き場（cloud）は、読んだ版より後にほかの端末が書いていると断る。その時は返った中身と足し合わせて送り直す
+    // （送っていない変更は S と前にそろえた姿のまま手元に残るので、断られても失わない・2026-11-10 sync-no-lost-writes）
+    let read = await syncRead(c), merged = false, body = null;
+    for(let attempt = 0; ; attempt++){
+      const remote = read.data;
+      if(remote && !syncReplacePending()){
+        const plan = reconcileSync(S, remote, syncBase(), false);
+        if(plan.kind === "same" || plan.kind === "adopt"){
+          // 送る変更が無い。相手のほうが変わっていれば受け取る
+          if(plan.kind === "same") setSyncBase(remote);
+          else if(!adoptSyncRemote(remote, true)) return;
+          c.lastSync = new Date().toISOString(); setSyncCfg(c);
+          syncPaint("ok", "同期済み " + new Date().toLocaleTimeString("ja-JP"));
+          if(merged){ render(); toast("ほかの端末の変更と合わせました"); }
+          return;
+        }
+        if(plan.kind === "merge"){
+          try{ localStorage.setItem("mainichi.before-sync", JSON.stringify(S)); }catch(e){}
+          S = normalize(plan.data);
+          S.savedAt = new Date().toISOString();
+          localStorage.setItem(KEY, JSON.stringify(S));
+          merged = true;
+        }
+      }
+      // こちらのほうが極端に記録が少ないなら送らない
+      if(remote && bigDrop(remote, S)){
+        syncPaint("err", `送信を止めました（この端末の記録が少なすぎます: ${richness(S)} < 相手 ${richness(remote)}）`);
         return;
       }
-      if(plan.kind === "merge"){
-        try{ localStorage.setItem("mainichi.before-sync", JSON.stringify(S)); }catch(e){}
-        S = normalize(plan.data);
-        S.savedAt = new Date().toISOString();
-        localStorage.setItem(KEY, JSON.stringify(S));
-        merged = true;
-      }
-    }
-    // こちらのほうが極端に記録が少ないなら送らない
-    if(remote && bigDrop(remote, S)){
-      syncPaint("err", `送信を止めました（この端末の記録が少なすぎます: ${richness(S)} < 相手 ${richness(remote)}）`);
-      return;
-    }
 
-    const body = payload();
-    await gistFetch(`/gists/${c.gistId}`, {
-      method: "PATCH",
-      body: JSON.stringify({ files: { [GIST_FILE]: { content: body } } })
-    });
+      body = payload();
+      const sent = await syncWrite(c, body, read.version);
+      if(!sent.conflict) break;
+      if(attempt >= SYNC_RETRY_LIMIT) throw new Error("ほかの端末の保存が続いています。この端末の変更は残してあり、次の同期で送ります");
+      read = { data: sent.data, version: sent.version };
+    }
     setSyncBase(body);
     clearSyncReplace();
     c.lastSync = new Date().toISOString(); setSyncCfg(c);
@@ -4176,6 +4179,57 @@ async function pushRemote(){
   }catch(e){
     syncPaint("err", "送信できませんでした（" + e.message + "）");
   }finally{ syncing = false; }
+}
+
+/* 同期の置き場との読み書き（2026-11-10 sync-no-lost-writes・社長 11-10「Cloudflare に移す案で進めてください」）
+   置き場は2つ。Gist（今まで・版を見ずに上書きする）と、通知サーバーの同期の置き場（mode "cloud"・版を If-Match で比べ、
+   読んだ版より後にほかの端末が書いていれば 409 で断って今の中身を返す）。読む・書くはここだけを通す */
+const SYNC_RETRY_LIMIT = 3;
+function syncConfigured(c){
+  return c && c.mode === "cloud" ? Boolean(c.cloudBase && c.spaceId && c.spaceSecret) : Boolean(c && c.token && c.gistId);
+}
+function syncRequestId(){
+  const bytes = new Uint8Array(18);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
+}
+async function syncCloudFetch(c, method, extraHeaders, body){
+  const url = String(c.cloudBase).replace(/\/+$/, "") + `/v1/sync/spaces/${c.spaceId}/state`;
+  const r = await fetch(url, { method, cache: "no-store", headers: Object.assign({ "Authorization": "Bearer " + c.spaceSecret }, extraHeaders || {}), body });
+  let data = null;
+  try{ data = await r.json(); }catch(e){ data = null; }
+  return { status: r.status, data };
+}
+function syncParse(text){
+  try{ return text ? JSON.parse(text) : null; }catch(e){ return null; } // 壊れた中身は、この端末の中身で直す
+}
+async function syncRead(c){
+  if(c.mode === "cloud"){
+    const r = await syncCloudFetch(c, "GET");
+    if(r.status !== 200 || !r.data) throw new Error((r.data && r.data.error) || `同期先 ${r.status}`);
+    return { data: syncParse(r.data.content), version: r.data.version };
+  }
+  const g = await gistFetch(`/gists/${c.gistId}`);
+  const f = g.files && g.files[GIST_FILE];
+  return { data: syncParse(f && f.content), version: null };
+}
+// 書けたら {ok:true}。cloud で先を越されたら {conflict:true, data, version}（今の中身と版）。それ以外の失敗は投げる
+async function syncWrite(c, body, version){
+  if(c.mode === "cloud"){
+    const r = await syncCloudFetch(c, "PUT", {
+      "Content-Type": "application/json",
+      "If-Match": `"${version == null ? 0 : version}"`,
+      "X-Mainichi-Request-Id": syncRequestId()
+    }, body);
+    if(r.status === 200 && r.data && r.data.ok) return { ok: true, version: r.data.version };
+    if(r.status === 409 && r.data && r.data.conflict) return { conflict: true, data: syncParse(r.data.content), version: r.data.version };
+    throw new Error((r.data && r.data.error) || `同期先 ${r.status}`);
+  }
+  await gistFetch(`/gists/${c.gistId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ files: { [GIST_FILE]: { content: body } } })
+  });
+  return { ok: true, version: null };
 }
 
 const WORK_LOG_TIMING_FIELDS = ["start", "end", "breakMinutes", "actualWorkMinutes", "workSessions", "breakSessions"];
@@ -4353,32 +4407,34 @@ function mergeImportedWorkCatalog(remote, record){
 // 日報取り込み専用: 同期先の全体データをPCの古いスナップショットで置き換えず、対象日だけを正本へ反映する。
 async function pushImportedWorkLog(day, record){
   const c = syncCfg();
-  if(!c.token || !c.gistId) return {ok:false, skipped:true, reason:"同期未設定"};
+  if(!syncConfigured(c)) return {ok:false, skipped:true, reason:"同期未設定"};
   if(c.role === "ro") return {ok:false, skipped:true, reason:"読み取り専用"};
   if(syncing || healthSyncing) return {ok:false, error:new Error("別の同期処理が実行中です")};
   syncing = true; syncPaint("busy", "日報を同期先へ反映中…");
   try{
-    const g = await gistFetch(`/gists/${c.gistId}`);
-    const f = g.files && g.files[GIST_FILE];
-    const remoteRaw = f && f.content ? JSON.parse(f.content) : null;
-    // 対象日の打刻は同期先の値を見る。ほかの日と、この端末のまだ送っていない変更は先に足し合わせる
-    const existingRaw = remoteRaw ? normalize(copyJson(remoteRaw)).workLogs[day] : undefined;
-    const remote = normalize(copyJson(remoteRaw ? reconcileSync(S, remoteRaw, syncBase(), false).data : S));
-    remote.workLogs=remote.workLogs||{};
-    const existing=existingRaw&&typeof existingRaw==="object"?existingRaw:{};
-    const imported=mergeImportedWorkCatalog(remote,copyJson(record));
-    const merged=Object.assign({},existing,imported);
-    // PCの日報ファイルは内容だけを足す。iPhoneで先に打刻した勤務時間は常に残す。
-    if(hasWorkLogTiming(existing)) for(const field of WORK_LOG_TIMING_FIELDS){
-      if(Object.prototype.hasOwnProperty.call(existing,field)) merged[field]=copyJson(existing[field]);
-      else delete merged[field];
+    let read = await syncRead(c), remote = null;
+    for(let attempt = 0; ; attempt++){
+      const remoteRaw = read.data;
+      // 対象日の打刻は同期先の値を見る。ほかの日と、この端末のまだ送っていない変更は先に足し合わせる
+      const existingRaw = remoteRaw ? normalize(copyJson(remoteRaw)).workLogs[day] : undefined;
+      remote = normalize(copyJson(remoteRaw ? reconcileSync(S, remoteRaw, syncBase(), false).data : S));
+      remote.workLogs=remote.workLogs||{};
+      const existing=existingRaw&&typeof existingRaw==="object"?existingRaw:{};
+      const imported=mergeImportedWorkCatalog(remote,copyJson(record));
+      const merged=Object.assign({},existing,imported);
+      // PCの日報ファイルは内容だけを足す。iPhoneで先に打刻した勤務時間は常に残す。
+      if(hasWorkLogTiming(existing)) for(const field of WORK_LOG_TIMING_FIELDS){
+        if(Object.prototype.hasOwnProperty.call(existing,field)) merged[field]=copyJson(existing[field]);
+        else delete merged[field];
+      }
+      remote.workLogs[day]=merged;
+      remote.savedAt = new Date().toISOString();
+      const sent = await syncWrite(c, JSON.stringify(remote, null, 2), read.version);
+      if(!sent.conflict) break;
+      // 先を越された: 返った中身で、打刻の確かめからやり直す
+      if(attempt >= SYNC_RETRY_LIMIT) throw new Error("ほかの端末の保存が続いています");
+      read = { data: sent.data, version: sent.version };
     }
-    remote.workLogs[day]=merged;
-    remote.savedAt = new Date().toISOString();
-    await gistFetch(`/gists/${c.gistId}`, {
-      method:"PATCH",
-      body:JSON.stringify({files:{[GIST_FILE]:{content:JSON.stringify(remote, null, 2)}}})
-    });
     S = remote;
     localStorage.setItem(KEY, JSON.stringify(S));
     setSyncBase(remote);
@@ -4398,15 +4454,14 @@ async function pushImportedWorkLog(day, record){
 
 async function pullRemote(silent, force){
   const c = syncCfg();
-  if(!c.token || !c.gistId || syncing || healthSyncing) return;
+  if(!syncConfigured(c) || syncing || healthSyncing) return;
   syncing = true;
   let imported = 0;
   if(!silent) syncPaint("busy", "受信中…");
   try{
-    const g = await gistFetch(`/gists/${c.gistId}`);
-    const f = g.files && g.files[GIST_FILE];
-    if(f && f.content){
-      const remote = JSON.parse(f.content);
+    const read = await syncRead(c);
+    if(read.data){
+      const remote = read.data;
       const pending = workLogSyncPending();
       if(!force && pending?.day && pending.record && remote.savedAt && S.savedAt && remote.savedAt > S.savedAt){
         syncPaint("err", "日報の同期反映待ちです");
