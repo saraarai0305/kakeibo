@@ -552,6 +552,20 @@ body[data-can-back="1"] .home-back,body[data-can-back="1"] .mini-logo{display:no
   position:sticky;top:0;background:var(--bg);z-index:1}
 .sheetbody{max-width:560px;margin:0 auto;padding:14px 14px 0}
 .sheetbody .card{margin-bottom:12px}
+/* 同期の食い違い（2026-11-10 sync-no-lost-writes 3.2）: 告知バー（リンク付き）＋選ぶシート */
+.sync-conflict-bar{position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top) + 8px);z-index:19;max-width:366px;margin:0 auto;
+  display:block;width:auto;min-height:48px;padding:10px 14px;border-radius:12px;text-align:left;font-size:15px;font-weight:700;
+  background:var(--card2);color:var(--fg);border:1px solid var(--warn);box-shadow:0 6px 18px rgba(0,0,0,.28)}
+.sync-conflict-bar[hidden],#syncConflictSheet[hidden]{display:none!important}
+.sc-item{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:12px}
+.sc-item h3{margin:0 0 4px;font-size:16px}
+.sc-choice{display:block;width:100%;text-align:left;margin-top:10px;padding:10px 12px;border-radius:12px;
+  background:var(--card2);color:var(--fg);border:1px solid var(--line);font-size:15px}
+.sc-choice b{display:block;font-size:13px;color:var(--dim);margin-bottom:4px}
+.sc-choice .sc-row{display:flex;gap:10px;justify-content:space-between;padding:2px 0}
+.sc-choice .sc-row span:last-child{font-weight:700;word-break:break-all;text-align:right}
+.sc-choice .sc-row.diff span:last-child{color:var(--fg);background:color-mix(in srgb, var(--warn) 30%, transparent);border-radius:5px;padding:0 6px}
+body.sc-on,body.sc-on[data-app-shell="v2"]{padding-top:calc(env(safe-area-inset-top) + 64px)!important}  /* ui-analog.css 185行の上の余白（!important）にも勝たせる */
 .settings-folder{border-bottom:1px solid var(--line)}
 .settings-folder:not([open])>.settings-folder-body{display:none}
 .settings-folder>summary{display:grid;grid-template-columns:42px minmax(0,1fr) 18px;align-items:center;gap:12px;min-height:78px;list-style:none;cursor:pointer}
@@ -1793,6 +1807,8 @@ function applyPortalIcons(){
 }
 
 function render(){
+  // 同期の食い違いの知らせ（3.2）は、どちらの画面の形でも出す
+  try{ syncConflictView(); }catch(e){ console.error("sync conflicts", e); }
   // LIFE NOTE の新しい入口では、保存後も旧UIへ戻さない。
   // データの保存ロジックは共通のまま、表示だけを新しいシェルに委ねる。
   if(document.body.dataset.appShell === "v2" && typeof window.newAppRender === "function"){
@@ -4124,6 +4140,87 @@ function startHealthSyncLoop(){
   healthPullTimer=setInterval(()=>{ if(!document.hidden) pullHealthInbox(true, "interval"); },45000);
 }
 
+/* 同期の食い違いを選ぶ所（2026-11-10 sync-no-lost-writes 3.2）。型は UI PATTERNS の「リンク付き型 告知バー」＋「選択肢型 ボトムシート」
+   （design.md）。食い違いが1件でもある間、どの画面でも上に1行出し、押すと1件ごとに2つの姿を並べて選ぶ。選ばずに閉じても消さない */
+const SYNC_FIELD_LABEL = {time:"時刻", from:"始まり", to:"終わり", text:"内容", cat:"種類", lane:"列", amt:"金額", name:"名前", label:"名前",
+  start:"開始", end:"終了", breakMinutes:"休憩（分）", actualWorkMinutes:"実作業（分）", workSessions:"作業の区切り", breakSessions:"休憩の区切り",
+  memo:"メモ", note:"メモ", bal:"残高", day:"日", d:"日付", t:"時刻", steps:"歩数", bed:"寝た時刻", wake:"起きた時刻"};
+const SYNC_KIND_LABEL = {plan:"予定", workLogs:"仕事の記録", spends:"支出", accounts:"口座", fixed:"支払い", subs:"サブスク", incomes:"入金",
+  incomeLogs:"入金の記録", health:"からだ", errands:"やること", dailyTimeline:"毎日の予定", workProjects:"案件", borrowings:"借入"};
+function syncConflictList(){
+  return Array.isArray(S.syncConflicts) ? S.syncConflicts.filter(c => c && c.id && Array.isArray(c.values) && Array.isArray(c.fields)) : [];
+}
+function syncConflictTitle(c){
+  const p = c.path || [], rec = c.values[0];
+  const name = rec && typeof rec === "object" ? String(rec.text || rec.name || rec.label || "") : "";
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(String(p[1] || "")) ? p[1] : "";
+  return [SYNC_KIND_LABEL[p[0]] || "設定", day, name].filter(Boolean).join("・");
+}
+function syncShowValue(v){
+  if(v === undefined || v === null || v === "") return "（空）";
+  if(typeof v === "object"){ const t = JSON.stringify(v); return t.length > 60 ? t.slice(0, 57) + "…" : t; }
+  return String(v);
+}
+function syncChoiceHtml(c, idx){
+  const other = c.values[1 - idx];
+  const rows = c.fields.map(field => {
+    const name = field.length ? (SYNC_FIELD_LABEL[field[field.length - 1]] || field.join("・")) : "値";
+    const mine = field.length ? syncAt(c.values[idx], field) : c.values[idx];
+    const theirs = field.length ? syncAt(other, field) : other;
+    return `<div class="sc-row${syncEq(mine, theirs) ? "" : " diff"}"><span>${esc(name)}</span><span>${esc(syncShowValue(mine))}</span></div>`;
+  }).join("");
+  return `<button type="button" class="sc-choice" data-sc-id="${esc(c.id)}" data-sc-idx="${idx}"><b>${idx ? "退避した値にする" : "いま使っている値のままにする"}</b>${rows}</button>`;
+}
+function paintSyncConflictSheet(){
+  const body = document.getElementById("syncConflictBody");
+  if(!body) return;
+  const list = syncConflictList();
+  body.innerHTML = `<p class="tiny" style="margin:0 0 12px">2台で同じ所を違う値にしました。どちらの値も残してあります。使う方を押してください（選ぶまで消しません）。</p>`
+    + (list.length ? list.map(c => `<div class="sc-item"><h3>${esc(syncConflictTitle(c))}</h3>${syncChoiceHtml(c, 0)}${syncChoiceHtml(c, 1)}</div>`).join("")
+                   : `<p>食い違いはありません。</p>`);
+}
+function openSyncConflictSheet(){
+  let sheet = document.getElementById("syncConflictSheet");
+  if(!sheet){
+    sheet = document.createElement("div");
+    sheet.className = "sheet"; sheet.id = "syncConflictSheet"; sheet.hidden = true;
+    sheet.setAttribute("role", "dialog"); sheet.setAttribute("aria-label", "同期の食い違い");
+    sheet.innerHTML = `<div class="sheethd"><div class="t" style="flex:1;font-weight:700">同期の食い違い</div>`
+      + `<button class="btn ghost sm" type="button" data-sc-close>閉じる</button></div><div class="sheetbody" id="syncConflictBody"></div>`;
+    sheet.addEventListener("click", e => {
+      if(e.target.closest("[data-sc-close]")){ sheet.hidden = true; return; }
+      const pick = e.target.closest("[data-sc-id]");
+      if(pick) chooseSyncConflict(pick.dataset.scId, Number(pick.dataset.scIdx));
+    });
+    document.body.appendChild(sheet);
+  }
+  paintSyncConflictSheet();
+  sheet.hidden = false;
+}
+function chooseSyncConflict(id, idx){
+  if(!applySyncConflictChoice(S, id, idx)) return;
+  saveNow();
+  render();
+  toast(idx === 1 ? "退避した値にそろえました" : "いまの値のままにしました");
+  if(!syncConflictList().length){ const sheet = document.getElementById("syncConflictSheet"); if(sheet) sheet.hidden = true; }
+}
+function syncConflictView(){
+  const list = syncConflictList();
+  let bar = document.getElementById("syncConflictBar");
+  document.body.classList.toggle("sc-on", list.length > 0);
+  if(!list.length){ if(bar) bar.hidden = true; return; }
+  if(!bar){
+    bar = document.createElement("button");
+    bar.type = "button"; bar.id = "syncConflictBar"; bar.className = "sync-conflict-bar";
+    bar.addEventListener("click", openSyncConflictSheet);
+    document.body.appendChild(bar);
+  }
+  bar.textContent = `同期で食い違いが ${list.length} 件あります。押して使う方を選ぶ`;
+  bar.hidden = false;
+  const sheet = document.getElementById("syncConflictSheet");
+  if(sheet && !sheet.hidden) paintSyncConflictSheet();
+}
+
 // 保存データ本体（トークンは S に入っていないので自然に除外される）
 const payload = () => JSON.stringify(S, null, 2);
 
@@ -4279,6 +4376,88 @@ function syncValueList(...lists){
   return lists.every(list => list === undefined || (Array.isArray(list) &&
     list.every(x => x === null || typeof x !== "object") && new Set(list.map(syncCanon)).size === list.length));
 }
+/* 同じ所を2台が違う値にした食い違い（2026-11-10 sync-no-lost-writes 3.2）。
+   足し合わせは今までどおり片方の値で進め、もう片方の値を S.syncConflicts に退避して、持ち主が選ぶまで消さない。
+   退避は「食い違った欄を含む一番近い記録（ID の付いた並びの1件・仕事の記録はその日）」ごとに1件。
+   同じ食い違いはどちらの端末で見つけても同じ id になり、足し合わせで1件にまとまる */
+const SYNC_CONFLICT_SKIP = new Set(["savedAt", "updatedAt", "importedAt", "lastScheduled"]);
+let syncConflictSink = null;
+function noteSyncConflict(path){
+  if(!syncConflictSink || !path.length || path[0] === "syncConflicts" || SYNC_CONFLICT_SKIP.has(String(path[path.length - 1]))) return;
+  syncConflictSink.push(path.slice());
+}
+function syncStep(node, key){
+  if(Array.isArray(node)) return node.find(x => syncPlain(x) && x.id === key);
+  return syncPlain(node) ? node[key] : undefined;
+}
+function syncAt(tree, path){
+  let n = tree;
+  for(const k of path){ n = syncStep(n, k); if(n === undefined) return undefined; }
+  return n;
+}
+function syncSetAt(tree, path, value){
+  // 置けた時だけ true（途中の記録が無ければ置かない）
+  if(!path.length) return false;
+  const parent = syncAt(tree, path.slice(0, -1)), key = path[path.length - 1];
+  if(Array.isArray(parent)){
+    const i = parent.findIndex(x => syncPlain(x) && x.id === key);
+    if(i < 0) return false;
+    if(value === undefined) parent.splice(i, 1); else parent[i] = value;
+    return true;
+  }
+  if(!syncPlain(parent)) return false;
+  if(value === undefined) delete parent[key]; else parent[key] = value;
+  return true;
+}
+function syncRecordPath(tree, path){
+  let n = tree, cut = path[0] === "workLogs" ? Math.min(2, path.length) : 0;
+  for(let i = 0; i < path.length && n !== undefined; i++){
+    if(Array.isArray(n)) cut = Math.max(cut, i + 1);
+    n = syncStep(n, path[i]);
+  }
+  return cut ? path.slice(0, cut) : path.slice();
+}
+function syncHash(text){
+  let h = 0x811c9dc5;
+  for(let i = 0; i < text.length; i++){ h ^= text.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return (h >>> 0).toString(36);
+}
+function addSyncConflicts(merged, found, local, remote){
+  if(!found.length) return;
+  const groups = new Map();
+  for(const leaf of found){
+    const rec = syncRecordPath(syncAt(local, leaf) !== undefined ? local : remote, leaf);
+    const key = syncCanon(rec);
+    const g = groups.get(key) || {path: rec, fields: new Map()};
+    const field = leaf.slice(rec.length);
+    g.fields.set(syncCanon(field), field);
+    groups.set(key, g);
+  }
+  const list = Array.isArray(merged.syncConflicts) ? merged.syncConflicts : [];
+  const at = new Date().toISOString();
+  for(const g of groups.values()){
+    const fields = [...g.fields.values()].sort((a, b) => syncCanon(a) < syncCanon(b) ? -1 : 1);
+    const lRec = syncAt(local, g.path), rRec = syncAt(remote, g.path), now = syncAt(merged, g.path);
+    const kept = [], other = [], pair = [];
+    for(const field of fields){
+      const lv = syncAt(lRec, field), rv = syncAt(rRec, field), cur = syncAt(now, field);
+      kept.push(copyJson(cur));
+      other.push(copyJson(syncEq(cur, lv) ? rv : lv));
+      pair.push([syncCanon(lv), syncCanon(rv)].sort());
+    }
+    const id = "sc-" + syncHash(syncCanon([g.path, fields, pair]));
+    if(list.some(c => c && c.id === id)) continue;
+    // values[0]＝いま使っている姿・values[1]＝退避した姿（記録の写しに、食い違った欄だけそれぞれの値を置いた物）
+    const asRecord = vals => {
+      if(fields.length === 1 && !fields[0].length) return vals[0];
+      const rec = copyJson(now !== undefined ? now : (lRec !== undefined ? lRec : rRec)) || {};
+      fields.forEach((field, i) => syncSetAt(rec, field, copyJson(vals[i])));
+      return rec;
+    };
+    list.push({id, path: g.path, fields, values: [asRecord(kept), asRecord(other)], chosen: 0, at});
+  }
+  merged.syncConflicts = list;
+}
 function mergeSyncValue(b, l, r, localNewer, path){
   if(syncEq(l, r)) return l;
   if(syncEq(l, b)) return r;
@@ -4299,6 +4478,7 @@ function mergeSyncValue(b, l, r, localNewer, path){
       : mergeSyncObject(base, l, r, localNewer, path);
   }
   if(syncEmpty(l) !== syncEmpty(r)) return syncEmpty(l) ? r : l;
+  noteSyncConflict(path);
   return localNewer ? l : r;
 }
 function mergeSyncObject(b, l, r, localNewer, path){
@@ -4335,6 +4515,8 @@ function mergeSyncWorkLog(b, l, r, localNewer, path){
   const timing = w => WORK_LOG_TIMING_FIELDS.map(f => w && Object.prototype.hasOwnProperty.call(w, f) ? w[f] : undefined);
   if(!syncEq(timing(l), timing(b)) && !syncEq(timing(r), timing(b)) && !syncEq(timing(l), timing(r))){
     const src = syncHasPunch(l) !== syncHasPunch(r) ? (syncHasPunch(l) ? l : r) : (localNewer ? l : r);
+    // 時刻はまとめて片方にそろえる。そろえて捨てた側の値も退避する（3.2）
+    for(const field of WORK_LOG_TIMING_FIELDS) if(!syncEq(l[field], r[field])) noteSyncConflict(path.concat(field));
     for(const field of WORK_LOG_TIMING_FIELDS){
       if(Object.prototype.hasOwnProperty.call(src, field)) out[field] = copyJson(src[field]);
       else delete out[field];
@@ -4344,8 +4526,13 @@ function mergeSyncWorkLog(b, l, r, localNewer, path){
 }
 function mergeSyncData(base, local, remote){
   const localNewer = String(local?.savedAt || "") >= String(remote?.savedAt || "");
-  const merged = mergeSyncObject(syncPlain(base) ? base : undefined, local || {}, remote || {}, localNewer, []);
+  const outer = syncConflictSink, found = [];
+  syncConflictSink = found;
+  let merged;
+  try{ merged = mergeSyncObject(syncPlain(base) ? base : undefined, local || {}, remote || {}, localNewer, []); }
+  finally{ syncConflictSink = outer; }
   merged.savedAt = (localNewer ? local?.savedAt : remote?.savedAt) || null;
+  addSyncConflicts(merged, found, local || {}, remote || {});
   return merged;
 }
 // 同期先を読んだ後の扱いを1か所で決める。same=同じ／adopt=相手に合わせる／keep=こちらを送る／merge=足し合わせる
@@ -4357,6 +4544,23 @@ function reconcileSync(local, remote, base, readOnly){
     if(sameSyncData(remote, base)) return {kind:"keep", data:local};
   }
   return {kind:"merge", data:mergeSyncData(base, local, remote)};
+}
+// 食い違いを選ぶ（3.2）。idx 0＝いま使っている値のまま／1＝退避した値にそろえる。
+// 記録を丸ごと置き換えず、食い違った欄だけを置く（選ぶまでの間にほかの欄を直していても消さない）。選んだ件は退避から外す
+function applySyncConflictChoice(data, id, idx){
+  const list = Array.isArray(data.syncConflicts) ? data.syncConflicts : [];
+  const c = list.find(x => x && x.id === id);
+  if(!c) return false;
+  if(idx === 1 && Array.isArray(c.values) && Array.isArray(c.fields)){
+    const chosen = c.values[1];
+    if(c.fields.length === 1 && !c.fields[0].length) syncSetAt(data, c.path, copyJson(chosen));
+    else{
+      const rec = syncAt(data, c.path);
+      if(rec !== undefined) for(const field of c.fields) syncSetAt(rec, field, copyJson(syncAt(chosen, field)));
+    }
+  }
+  data.syncConflicts = list.filter(x => x !== c);
+  return true;
 }
 // 相手に合わせる（この端末に送る変更が無いとき）。上書き直前の中身を1つだけ退避する
 function adoptSyncRemote(remote, checkDrop){

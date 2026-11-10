@@ -127,7 +127,7 @@ function device(base, change, store) {
     },
   });
   runInContext("const payload = () => JSON.stringify(S);\n" + functions, context);
-  return { messages, push: () => runInContext("pushRemote()", context), state: () => runInContext("S", context) };
+  return { messages, push: () => runInContext("pushRemote()", context), state: () => runInContext("S", context), run: code => runInContext(code, context) };
 }
 
 const results = [];
@@ -158,6 +158,8 @@ await scenario(`同期の置き場（${where}）: 別々の予定をほぼ同時
   await Promise.all([iphone.push(), pc.push()]);
   const got = ids((await store.head()).plan[day]);
   if (store.rejected() < 1) return `置き場が1回も断っていない（同時の場面になっていない）・残ったのは ${got}`;
+  const noise = ((await store.head()).syncConflicts || []).length;
+  if (noise) return `別々の予定なのに食い違いを ${noise} 件作った（知らせが鳴りっぱなしになる）`;
   return got === "base,iphone,pc" || `同期先に残ったのは ${got}（断った回数 ${store.rejected()}・「${iphone.messages.at(-1)?.message}」「${pc.messages.at(-1)?.message}」）`;
 });
 
@@ -182,6 +184,28 @@ await scenario(`同期の置き場（${where}）: 同じ予定を2台で違う�
   const kept = new Set([head.plan[day]?.[0]?.time]);
   for (const c of head.syncConflicts || []) for (const v of [c.local, c.remote, ...(c.values || [])]) if (v && v.time) kept.add(v.time);
   return (kept.has("10:00") && kept.has("11:00")) || `残った時刻は ${[...kept].join("・")}（食い違いの退避 syncConflicts は ${head.syncConflicts ? "ある" : "無い"}・tasks 3.2 で直す）`;
+});
+
+await scenario(`同期の置き場（${where}）: 食い違いで退避した値を選ぶと、その値になって退避が消え、同期先にも届く`, async () => {
+  const day = "2099-01-05";
+  const base = { plan: { [day]: [{ id: "e1", text: "試し", time: "09:00" }] }, savedAt: `${day}T00:00:00Z` };
+  const store = await cloudStore(base);
+  await Promise.all([
+    device(base, s => { s.plan[day][0].time = "10:00"; }, store).push(),
+    device(base, s => { s.plan[day][0].time = "11:00"; }, store).push(),
+  ]);
+  const head = await store.head();
+  const list = head.syncConflicts || [];
+  if (list.length !== 1) return `食い違いの退避が ${list.length} 件（1件のはず）`;
+  const now = head.plan[day][0].time, saved = list[0].values?.[1]?.time;
+  if (!saved || saved === now) return `退避した値 ${saved}・いま使っている値 ${now}`;
+  // 同期先の中身をそろえた姿として持つ3台目で選ぶ（選ぶのはどちらの端末でもよい）
+  const third = device(head, () => {}, store);
+  if (third.run(`applySyncConflictChoice(S, ${JSON.stringify(list[0].id)}, 1)`) !== true) return "選べなかった";
+  await third.push();
+  const after = await store.head();
+  if (after.plan[day][0].time !== saved) return `選んだ後の同期先の時刻は ${after.plan[day][0].time}（${saved} のはず）`;
+  return (after.syncConflicts || []).length === 0 || `選んだ後も退避が ${(after.syncConflicts || []).length} 件残った`;
 });
 
 for (const [name, verdict, reference] of results) console.log(`${verdict.startsWith("通った") ? "○" : reference ? "－" : "×"} ${name} … ${verdict}`);
