@@ -739,6 +739,12 @@ if ($src -notmatch 'function mergeSyncData' -or $src -notmatch 'function reconci
 if ($pushWorkerSrc -notmatch 'class DailyReportInbox extends DurableObject' -or $pushWorkerSrc -notmatch 'DAILY_REPORT_SENDER_KEY' -or $pushWorkerSrc -notmatch '/v1/daily-reports' -or (Get-Content (Join-Path $pushServer "wrangler.jsonc") -Raw -Encoding UTF8) -notmatch 'DailyReportInbox' -or $uiV2 -notmatch 'function dailyReportApiTarget' -or $uiV2 -notmatch 'X-Mainichi-Device-Id":push\.deviceId' -or $uiV2 -notmatch 'data-v2-daily-report-open') { Write-Error "日報の受信箱（通知サーバー・端末の鍵・ホームの知らせ）の契約がありません" }
 "OK  日報の受信箱の契約あり"
 
+# 2台がほぼ同時に保存しても記録が消えないか（OpenSpec 変更 sync-no-lost-writes 1.1b・2026-11-10）。
+# 偽の置き場だけで動かす＝外へは出ない・実データも鍵も使わない。1つでも落ちたら公開しない
+& node (Join-Path $root "tools\sync-race-check.mjs") (Join-Path $root "index.html")
+if ($LASTEXITCODE -ne 0) { Write-Error "同期の同時保存の試しが落ちました（node tools\sync-race-check.mjs index.html）" }
+"OK  同期の同時保存の試しが通った"
+
 # PWAが古いCSS/JSをキャッシュすると、公開URLとホーム画面アプリの表示が食い違う。
 # 画面側とService Worker側の主要資産は、BUILDと同じクエリ版を必ず持たせる。
 $assets = @("ui-v2.css", "ui-analog.css", "ui-paper-baseline.css", "ui-v2.js")
