@@ -15,8 +15,9 @@ function cors(request, response) {
   const origin = request.headers.get("Origin");
   if (origin) headers.set("Access-Control-Allow-Origin", origin);
   headers.set("Vary", "Origin");
-  headers.set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Mainichi-Setup-Key, X-Mainichi-Device-Id");
-  headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  headers.set("Access-Control-Allow-Headers", "Authorization, Content-Type, If-Match, X-Mainichi-Setup-Key, X-Mainichi-Device-Id, X-Mainichi-Request-Id");
+  headers.set("Access-Control-Expose-Headers", "ETag");
+  headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS");
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
@@ -91,6 +92,16 @@ function validDailyReport(value) {
 
 function dailyReportInbox(env) {
   return env.DAILY_REPORT_INBOX.getByName("inbox");
+}
+
+// 端末どうしの同期の置き場（OpenSpec 変更 sync-no-lost-writes・社長 11-10「Cloudflare に移す案で進めてください」）。
+// 1つの置き場に、アプリのデータ全体（JSON の字）と版の数を持つ。書き込みは読んだ版（If-Match）が今の版と同じ時だけ通し、
+// 違えば 409 で断って今の中身を返す（断られた端末は足し合わせて送り直す）。同じ要求 ID の2回目は二重に入れない。
+const MAX_SYNC_BYTES = 1_500_000;
+const SYNC_KEEP_VERSIONS = 10;
+
+function validRequestId(value) {
+  return /^[A-Za-z0-9_-]{8,64}$/.test(String(value || ""));
 }
 
 function normaliseReminders(value) {
@@ -173,6 +184,41 @@ export default {
         headers: { Authorization: `Bearer ${pairingSecret}` },
       }));
       return cors(request, response);
+    }
+    if (request.method === "POST" && url.pathname === "/v1/sync/spaces") {
+      // 置き場を作れるのは、通知サーバーにつないだ端末だけ（端末の鍵で確かめる）。返す鍵は置き場の読み書きの鍵で、作った端末に一度だけ返す
+      await request.arrayBuffer();
+      const deviceId = String(request.headers.get("X-Mainichi-Device-Id") || "");
+      if (!validDeviceId(deviceId)) return cors(request, json({ error: "端末の認証を確認してください" }, 401));
+      const check = await env.SCHEDULE_REMINDERS.getByName(deviceId).fetch(new Request("https://reminder.internal/auth-check", {
+        method: "POST",
+        headers: { Authorization: request.headers.get("Authorization") || "" },
+      }));
+      if (!check.ok) return cors(request, json({ error: "端末の認証を確認してください" }, 401));
+      const spaceId = crypto.randomUUID().replace(/-/g, "");
+      const spaceSecret = randomSecret();
+      const response = await env.SYNC_SPACES.getByName(spaceId).fetch(new Request("https://sync.internal/init", {
+        method: "POST",
+        headers: JSON_TYPE,
+        body: JSON.stringify({ secretHash: await digest(spaceSecret) }),
+      }));
+      if (!response.ok) return cors(request, response);
+      return cors(request, json({ spaceId, spaceSecret }));
+    }
+    const spaceMatch = url.pathname.match(/^\/v1\/sync\/spaces\/([a-f0-9]{32})\/state$/i);
+    if (spaceMatch) {
+      if (request.method !== "GET" && request.method !== "PUT") return cors(request, json({ error: "見つかりません" }, 404));
+      const body = request.method === "PUT" ? await request.text() : undefined;
+      const stub = env.SYNC_SPACES.getByName(spaceMatch[1].toLowerCase());
+      return cors(request, await stub.fetch(new Request("https://sync.internal/state", {
+        method: request.method,
+        headers: {
+          Authorization: request.headers.get("Authorization") || "",
+          "If-Match": request.headers.get("If-Match") || "",
+          "X-Mainichi-Request-Id": request.headers.get("X-Mainichi-Request-Id") || "",
+        },
+        body,
+      })));
     }
     if (url.pathname === "/v1/daily-reports" && request.method === "POST") {
       // 送る側（PC の日報の送る道具）は、Worker の秘密の値 DAILY_REPORT_SENDER_KEY と同じ鍵で送る。
@@ -391,5 +437,64 @@ export class DailyReportInbox extends DurableObject {
       return json({ status: "imported", id: ack[1], existed, pending: await this.pendingCount() });
     }
     return json({ error: "見つかりません" }, 404);
+  }
+}
+
+// 端末どうしの同期の置き場。版の比べと書き込みは1つの箱の中で順に行うので、2台が同じ版から書いても通るのは1台だけ。
+// 置き場が持つのはアプリのデータの字・版・最後の要求 ID・直近の版の写し（戻すため）だけ。中身を読んで直すことはしない。
+export class SyncSpace extends DurableObject {
+  constructor(ctx, env) {
+    super(ctx, env);
+    this.storage = ctx.storage;
+  }
+
+  async authorised(request) {
+    const stored = await this.storage.get("secretHash");
+    return Boolean(stored && sameText(stored, await digest(bearer(request))));
+  }
+
+  async fetch(request) {
+    const path = new URL(request.url).pathname;
+    if (path === "/init" && request.method === "POST") {
+      if (await this.storage.get("secretHash")) return json({ error: "置き場を作成できませんでした" }, 409);
+      const body = await request.json().catch(() => null);
+      if (!body?.secretHash) return json({ error: "置き場の内容を確認してください" }, 400);
+      await this.storage.put({ secretHash: String(body.secretHash), version: 0, createdAt: new Date().toISOString() });
+      return json({ ok: true });
+    }
+    if (path !== "/state") return json({ error: "見つかりません" }, 404);
+    const content = request.method === "PUT" ? await request.text() : "";
+    if (!(await this.authorised(request))) return json({ error: "同期の鍵を確認してください" }, 401);
+    const version = (await this.storage.get("version")) || 0;
+    if (request.method === "GET") {
+      const current = await this.storage.get("content");
+      const updatedAt = await this.storage.get("updatedAt");
+      return json({ version, content: current ?? null, updatedAt: updatedAt || null }, 200, { ETag: `"${version}"` });
+    }
+    if (request.method !== "PUT") return json({ error: "見つかりません" }, 404);
+
+    const requestId = request.headers.get("X-Mainichi-Request-Id") || "";
+    if (!validRequestId(requestId)) return json({ error: "要求の ID を確認してください" }, 400);
+    const last = await this.storage.get("lastWrite");
+    // 応答が端末に届かずに同じ保存を送り直した時は、二重に入れずに前の結果を返す
+    if (last && last.requestId === requestId) return json({ ok: true, version: last.version, duplicate: true }, 200, { ETag: `"${last.version}"` });
+    const ifMatch = (request.headers.get("If-Match") || "").replace(/^W\//, "").replace(/"/g, "").trim();
+    if (!/^\d+$/.test(ifMatch)) return json({ error: "読んだ版（If-Match）を付けてください" }, 428);
+    if (Number(ifMatch) !== version) {
+      // 別の端末が先に書いた。今の中身を返すので、端末は足し合わせて送り直す
+      const current = await this.storage.get("content");
+      return json({ error: "ほかの端末が先に保存しました", conflict: true, version, content: current ?? null }, 409, { ETag: `"${version}"` });
+    }
+    if (encoder.encode(content).length > MAX_SYNC_BYTES) return json({ error: "同期するデータが大きすぎます" }, 413);
+    try { JSON.parse(content); } catch { return json({ error: "同期するデータの形式を確認してください" }, 400); }
+    const next = version + 1;
+    const previous = await this.storage.get("content");
+    const writes = { version: next, content, updatedAt: new Date().toISOString(), lastWrite: { requestId, version: next } };
+    if (previous != null) writes[`backup:${String(version).padStart(12, "0")}`] = previous;
+    await this.storage.put(writes);
+    const backups = await this.storage.list({ prefix: "backup:" });
+    const extra = [...backups.keys()].sort().slice(0, Math.max(0, backups.size - SYNC_KEEP_VERSIONS));
+    if (extra.length) await this.storage.delete(extra);
+    return json({ ok: true, version: next }, 200, { ETag: `"${next}"` });
   }
 }
