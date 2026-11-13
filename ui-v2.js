@@ -484,7 +484,7 @@
     const key=await pairingCryptoKey(secret),iv=base64urlToBytes(envelope?.iv||""),ciphertext=base64urlToBytes(envelope?.ciphertext||"");
     const clear=await crypto.subtle.decrypt({name:"AES-GCM",iv},key,ciphertext);
     const config=JSON.parse(new TextDecoder().decode(clear));
-    if(!config?.token||!config?.gistId)throw new Error("接続コードの内容を確認してください");
+    if(!syncConfigured(config))throw new Error("接続コードの内容を確認してください");
     return config;
   }
   function pairingCodeParts(value){
@@ -492,12 +492,16 @@
     if(extra.length||!/^[a-f0-9]{32}$/i.test(id||"")||!secret)throw new Error("接続コードの形式を確認してください");
     return {id,secret};
   }
+  // 接続コードで渡す同期の設定。置き場（cloud）の端末は置き場の4つだけ（GitHub の鍵は渡さない）・Gist の端末は今までどおり Gist の2つ
+  function pairingSyncConfig(sync){
+    return sync.mode==="cloud"?{mode:"cloud",cloudBase:sync.cloudBase,spaceId:sync.spaceId,spaceSecret:sync.spaceSecret}:{token:sync.token,gistId:sync.gistId};
+  }
   async function createDeviceSyncPairing(){
     const sync=syncCfg(),push=schedulePushConfig();
-    if(!sync.token||!sync.gistId)throw new Error("先にこの端末の同期を確認してください");
+    if(!syncConfigured(sync))throw new Error("先にこの端末の同期を確認してください");
     if(!schedulePushReady())throw new Error("この端末で予定の通知サーバーを接続してから、接続コードを作成してください");
     const localSecret=bytesToBase64url(crypto.getRandomValues(new Uint8Array(32)));
-    const envelope=await encryptPairingConfig({token:sync.token,gistId:sync.gistId},localSecret);
+    const envelope=await encryptPairingConfig(pairingSyncConfig(sync),localSecret);
     const response=await fetch(schedulePushUrl("/v1/sync/pairings"),{method:"POST",headers:schedulePushHeaders({"X-Mainichi-Device-Id":push.deviceId}),body:JSON.stringify({envelope,pairingSecretHash:await pairingSecretHash(localSecret)})});
     if(!response.ok)throw new Error(`接続コードを作成できませんでした (${response.status})`);
     const result=await response.json();
@@ -512,7 +516,9 @@
     if(!response.ok)throw new Error(`接続コードを確認できませんでした (${response.status})`);
     const result=await response.json(),config=await decryptPairingConfig(result?.envelope,parts.secret);
     const current=syncCfg();
-    setSyncCfg(Object.assign({},current,{token:config.token,gistId:config.gistId,role:"rw",pairedAt:new Date().toISOString()}));
+    const next=Object.assign({},current,pairingSyncConfig(config),{role:"rw",pairedAt:new Date().toISOString()});
+    if(config.mode!=="cloud")for(const key of ["mode","cloudBase","spaceId","spaceSecret"])delete next[key];   // Gist の接続コードで受けたら Gist の同期に戻す
+    setSyncCfg(next);
     await pullRemote(false,true);
     startSyncLoop();
     return true;
@@ -2813,8 +2819,21 @@
     const last=c.lastReceipt ? `<p>最終受信：${esc2(c.lastReceipt.day)} ／ ${c.lastReceipt.steps ?? "—"}歩 ／ ${fmtSleep(c.lastReceipt.sleep)}</p>` : "";
     return `<p>ショートカットのURLを下記に変更してください。端末データ同期のGist IDは使いません。受信箱には最新の記録を残すため、再確認もできます。</p>${last}<label>ショートカットの送信先 URL</label><code class="an-sync-code">${url}</code><label>本文（JSON）</label><code class="an-sync-code">{"files":{"inbox.txt":{"content":"kenko|YYYY-MM-DD|歩数|就寝時刻|起床時刻"}}}</code>`;
   }
+  // 同期先の行と、移す・戻す釦（sync-no-lost-writes 3.5・案は openspec の design.md「Gist から置き場へ移す・戻す」）
+  function deviceSyncPlacePanel(device){
+    if(!syncConfigured(device)) return "";
+    const cloud=device.mode==="cloud",writable=device.role!=="ro";
+    if(cloud){
+      const saved=typeof syncBeforeCloud==="function"?syncBeforeCloud():null;
+      const savedLine=saved?.at?`<p class="an-settings-help">移す前の GitHub の写し：${esc2(new Date(saved.at).toLocaleString("ja-JP"))}・${esc2(String(saved.count??0))}件（この端末に保存）</p>`:"";
+      const back=device.token&&device.gistId&&writable?`<button class="an-small-action" data-v2-sync-move-back>GitHub に戻す</button>`:"";
+      return `<p class="an-sync-note" data-v2-sync-place="cloud">同期先：<strong>Cloudflare の置き場</strong>（2台で同時に保存しても両方残ります）</p>${savedLine}${back}<hr class="an-settings-divider">`;
+    }
+    const can=writable&&schedulePushReady();
+    return `<p class="an-sync-note" data-v2-sync-place="gist">同期先：<strong>GitHub Gist</strong></p><button class="an-small-action" data-v2-sync-move-cloud ${can?"":"disabled"}>同期先を Cloudflare に移す</button>${can?"":`<p class="an-settings-help">移すには、記録・送信もする端末で、予定の通知サーバーにつないでください。</p>`}<hr class="an-settings-divider">`;
+  }
   function deviceSyncPairingPanel(device){
-    const canMakeCode=Boolean(device.token&&device.gistId&&schedulePushReady());
+    const canMakeCode=Boolean(syncConfigured(device)&&schedulePushReady());
     const visibleCode=deviceSyncPairingCode?`<label>この端末の接続コード</label><textarea class="an-sync-code" readonly rows="3">${esc2(deviceSyncPairingCode)}</textarea><p class="an-settings-help">接続するPCだけへ渡してください。コードには暗号化を復号する鍵が含まれるため、チャット・日報・Gitには残しません。</p>`:"";
     return `<p>一度ペアリングすると、PCとiPhoneのどちらで入力しても、開いたとき・前面へ戻ったとき・表示中45秒ごとに自動でそろいます。</p><p class="an-sync-note">初回だけ、すでに同期済みの端末で接続コードを作り、もう一方へ入力します。GitHubトークンは画面に表示されず、コード内で暗号化して渡されます。</p><button class="an-small-action" data-v2-device-sync-pair-create ${canMakeCode?"":"disabled"}>この端末の接続コードを作る</button>${canMakeCode?"":"<p class=\"an-settings-help\">コードを作る端末では、端末同期と予定の通知サーバーの両方を先に接続してください。</p>"}${visibleCode}<hr class="an-settings-divider"><label>別の端末で作った接続コード</label><textarea id="v2DeviceSyncPairCode" rows="3" placeholder="接続コードを貼り付け"></textarea><button class="an-small-action" data-v2-device-sync-pair-join>コードで自動接続する</button>`;
   }
@@ -2828,10 +2847,10 @@
     if(!benefit.nextApplicationStart)benefit.nextApplicationStart="2026-08-01";
     const notifications=notificationConfig();
     const moneySettings=`<label>支出の方法</label><div class="v2-money-option-list">${moneyOptionRows("expenseMethod")}</div><input id="v2MethodAdd" placeholder="例：交通系IC"><button class="an-small-action" data-v2-method-add>支出の方法を追加</button><label>支出のカテゴリー</label><div class="v2-money-option-list">${moneyOptionRows("expenseCategory")}</div><input id="v2CategoryAdd" placeholder="例：医療費"><button class="an-small-action" data-v2-category-add>支出のカテゴリーを追加</button><hr><label>収入の受け取り方法</label><div class="v2-money-option-list">${moneyOptionRows("incomeMethod")}</div><input id="v2IncomeMethodAdd" placeholder="例：PayPay"><button class="an-small-action" data-v2-income-method-add>収入の方法を追加</button><label>収入のカテゴリー</label><div class="v2-money-option-list">${moneyOptionRows("incomeCategory")}</div><input id="v2IncomeCategoryAdd" placeholder="例：傷病手当"><button class="an-small-action" data-v2-income-category-add>収入のカテゴリーを追加</button><p class="an-settings-help">削除しても過去の記録は残ります。名前を変更すると、該当する記録の表示名も更新します。</p>`;
-    const deviceRole=device.role==="ro" ? "ro" : device.gistId ? "rw" : "ro";
+    const deviceRole=device.role==="ro" ? "ro" : syncConfigured(device) ? "rw" : "ro";
     const settingsDate=(id,value)=>`<span class="an-settings-date-control"><input id="${id}" type="date" value="${esc2(value||"")}" aria-label="次回申請開始日"><span data-v2-settings-date-value aria-hidden="true">${esc2(String(value||"").replaceAll("-","/"))}</span></span>`;
     const sections=[
-      ["refresh","端末データ同期",deviceSyncStatus(device),`${deviceSyncPairingPanel(device)}<hr class="an-settings-divider"><details><summary>手動で設定する（予備）</summary><div class="an-settings-body"><label for="v2DeviceSyncRole">この端末の役割</label><select id="v2DeviceSyncRole"><option value="ro" ${deviceRole==="ro"?"selected":""}>読み取り専用（iPhoneから受信する）</option><option value="rw" ${deviceRole==="rw"?"selected":""}>記録・送信もする</option></select><button class="an-small-action" data-v2-device-sync-role-save>役割を保存</button><label>GitHubトークン</label><input id="v2DeviceSyncToken" type="password" autocomplete="off" placeholder="この端末で入力"><label>端末データ用Gist ID</label><input id="v2DeviceSyncGist" value="${esc2(device.gistId||"")}" placeholder="iPhone側の既存IDを入力"><div class="an-sync-actions"><button class="an-small-action" data-v2-device-sync-start>端末同期を設定</button><button class="an-small-action" data-v2-device-sync-pull>今すぐ端末同期</button></div></div></details>`],
+      ["refresh","端末データ同期",deviceSyncStatus(device),`${deviceSyncPlacePanel(device)}${deviceSyncPairingPanel(device)}<hr class="an-settings-divider"><details><summary>手動で設定する（予備）</summary><div class="an-settings-body"><label for="v2DeviceSyncRole">この端末の役割</label><select id="v2DeviceSyncRole"><option value="ro" ${deviceRole==="ro"?"selected":""}>読み取り専用（iPhoneから受信する）</option><option value="rw" ${deviceRole==="rw"?"selected":""}>記録・送信もする</option></select><button class="an-small-action" data-v2-device-sync-role-save>役割を保存</button><label>GitHubトークン</label><input id="v2DeviceSyncToken" type="password" autocomplete="off" placeholder="この端末で入力"><label>端末データ用Gist ID</label><input id="v2DeviceSyncGist" value="${esc2(device.gistId||"")}" placeholder="iPhone側の既存IDを入力"><div class="an-sync-actions"><button class="an-small-action" data-v2-device-sync-start>端末同期を設定</button><button class="an-small-action" data-v2-device-sync-pull>今すぐ端末同期</button></div></div></details>`],
       ["heart","ヘルスケア自動取り込み",healthSyncStatus(health),`<p>iPhoneショートカットから歩数・睡眠だけを受信します。端末データ同期とは別の専用Gistです。</p><label>GitHubトークン</label><input id="v2HealthSyncToken" type="password" autocomplete="off" placeholder="この端末で入力"><label>ヘルスケア受信用Gist ID</label><input id="v2HealthSyncGist" value="${esc2(health.gistId||"")}" placeholder="空欄なら新規作成"><div class="an-sync-actions"><button class="an-small-action" data-v2-health-sync-create>受信先を新規作成</button><button class="an-small-action" data-v2-health-sync-check>受信を確認</button></div>${healthSyncGuide(health)}`],
       ["download","日報API受信",dailyReportApiStatus(dailyReportApi),dailyReportApiPanel()],
       ["clock","予定の通知",scheduleNotificationStatus(),(()=>{const remote=schedulePushConfig(),connected=schedulePushReady();return `<p>翌日の仕事・生活の予定を、前日の夜に通知します。無料の通知サーバーを接続すると、iPhoneでアプリを閉じていても受信できます。</p><label>通知する時刻</label><input id="v2NotificationTime" type="time" value="${esc2(notifications.time)}"><button class="an-small-action" data-v2-notification-save>通知時刻を保存</button><hr class="an-settings-divider"><label>通知サーバーのURL</label><input id="v2NotificationServer" type="url" inputmode="url" autocomplete="url" value="${esc2(remote.url)}" placeholder="https://...workers.dev"><label>初回セットアップキー</label><input id="v2NotificationSetupKey" type="password" autocomplete="off" placeholder="初回接続時だけ入力"><div class="an-sync-actions"><button class="an-small-action" data-v2-notification-connect>${connected?"この端末を接続し直す":"通知サーバーを接続"}</button><button class="an-small-action" data-v2-notification-enable>${notifications.enabled?"通知を停止":"通知を有効にする"}</button></div><p class="an-settings-help">初回セットアップキーは、通知サーバーを作った本人だけが端末を追加するための鍵です。端末へは保存しません。通知する予定名・時刻・場所・準備メモだけを最大90日分サーバーへ置き、送信済みの内容は自動で消します。</p>${remote.connectedAt?`<p class="an-settings-help">この端末は ${esc2(new Date(remote.connectedAt).toLocaleString("ja-JP"))} に接続済みです。</p>`:""}`;})()],
@@ -2960,7 +2979,7 @@
     newAppRender();
   },true);
   root.addEventListener("click",async event=>{
-    const button=event.target.closest("[data-v2-device-sync-role-save],[data-v2-device-sync-start],[data-v2-device-sync-pull],[data-v2-device-sync-pair-create],[data-v2-device-sync-pair-join],[data-v2-health-sync-create],[data-v2-health-sync-check],[data-v2-daily-report-api-save],[data-v2-daily-report-api-check]");
+    const button=event.target.closest("[data-v2-sync-move-cloud],[data-v2-sync-move-back],[data-v2-device-sync-role-save],[data-v2-device-sync-start],[data-v2-device-sync-pull],[data-v2-device-sync-pair-create],[data-v2-device-sync-pair-join],[data-v2-health-sync-create],[data-v2-health-sync-check],[data-v2-daily-report-api-save],[data-v2-daily-report-api-check]");
     if(!button) return;
     event.stopImmediatePropagation();
     if(button.hasAttribute("data-v2-daily-report-api-save")){
@@ -2971,6 +2990,18 @@
     }
     if(button.hasAttribute("data-v2-daily-report-api-check")){
       await pullDailyReportApi(false);newAppRender();keepWorkLogImportDetailsOpen(Boolean(workLogImportDraft));
+      return;
+    }
+    if(button.hasAttribute("data-v2-sync-move-cloud")){
+      if(!confirm("同期先を GitHub から Cloudflare（予定の通知サーバーの同期の置き場）へ移します。\n\n・この端末と GitHub の中身をそろえてから、新しい置き場へ書きます\n・移す前の GitHub の中身は、この端末に写しとして残します。GitHub の中身は消さず、書き換えません\n・途中で止まったら、今までの GitHub の同期のままです\n・あとで「GitHub に戻す」で戻せます（置き場は消しません）\n・ほかの端末は、この端末で作る接続コードで置き場につなぎ直します"))return;
+      try{const r=await moveSyncToCloud(schedulePushConfig());newAppRender();successToast(`同期先を移しました（置き場 ${r.count}件・移す前の写し ${r.savedCount}件）`);}
+      catch(error){newAppRender();toast(error?.message||"同期先を移せませんでした");}
+      return;
+    }
+    if(button.hasAttribute("data-v2-sync-move-back")){
+      if(!confirm("同期先を GitHub に戻します。\n\n・置き場の最新を受け取ってから、GitHub へ送ります\n・Cloudflare の置き場は消しません\n・ほかの端末は、この端末で作る接続コードで GitHub につなぎ直します"))return;
+      try{await moveSyncBackToGist();newAppRender();successToast("同期先を GitHub に戻しました");}
+      catch(error){newAppRender();toast(error?.message||"GitHub に戻せませんでした");}
       return;
     }
     if(button.hasAttribute("data-v2-device-sync-pair-create")){

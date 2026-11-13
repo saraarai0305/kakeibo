@@ -25,10 +25,14 @@ const start = html.indexOf("async function pushRemote(){");
 // 日報の取り込み（pushImportedWorkLog）まで入れる。adoptSyncRemote は手元を置き換えて描き直すだけ（render・toast は空の箱）
 const end = html.indexOf("async function pullRemote(", start);
 if (start < 0 || end <= start) { console.error("同期の処理が index.html に見つかりません"); process.exit(2); }
-const functions = html.slice(start, end);
+// 件数（richness）は同期の処理より前にある＝移す処理の件数の照らし合わせのために足す
+const richStart = html.indexOf("function richness(o){"), richEnd = html.indexOf("// 記録が大きく減る", richStart);
+if (richStart < 0 || richEnd <= richStart) { console.error("richness が index.html に見つかりません"); process.exit(2); }
+const functions = html.slice(richStart, richEnd) + "\n" + html.slice(start, end);
 const GIST_FILE = "mainichi-data.json";
 const copy = structuredClone;
 
+const noWait = async () => {};
 // 最初の2回の読みは、2台がそろって読み終わるまで返さない（同じ版を読んだ後に保存する場面を作る）
 function readBarrier() {
   let reads = 0, release;
@@ -36,11 +40,12 @@ function readBarrier() {
   return async () => { if (++reads <= 2) { if (reads === 2) release(); await both; } };
 }
 
-function fakeGist(initial) {
-  let head = copy(initial);
-  const wait = readBarrier();
+function fakeGist(initial, { barrier = true } = {}) {
+  let head = copy(initial), writes = 0;
+  const wait = barrier ? readBarrier() : noWait;
   return {
-    rejected: () => 0,
+    rejected: () => 0, writes: () => writes,
+    set: data => { head = copy(data); },   // 古い版のアプリが Gist に書いた（移した後の場面）
     head: async () => copy(head),
     config: () => ({ token: "fake", gistId: "fake", role: "rw" }),
     gistFetch: async (_path, opts) => {
@@ -49,23 +54,29 @@ function fakeGist(initial) {
         await wait();
         return { files: { [GIST_FILE]: { content: JSON.stringify(current) } } };
       }
-      head = JSON.parse(JSON.parse(opts.body).files[GIST_FILE].content);
+      head = JSON.parse(JSON.parse(opts.body).files[GIST_FILE].content); writes++;
       return {};
     },
   };
 }
 
 const response = (status, body) => ({ status, ok: status >= 200 && status < 300, json: async () => copy(body) });
-const noWait = async () => {};
 // barrier:false＝1台だけで動かす場面（最初の2回の読みを待ち合わせない）
+// initial が null＝まだ何も書いていない置き場（版 0）。POST /v1/sync/spaces は新しい空の置き場を作る（移す場面）
 function fakeCloud(initial, { barrier = true } = {}) {
-  let content = JSON.stringify(initial), version = 1, rejected = 0, lastRequestId = null;
+  let content = initial == null ? null : JSON.stringify(initial), version = initial == null ? 0 : 1, rejected = 0, lastRequestId = null, created = 0;
   const wait = barrier ? readBarrier() : noWait;
   return {
-    rejected: () => rejected,
+    rejected: () => rejected, created: () => created,
     head: async () => JSON.parse(content),
     config: () => ({ mode: "cloud", cloudBase: "http://fake.invalid", spaceId: "0".repeat(32), spaceSecret: "fake", role: "rw" }),
-    fetch: async (_url, opts = {}) => {
+    pushCfg: () => ({ url: "http://fake.invalid", deviceId: "fake-device", deviceSecret: "fake-device-secret" }),
+    fetch: async (url, opts = {}) => {
+      if (opts.method === "POST" && String(url).endsWith("/v1/sync/spaces")) {
+        if ((opts.headers || {})["Authorization"] !== "Bearer fake-device-secret") return response(401, { error: "端末の認証を確認してください" });
+        content = null; version = 0; lastRequestId = null; created++;
+        return response(200, { spaceId: "1".repeat(32), spaceSecret: "fake-space-secret" });
+      }
       if ((opts.method || "GET") === "GET") {
         const snapshot = { version, content };
         await wait();
@@ -98,6 +109,8 @@ async function realCloud(initial, { barrier = true } = {}) {
     rejected: () => rejected,
     head: async () => JSON.parse((await call(statePath, { headers: auth })).body.content),
     config: () => ({ ...cfg }),
+    pushCfg: () => ({ url: cloudUrl, deviceId: dev.body.deviceId, deviceSecret: dev.body.deviceSecret }),
+    created: () => 0,
     fetch: async (url, opts = {}) => {
       const r = await fetch(url, opts);
       const body = await r.json().catch(() => null);
@@ -110,7 +123,8 @@ async function realCloud(initial, { barrier = true } = {}) {
 
 // 端末1台。手元の保存（localStorage）は storage の Map。kept を渡すと、その保存から開き直した端末になる
 // （閉じて開き直した場面: 中身は "mainichi.v1"、前にそろえた姿は "mainichi.sync-base" から読む＝アプリの起動と同じ）
-function device(base, change, store, { role, kept } = {}) {
+// gist＝Gist の偽物（移す・戻す場面で、置き場と両方につないだ端末）。config＝同期の設定を丸ごと渡す（setSyncCfg で変わる）
+function device(base, change, store, { role, kept, gist, config: given } = {}) {
   const storage = kept ? new Map(kept) : new Map([["mainichi.sync-base", JSON.stringify(base)]]);
   let state;
   if (kept) state = JSON.parse(kept.get("mainichi.v1"));
@@ -120,16 +134,16 @@ function device(base, change, store, { role, kept } = {}) {
     state.savedAt = new Date(Date.now() + Math.random() * 1000).toISOString();
     storage.set("mainichi.v1", JSON.stringify(state)); // アプリは保存（persistNow）で手元に書いてから送る
   }
-  const config = { ...store.config(), ...(role ? { role } : {}) };
+  let config = given ? copy(given) : { ...store.config(), ...(role ? { role } : {}) };
   const messages = [];
   let scheduled = 0;
   const context = createContext({
     GIST_FILE, KEY: "mainichi.v1", S: state, crypto: globalThis.crypto,
     syncing: false, healthSyncing: false, staleBuild: false,
-    gistFetch: store.gistFetch || (async () => { throw new Error("Gist には行かない"); }),
+    gistFetch: (gist || store).gistFetch || (async () => { throw new Error("Gist には行かない"); }),
     fetch: store.fetch || (async () => { throw new Error("同期の置き場には行かない"); }),
     bigDrop: () => false, normalize: data => data,
-    syncCfg: () => config, setSyncCfg() {}, render() {}, toast() {},
+    syncCfg: () => copy(config), setSyncCfg: c => { config = copy(c); }, render() {}, toast() {},
     schedulePush: () => { scheduled++; },
     clearWorkLogSyncPending: () => storage.delete("mainichi.pending-work-log-sync"),
     syncPaint: (status, message) => messages.push({ status, message }),
@@ -141,7 +155,8 @@ function device(base, change, store, { role, kept } = {}) {
   });
   runInContext("const payload = () => JSON.stringify(S);\n" + functions, context);
   return {
-    messages, storage, scheduled: () => scheduled,
+    messages, storage, scheduled: () => scheduled, config: () => copy(config),
+    call: (code, value) => { context.__args = copy(value); return runInContext(code, context); },
     push: () => runInContext("pushRemote()", context),
     importWorkLog: (day, record) => { context.__args = copy([day, record]); return runInContext("pushImportedWorkLog(...__args)", context); },
     state: () => runInContext("S", context), run: code => runInContext(code, context),
@@ -356,6 +371,95 @@ await scenario(`同期の置き場（${where}）: 読み取り専用の端末は
   if (head.plan[day] || head.workLogs[day]) return "読み取り専用の端末が同期先を書き換えた";
   if (!res.skipped) return "取り込みの反映を読み取り専用で止めなかった";
   return ids(ro.state().plan[day]) === "ro" || "読み取り専用の端末の手元の記録が消えた";
+});
+
+// ── Gist から置き場へ移す・戻す（tasks 3.3・3.4・design.md「Gist から置き場へ移す・戻す」） ──
+// 端末は Gist（偽物）と置き場の両方につなぐ。最初は Gist の設定だけ（今の iPhone の姿）。移す前に送っていない記録を1つ持つ
+const MOVE_DAY = "2099-03-01";
+const moveBase = () => ({ plan: { [MOVE_DAY]: [{ id: "base", text: "元" }] }, spends: [{ id: "s-base", amt: 100 }], savedAt: `${MOVE_DAY}T00:00:00Z` });
+const GIST_CFG = { token: "fake", gistId: "fake", role: "rw" };
+async function moveSetup(phoneRoute) {
+  const base = moveBase(), gist = fakeGist(base, solo), store = await cloudStore(cloudUrl ? {} : null, solo);
+  const unsent = s => { s.plan[MOVE_DAY].push({ id: "iphone", text: "移す前に iPhone で足した" }); s.spends.push({ id: "s-iphone", amt: 200 }); };
+  const phone = device(base, unsent, phoneRoute ? route(store, phoneRoute) : store, { gist, config: GIST_CFG });
+  return { base, gist, store, phone };
+}
+const readSpace = dev => dev.run("syncRead(syncCfg()).then(r => r.data)");
+const addNow = (dev, id) => dev.run(`S.plan["${MOVE_DAY}"].push({ id: "${id}", text: "${id}" }); S.savedAt = new Date().toISOString();`);
+
+await scenario(`移す（${where}）: Gist とこの端末の未送信をそろえて置き場に書き、Gist は書き換えず、退避を残してから設定を変える。移した後の保存は置き場へ届く`, async () => {
+  const { base, gist, store, phone } = await moveSetup();
+  // 移す前に、ほかの端末が Gist に書いていた（この端末はまだ受け取っていない）
+  const elsewhere = copy(base); elsewhere.plan[MOVE_DAY].push({ id: "gist-only", text: "ほかの端末で足した" }); elsewhere.savedAt = new Date().toISOString();
+  gist.set(elsewhere);
+  const res = await phone.call("moveSyncToCloud(__args)", store.pushCfg());
+  const cfg = phone.config();
+  if (cfg.mode !== "cloud" || !cfg.spaceId || !cfg.spaceSecret) return `設定が置き場になっていない: mode=${cfg.mode}`;
+  if (cfg.token !== "fake" || cfg.gistId !== "fake") return "Gist の鍵を消した（戻せない・古い版の書き込みを拾えない）";
+  const head = await readSpace(phone);
+  if (ids(head.plan[MOVE_DAY]) !== "base,gist-only,iphone" || ids(head.spends) !== "s-base,s-iphone") return `置き場の中身が違う: 予定 ${ids(head.plan[MOVE_DAY])}・支出 ${ids(head.spends)}`;
+  if (gist.writes() !== 0) return `Gist を ${gist.writes()} 回書き換えた`;
+  const saved = JSON.parse(phone.storage.get("mainichi.before-cloud") || "null");
+  if (!saved || !saved.at || saved.count !== 1 || ids(saved.content?.plan?.[MOVE_DAY]) !== "base,gist-only") return "移す前の Gist の写し（時刻・件数・中身）が手元に無い";
+  if (res.count !== 2 || res.savedCount !== 1) return `結果の件数が違う: 置き場 ${res.count}・退避 ${res.savedCount}`;
+  addNow(phone, "after");
+  await phone.push();
+  const after = await readSpace(phone);
+  if (gist.writes() !== 0) return "移した後の保存が Gist に行った";
+  return ids(after.plan[MOVE_DAY]) === "after,base,gist-only,iphone" || `移した後の保存が置き場に届かない: ${ids(after.plan[MOVE_DAY])}`;
+});
+
+await scenario(`移す（${where}）: 置き場に書く所で回線が切れたら、設定を変えずに止まり、今までの Gist の同期のまま送れる`, async () => {
+  const { gist, store, phone } = await moveSetup({ before: once(async () => { throw new Error("回線が切れた（試し）"); }) });
+  let threw = null;
+  try { await phone.call("moveSyncToCloud(__args)", store.pushCfg()); } catch (e) { threw = e.message; }
+  if (!threw) return "途中で止まったのに、移したことになった";
+  const cfg = phone.config();
+  if (cfg.mode || cfg.spaceId) return `止まったのに設定が置き場になった（${threw}）`;
+  if (gist.writes() !== 0) return "止まる前に Gist を書き換えた";
+  if (ids(phone.state().plan[MOVE_DAY]) !== "base,iphone") return "止まった時に手元の未送信が消えた";
+  await phone.push();
+  return ids((await gist.head()).plan[MOVE_DAY]) === "base,iphone" || "止まった後の Gist の同期で、未送信が届かない";
+});
+
+await scenario(`移した後（${where}）: 古い版のアプリが Gist に書いた分を拾って置き場へ運び、移した後の手元の記録も消さない。2回目は二重に拾わない`, async () => {
+  const { base, gist, store, phone } = await moveSetup();
+  await phone.call("moveSyncToCloud(__args)", store.pushCfg());
+  addNow(phone, "cloud-era");
+  const old = copy(base); old.plan[MOVE_DAY].push({ id: "old-app", text: "古い版のアプリで足した" }); old.spends.push({ id: "s-old", amt: 300 });
+  old.savedAt = new Date().toISOString();
+  gist.set(old);
+  const picked = await phone.run("pickLegacyGistWrites()");
+  if (!picked.picked) return "Gist の変化を拾わなかった";
+  await phone.push();
+  const head = await readSpace(phone);
+  if (ids(head.plan[MOVE_DAY]) !== "base,cloud-era,iphone,old-app") return `置き場の予定が違う: ${ids(head.plan[MOVE_DAY])}`;
+  if (ids(head.spends) !== "s-base,s-iphone,s-old") return `置き場の支出が違う: ${ids(head.spends)}`;
+  if (gist.writes() !== 0) return "拾う時に Gist を書き換えた";
+  const again = await phone.run("pickLegacyGistWrites()");
+  if (again.picked) return "変わっていない Gist をもう一度拾った";
+  return ids(phone.state().plan[MOVE_DAY]) === "base,cloud-era,iphone,old-app" || `手元の予定が違う: ${ids(phone.state().plan[MOVE_DAY])}`;
+});
+
+await scenario(`戻す（${where}）: 置き場の最新（ほかの端末の分も）と古い版の Gist の分を足して Gist に書き、設定を Gist に戻す。置き場は消さない`, async () => {
+  const { base, gist, store, phone } = await moveSetup();
+  await phone.call("moveSyncToCloud(__args)", store.pushCfg());
+  addNow(phone, "while-cloud");
+  await phone.push();
+  const ipadCfg = { ...phone.config() }; delete ipadCfg.token; delete ipadCfg.gistId;
+  const ipad = device(await readSpace(phone), addPlan(MOVE_DAY, "ipad", "2台目で足した"), store, { config: ipadCfg });
+  await ipad.push();
+  const old = copy(base); old.plan[MOVE_DAY].push({ id: "old-app", text: "古い版のアプリで足した" }); old.savedAt = new Date().toISOString();
+  gist.set(old);
+  await phone.run("moveSyncBackToGist()");
+  const cfg = phone.config();
+  if (cfg.mode || cfg.spaceId || cfg.spaceSecret || cfg.cloudBase) return "設定に置き場の欄が残った";
+  if (cfg.token !== "fake") return "Gist の鍵が消えた";
+  const g = await gist.head();
+  if (ids(g.plan[MOVE_DAY]) !== "base,ipad,iphone,old-app,while-cloud") return `Gist の予定が違う: ${ids(g.plan[MOVE_DAY])}`;
+  if (ids(g.spends) !== "s-base,s-iphone") return `Gist の支出が違う: ${ids(g.spends)}`;
+  const space = await readSpace(ipad);
+  return ids(space.plan[MOVE_DAY]) === "base,ipad,iphone,while-cloud" || `置き場の中身が変わった: ${ids(space?.plan?.[MOVE_DAY])}`;
 });
 
 for (const [name, verdict, reference] of results) console.log(`${verdict.startsWith("通った") ? "○" : reference ? "－" : "×"} ${name} … ${verdict}`);

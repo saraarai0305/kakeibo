@@ -368,6 +368,56 @@ window.addEventListener("load", () => setTimeout(async () => {
       S.errands.push(errand("smoke-cloud", "置き場の用事")); S.savedAt = "2099-02-01T00:10:00Z";
       await pushRemote();
       if (cloudPuts !== 1 || !JSON.parse(cloudContent).errands.some(item => item.id === "smoke-cloud")) throw new Error("UI smoke: cloud sync push");
+      // 7) 同期先を移す・戻す（2026-11-14 sync-no-lost-writes 3.4・3.5）: 設定の「同期先」の行と釦から、偽の Gist と偽の置き場で移して戻す
+      //    押す前の確認（window.confirm）は一時で「はい」にする。移す間は Gist を書かず、戻すと Gist へ送る
+      const PUSH_KEY = "mainichi.schedule-push.v1", savedPush = localStorage.getItem(PUSH_KEY), savedConfirm = window.confirm, savedBeforeCloud = localStorage.getItem("mainichi.before-cloud");
+      const cloudLayer = window.fetch;
+      const until = async (ok, label) => { for (let i = 0; i < 80 && !ok(); i++) await new Promise(r => setTimeout(r, 25)); if (!ok()) throw new Error("UI smoke: " + label); };
+      const cfgNow = () => JSON.parse(localStorage.getItem(SYNC_KEY) || "{}");
+      let spacesMade = 0;
+      window.fetch = async (url, opts) => {
+        const u = String(url);
+        if (!u.startsWith(CLOUD)) return cloudLayer(url, opts);
+        if (u === CLOUD + "/v1/sync/spaces" && opts && opts.method === "POST") {
+          if (opts.headers?.Authorization !== "Bearer smoke-device-secret") return {ok:false, status:401, json: async () => ({error:"端末の認証を確認してください"})};
+          spacesMade++; cloudVersion = 0; cloudContent = null;
+          return {ok:true, status:200, json: async () => ({spaceId:"1".repeat(32), spaceSecret:"smoke-space"})};
+        }
+        if (u.startsWith(CLOUD + "/v1/sync/spaces/")) return cloudLayer(url, opts);
+        return {ok:false, status:404, json: async () => ({error:"not found"})};
+      };
+      try {
+        localStorage.setItem(PUSH_KEY, JSON.stringify({url: CLOUD, deviceId: "smoke-device", deviceSecret: "smoke-device-secret"}));
+        localStorage.setItem(SYNC_KEY, JSON.stringify({token:"smoke", gistId:"smoke", role:"rw"}));
+        localStorage.removeItem("mainichi.before-cloud");
+        gistContent = JSON.stringify(S); setSyncBase(S);
+        tap('[data-v2-back]', "settings → home (sync move)");
+        tap('[data-v2-go="settings"]', "home → settings (sync move)");
+        const moveButton = document.querySelector('[data-v2-sync-move-cloud]');
+        if (!document.querySelector('[data-v2-sync-place="gist"]') || !moveButton || moveButton.disabled) throw new Error("UI smoke: sync place row shows Gist with a move button");
+        S.errands.push(errand("smoke-unsent", "移す前の未送信")); S.savedAt = "2099-02-01T00:11:00Z"; localStorage.setItem(KEY, JSON.stringify(S));
+        const patchesBeforeMove = patches;
+        window.confirm = () => true;
+        moveButton.click();
+        await until(() => cfgNow().mode === "cloud" && !syncing, "move sync to cloud does not finish");
+        const moved = cfgNow();
+        if (spacesMade !== 1 || moved.token !== "smoke" || moved.spaceId !== "1".repeat(32) || patches !== patchesBeforeMove) throw new Error("UI smoke: move sync to cloud");
+        if (!JSON.parse(cloudContent).errands.some(item => item.id === "smoke-unsent")) throw new Error("UI smoke: move sync to cloud carries unsent records");
+        if (!JSON.parse(localStorage.getItem("mainichi.before-cloud") || "null")?.at) throw new Error("UI smoke: move sync to cloud keeps the Gist copy");
+        await until(() => document.querySelector('[data-v2-sync-place="cloud"]') && document.querySelector('[data-v2-sync-move-back]'), "sync place row shows cloud with a back button");
+        S.errands.push(errand("smoke-in-cloud", "置き場にいる間の用事")); S.savedAt = "2099-02-01T00:12:00Z"; localStorage.setItem(KEY, JSON.stringify(S));
+        await pushRemote(); clearTimeout(syncTimer);
+        document.querySelector('[data-v2-sync-move-back]').click();
+        await until(() => !cfgNow().mode && patches > patchesBeforeMove && !syncing, "move sync back to Gist does not finish");
+        const back = cfgNow();
+        if (back.spaceId || back.cloudBase || back.token !== "smoke") throw new Error("UI smoke: move sync back to Gist config");
+        if (!JSON.parse(gistContent).errands.some(item => item.id === "smoke-in-cloud")) throw new Error("UI smoke: move sync back to Gist carries cloud records");
+        await until(() => document.querySelector('[data-v2-sync-place="gist"]'), "sync place row shows Gist again");
+      } finally {
+        window.confirm = savedConfirm;
+        if (savedPush === null) localStorage.removeItem(PUSH_KEY); else localStorage.setItem(PUSH_KEY, savedPush);
+        if (savedBeforeCloud === null) localStorage.removeItem("mainichi.before-cloud"); else localStorage.setItem("mainichi.before-cloud", savedBeforeCloud);
+      }
     } finally {
       window.fetch = savedFetch;
       clearTimeout(syncTimer);

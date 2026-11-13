@@ -4664,6 +4664,99 @@ async function pushImportedWorkLog(day, record){
   }finally{ syncing = false; }
 }
 
+/* Gist から同期の置き場（cloud）へ移す・戻す（2026-11-14 sync-no-lost-writes 3.3・3.4・案は design.md）
+   移すのは1回の押し。途中で止まったら設定を変えない（今までの Gist の同期のまま）。Gist は消さず書き換えない。
+   移した後も Gist の鍵は残す＝戻すため・古い版のアプリが Gist に書いた分を拾うため */
+const SYNC_BEFORE_CLOUD_KEY = "mainichi.before-cloud";
+function syncGistCfg(c){ return { token: c.token, gistId: c.gistId, role: c.role }; }
+function syncBeforeCloud(){
+  try{ const raw = localStorage.getItem(SYNC_BEFORE_CLOUD_KEY); return raw ? JSON.parse(raw) : null; }catch(e){ return null; }
+}
+async function moveSyncToCloud(push){
+  const c = syncCfg();
+  if(c.mode === "cloud") throw new Error("もう Cloudflare の置き場で同期しています");
+  if(!(c.token && c.gistId)) throw new Error("先に今の同期（GitHub）を確かめてください");
+  if(c.role === "ro") throw new Error("読み取り専用の端末では移せません");
+  if(!(push && push.url && push.deviceId && push.deviceSecret)) throw new Error("予定の通知サーバーにつないでから移してください");
+  if(syncing || healthSyncing) throw new Error("ほかの同期の途中です。少し待ってからもう一度押してください");
+  syncing = true; syncPaint("busy", "同期先を移しています…");
+  try{
+    // 1. Gist を読む 2. この端末とそろえる（ふだんの送信と同じ3者の足し合わせ）
+    const before = (await syncRead(syncGistCfg(c))).data;
+    const data = copyJson(before ? reconcileSync(S, before, syncBase(), false).data : S);
+    if(before && bigDrop(before, data)) throw new Error(`この端末の記録が少なすぎます（${richness(data)} < GitHub ${richness(before)}）`);
+    data.savedAt = new Date().toISOString();
+    // 3. 退避（足し合わせる前の Gist の中身・時刻・件数）。残せなければ移さない
+    const at = new Date().toISOString();
+    try{ localStorage.setItem(SYNC_BEFORE_CLOUD_KEY, JSON.stringify({ at, gistId: c.gistId, count: before ? richness(before) : 0, content: before })); }
+    catch(e){ throw new Error("移す前の写しを端末に残せませんでした（空き容量）"); }
+    // 4. 置き場を作って書く
+    const base = String(push.url).replace(/\/+$/, "");
+    const made = await fetch(base + "/v1/sync/spaces", { method: "POST", cache: "no-store",
+      headers: { "Authorization": "Bearer " + push.deviceSecret, "X-Mainichi-Device-Id": push.deviceId } });
+    const space = await made.json().catch(() => null);
+    if(!made.ok || !space || !space.spaceId || !space.spaceSecret) throw new Error(`置き場を作れませんでした（${made.status}）`);
+    const cloud = Object.assign({}, c, { mode: "cloud", cloudBase: base, spaceId: space.spaceId, spaceSecret: space.spaceSecret });
+    const body = JSON.stringify(data);
+    const sent = await syncWrite(cloud, body, 0);
+    if(sent.conflict) throw new Error("置き場にほかの書き込みがありました");
+    // 5. 読み直して件数を照らす
+    const check = (await syncRead(cloud)).data;
+    if(!check || richness(check) !== richness(data)) throw new Error(`置き場の件数が合いません（${check ? richness(check) : 0} / ${richness(data)}）`);
+    // 6. ここで初めて設定を変える
+    S = normalize(copyJson(data));
+    localStorage.setItem(KEY, JSON.stringify(S));
+    setSyncBase(body);
+    cloud.movedToCloudAt = at; cloud.lastSync = new Date().toISOString(); delete cloud.lastSyncError;
+    setSyncCfg(cloud);
+    syncPaint("ok", "Cloudflare の置き場で同期しています");
+    return { count: richness(data), savedCount: before ? richness(before) : 0, at };
+  }catch(e){
+    syncPaint("err", "同期先を移せませんでした（" + e.message + "）");
+    throw e;
+  }finally{ syncing = false; }
+}
+// 古い版のアプリ（Gist に書く）が混ざる間、移した端末が Gist の変化を拾って置き場へ運ぶ（3.3）。
+// 基準は退避した Gist の姿。拾ったら基準を今の Gist に進める。置き場へはふだんの送信で運ぶ（この後の受け取りで「こちらが変わった」になる）
+async function pickLegacyGistWrites(){
+  const c = syncCfg(), saved = syncBeforeCloud();
+  if(c.mode !== "cloud" || !(c.token && c.gistId) || c.role === "ro" || !saved || !saved.content) return { skipped: true };
+  const gist = (await syncRead(syncGistCfg(c))).data;
+  if(!gist || sameSyncData(gist, saved.content)) return { picked: false };
+  try{ localStorage.setItem("mainichi.before-sync", JSON.stringify(S)); }catch(e){}
+  S = normalize(mergeSyncData(saved.content, S, gist));
+  S.savedAt = new Date().toISOString();
+  localStorage.setItem(KEY, JSON.stringify(S));
+  saved.content = gist; saved.pickedAt = S.savedAt;
+  try{ localStorage.setItem(SYNC_BEFORE_CLOUD_KEY, JSON.stringify(saved)); }catch(e){}
+  return { picked: true };
+}
+// 戻す: 置き場の最新を受けてから設定を Gist に戻し、すぐ送る（置き場にいた間の変更を Gist に足し合わせる）。置き場は消さない
+async function moveSyncBackToGist(){
+  const c = syncCfg();
+  if(c.mode !== "cloud") throw new Error("今は GitHub で同期しています");
+  if(!(c.token && c.gistId)) throw new Error("GitHub の鍵がこの端末に無いので戻せません");
+  if(syncing || healthSyncing) throw new Error("ほかの同期の途中です。少し待ってからもう一度押してください");
+  const cloud = (await syncRead(c)).data;
+  if(cloud){
+    const plan = reconcileSync(S, cloud, syncBase(), false);
+    if(plan.kind === "adopt" || plan.kind === "merge"){
+      if(bigDrop(S, plan.data)) throw new Error("置き場の記録が少なすぎるので戻すのを止めました");
+      try{ localStorage.setItem("mainichi.before-sync", JSON.stringify(S)); }catch(e){}
+      S = normalize(copyJson(plan.data)); S.savedAt = new Date().toISOString();
+      localStorage.setItem(KEY, JSON.stringify(S));
+    }
+  }
+  const back = Object.assign({}, c);
+  for(const k of ["mode", "cloudBase", "spaceId", "spaceSecret"]) delete back[k];
+  back.movedBackAt = new Date().toISOString();
+  setSyncCfg(back);
+  const saved = syncBeforeCloud();
+  if(saved && saved.content) setSyncBase(saved.content);   // 最後に見た Gist の姿を基準に、置き場にいた間の変更を足して送る
+  await pushRemote();
+  return true;
+}
+
 async function pullRemote(silent, force){
   const c = syncCfg();
   if(!syncConfigured(c) || syncing || healthSyncing) return;
@@ -4671,6 +4764,10 @@ async function pullRemote(silent, force){
   let imported = 0;
   if(!silent) syncPaint("busy", "受信中…");
   try{
+    // 置き場へ移した端末は、古い版のアプリが Gist に書いた分を先に拾う（拾えなくても受け取りは続ける）
+    if(c.mode === "cloud" && !force){
+      try{ if((await pickLegacyGistWrites()).picked){ render(); toast("古い版のアプリで入れた記録を取り込みました"); } }catch(e){}
+    }
     const read = await syncRead(c);
     if(read.data){
       const remote = read.data;
