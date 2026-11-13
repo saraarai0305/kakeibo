@@ -4514,9 +4514,12 @@ function mergeSyncWorkLog(b, l, r, localNewer, path){
   const out = mergeSyncObject(b, l, r, localNewer, path);
   const timing = w => WORK_LOG_TIMING_FIELDS.map(f => w && Object.prototype.hasOwnProperty.call(w, f) ? w[f] : undefined);
   if(!syncEq(timing(l), timing(b)) && !syncEq(timing(r), timing(b)) && !syncEq(timing(l), timing(r))){
-    const src = syncHasPunch(l) !== syncHasPunch(r) ? (syncHasPunch(l) ? l : r) : (localNewer ? l : r);
-    // 時刻はまとめて片方にそろえる。そろえて捨てた側の値も退避する（3.2）
-    for(const field of WORK_LOG_TIMING_FIELDS) if(!syncEq(l[field], r[field])) noteSyncConflict(path.concat(field));
+    const oneSidePunch = syncHasPunch(l) !== syncHasPunch(r);
+    const src = oneSidePunch ? (syncHasPunch(l) ? l : r) : (localNewer ? l : r);
+    // 時刻はまとめて片方にそろえる。そろえて捨てた側の値も退避する（3.2）。
+    // 打刻が片方だけにある時は、決まり（打刻のある側＝スマホの時刻を日報で上書きしない）で決まる＝食い違いとして尋ねない
+    // （日報の取り込みと iPhone の打刻が重なるたびに帯が出ていた・2026-11-14 1.2）
+    if(!oneSidePunch) for(const field of WORK_LOG_TIMING_FIELDS) if(!syncEq(l[field], r[field])) noteSyncConflict(path.concat(field));
     for(const field of WORK_LOG_TIMING_FIELDS){
       if(Object.prototype.hasOwnProperty.call(src, field)) out[field] = copyJson(src[field]);
       else delete out[field];
@@ -4616,9 +4619,10 @@ async function pushImportedWorkLog(day, record){
   if(syncing || healthSyncing) return {ok:false, error:new Error("別の同期処理が実行中です")};
   syncing = true; syncPaint("busy", "日報を同期先へ反映中…");
   try{
-    let read = await syncRead(c), remote = null;
+    let read = await syncRead(c), remote = null, sentFrom = null;
     for(let attempt = 0; ; attempt++){
       const remoteRaw = read.data;
+      sentFrom = copyJson(S);   // この姿から送る中身を作った（送っている間に手元が変わったかを、送り終わりに比べる）
       // 対象日の打刻は同期先の値を見る。ほかの日と、この端末のまだ送っていない変更は先に足し合わせる
       const existingRaw = remoteRaw ? normalize(copyJson(remoteRaw)).workLogs[day] : undefined;
       remote = normalize(copyJson(remoteRaw ? reconcileSync(S, remoteRaw, syncBase(), false).data : S));
@@ -4639,9 +4643,13 @@ async function pushImportedWorkLog(day, record){
       if(attempt >= SYNC_RETRY_LIMIT) throw new Error("ほかの端末の保存が続いています");
       read = { data: sent.data, version: sent.version };
     }
-    S = remote;
+    // 送っている間にこの端末で入れた変更は、送った姿に足し合わせて手元に残し、次の送信で届ける
+    // （送った姿で手元を丸ごと置き換えると消えていた・2026-11-14 1.2）
+    const changedWhileSending = !sameSyncData(S, sentFrom);
+    S = changedWhileSending ? normalize(mergeSyncData(sentFrom, S, remote)) : remote;
     localStorage.setItem(KEY, JSON.stringify(S));
     setSyncBase(remote);
+    if(changedWhileSending) schedulePush();
     clearWorkLogSyncPending();
     c.lastSync = new Date().toISOString();
     delete c.lastSyncError;
