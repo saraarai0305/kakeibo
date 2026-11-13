@@ -516,7 +516,7 @@
     if(!response.ok)throw new Error(`接続コードを確認できませんでした (${response.status})`);
     const result=await response.json(),config=await decryptPairingConfig(result?.envelope,parts.secret);
     const current=syncCfg();
-    const next=Object.assign({},current,pairingSyncConfig(config),{role:"rw",pairedAt:new Date().toISOString()});
+    const next=Object.assign({},current,pairingSyncConfig(config),{role:current.role==="ro"?"ro":"rw",pairedAt:new Date().toISOString()});
     if(config.mode!=="cloud")for(const key of ["mode","cloudBase","spaceId","spaceSecret"])delete next[key];   // Gist の接続コードで受けたら Gist の同期に戻す
     setSyncCfg(next);
     await pullRemote(false,true);
@@ -3012,8 +3012,9 @@
     if(button.hasAttribute("data-v2-device-sync-pair-join")){
       const code=document.getElementById("v2DeviceSyncPairCode")?.value.trim()||"";
       if(!code)return toast("接続コードを貼り付けてください");
-      if(!confirm("この端末を双方向同期へ接続します。\n\n最初に、同期済み端末の最新データをこの端末へ受信します。現在この端末だけにある未同期データは置き換わるため、必要なら先にバックアップしてください。"))return;
-      try{await joinDeviceSyncPairing(code);deviceSyncPairingCode="";newAppRender();successToast("自動同期を開始しました。以後はPC・iPhoneの両方から更新できます");}
+      const joinRo=syncCfg().role==="ro";
+      if(!confirm((joinRo?"この端末を同期へ接続します（読み取り専用のまま。記録は送りません）。":"この端末を双方向同期へ接続します。")+"\n\n最初に、同期済み端末の最新データをこの端末へ受信します。現在この端末だけにある未同期データは置き換わるため、必要なら先にバックアップしてください。"))return;
+      try{await joinDeviceSyncPairing(code);deviceSyncPairingCode="";newAppRender();successToast(joinRo?"自動同期を開始しました（この端末は読み取り専用のままです）":"自動同期を開始しました。以後はPC・iPhoneの両方から更新できます");}
       catch(error){toast(error?.message||"自動接続できませんでした");}
       return;
     }

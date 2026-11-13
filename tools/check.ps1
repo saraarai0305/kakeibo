@@ -384,8 +384,11 @@ window.addEventListener("load", () => setTimeout(async () => {
           return {ok:true, status:200, json: async () => ({spaceId:"1".repeat(32), spaceSecret:"smoke-space"})};
         }
         if (u.startsWith(CLOUD + "/v1/sync/spaces/")) return cloudLayer(url, opts);
+        if (u === CLOUD + "/v1/sync/pairings" && opts && opts.method === "POST") { pairingEnvelope = JSON.parse(opts.body).envelope; return {ok:true, status:200, json: async () => ({pairingId:"a".repeat(32)})}; }
+        if (u === CLOUD + "/v1/sync/pairings/join") return {ok:true, status:200, json: async () => ({envelope: pairingEnvelope})};
         return {ok:false, status:404, json: async () => ({error:"not found"})};
       };
+      let pairingEnvelope = null;
       try {
         localStorage.setItem(PUSH_KEY, JSON.stringify({url: CLOUD, deviceId: "smoke-device", deviceSecret: "smoke-device-secret"}));
         localStorage.setItem(SYNC_KEY, JSON.stringify({token:"smoke", gistId:"smoke", role:"rw"}));
@@ -413,6 +416,26 @@ window.addEventListener("load", () => setTimeout(async () => {
         if (back.spaceId || back.cloudBase || back.token !== "smoke") throw new Error("UI smoke: move sync back to Gist config");
         if (!JSON.parse(gistContent).errands.some(item => item.id === "smoke-in-cloud")) throw new Error("UI smoke: move sync back to Gist carries cloud records");
         await until(() => document.querySelector('[data-v2-sync-place="gist"]'), "sync place row shows Gist again");
+        // 8) 接続コード: 置き場の端末のコードは置き場の4つだけ（GitHub の鍵を入れない）・読み取り専用の端末（PC）は受けても読み取り専用のまま
+        localStorage.setItem(SYNC_KEY, JSON.stringify({mode:"cloud", cloudBase:CLOUD, spaceId:"1".repeat(32), spaceSecret:"smoke-space", token:"smoke", gistId:"smoke", role:"rw"}));
+        tap('[data-v2-back]', "settings → home (pairing)");
+        tap('[data-v2-go="settings"]', "home → settings (pairing)");
+        document.querySelector('[data-v2-device-sync-pair-create]').click();
+        await until(() => pairingEnvelope && document.querySelector('textarea.an-sync-code[readonly]'), "pairing code for a cloud device");
+        const pairingCode = document.querySelector('textarea.an-sync-code[readonly]').value.trim();
+        const b64 = v => Uint8Array.from(atob(v.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - v.length % 4) % 4)), c => c.charCodeAt(0));
+        const pairKey = await crypto.subtle.importKey("raw", await crypto.subtle.digest("SHA-256", new TextEncoder().encode(pairingCode.split(".")[1])), {name:"AES-GCM"}, false, ["decrypt"]);
+        const carried = JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({name:"AES-GCM", iv:b64(pairingEnvelope.iv)}, pairKey, b64(pairingEnvelope.ciphertext))));
+        if (carried.mode !== "cloud" || carried.spaceId !== "1".repeat(32) || carried.spaceSecret !== "smoke-space" || carried.token || carried.gistId) throw new Error("UI smoke: pairing code for a cloud device carries only the space");
+        localStorage.setItem(SYNC_KEY, JSON.stringify({token:"pc", gistId:"pc", role:"ro"}));
+        tap('[data-v2-back]', "settings → home (pairing join)");
+        tap('[data-v2-go="settings"]', "home → settings (pairing join)");
+        document.getElementById("v2DeviceSyncPairCode").value = pairingCode;
+        document.querySelector('[data-v2-device-sync-pair-join]').click();
+        await until(() => cfgNow().mode === "cloud" && !syncing, "join a cloud pairing does not finish");
+        clearInterval(pullTimer); clearTimeout(syncTimer);
+        const joined = cfgNow();
+        if (joined.role !== "ro" || joined.spaceId !== "1".repeat(32) || joined.cloudBase !== CLOUD) throw new Error("UI smoke: read-only device stays read-only after joining a cloud pairing");
       } finally {
         window.confirm = savedConfirm;
         if (savedPush === null) localStorage.removeItem(PUSH_KEY); else localStorage.setItem(PUSH_KEY, savedPush);
