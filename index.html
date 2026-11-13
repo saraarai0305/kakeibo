@@ -4035,7 +4035,7 @@ function syncPaint(state, msg){
   const dot = document.getElementById("syncDot");
   dot.className = "syncdot" + (state ? " " + state : "");
   document.getElementById("syncMsg").textContent = msg;
-  const c = syncCfg(), on = !!(c.token && c.gistId);
+  const c = syncCfg(), on = syncConfigured(c);
   document.getElementById("syncState").textContent = !on ? "未接続" : c.lastSyncError ? "接続エラー" : c.lastSync ? (c.role === "ro" ? "読み取り専用・接続確認済み" : "接続確認済み") : c.role === "ro" ? "読み取り専用・同期設定済み" : "同期設定済み";
   document.getElementById("syncOff").hidden = !on;
 
@@ -4845,14 +4845,15 @@ async function manualRefresh(){
 })();
 
 function schedulePush(){
-  if(!syncCfg().token || staleBuild) return;
+  // 同期の有無は syncConfigured で見る（Gist の token だけを見ると、同期の置き場（cloud）では自動で送らなかった・2026-11-14）
+  if(!syncConfigured(syncCfg()) || staleBuild) return;
   clearTimeout(syncTimer);
   syncTimer = setTimeout(pushRemote, 3000);   // 入力が落ち着いてから送る
 }
 
 function startSyncLoop(){
   clearInterval(pullTimer);
-  if(!syncCfg().token || staleBuild) return;
+  if(!syncConfigured(syncCfg()) || staleBuild) return;
   pullRemote(true);
   pullTimer = setInterval(() => { if(!document.hidden) pullRemote(true); }, 45000);
 }
@@ -5100,7 +5101,7 @@ setInterval(checkBuild, 10 * 60 * 1000);
 setTab(S.ui.tab || "home");
 importFromHash();
 render();
-syncPaint(syncCfg().token ? "ok" : "", syncCfg().token
+syncPaint(syncConfigured(syncCfg()) ? "ok" : "", syncConfigured(syncCfg())
   ? "自動でそろえています" : "PCとiPhoneを自動でそろえます。");
 checkBuild().then(()=>{ startSyncLoop(); startHealthSyncLoop(); });   // 版を確かめてから同期を始める
 

@@ -1147,7 +1147,7 @@
     const methods=[...(S.expenseMethods||[])].map(esc2).join("、") || "追加なし";
     const categories=[...(S.expenseCats||[])].map(esc2).join("、") || "追加なし";
     return `<section class="v2-page v2-settings-page">${top("設定")}<p class="v2-kicker">${icon("settings")}SETTINGS</p><h2 class="v2-page-lead">暮らしの設定</h2><div class="v2-settings">
-      <details><summary><i>${icon("refresh")}</i><span><strong>同期・歩数／睡眠</strong><small>${cfg.token&&cfg.gistId?"同期済み・アプリを開くと更新します":"未接続"}</small></span></summary><div class="v2-settings-body"><p>歩数と睡眠は、設定済みのiPhoneショートカット／同期から読み込みます。</p><label>GitHubトークン</label><input id="v2SyncToken" type="password" autocomplete="off" placeholder="初回設定時のみ入力"><label>Gist ID</label><input id="v2SyncGist" value="${esc2(cfg.gistId||"")}" placeholder="2台目のみ入力"><button class="v2-sub-action" data-v2-sync-start>${icon("refresh")}同期を設定・開始</button><button class="v2-sub-action" data-v2-sync>今すぐ同期する</button><button class="v2-sub-action" data-v2-role>${cfg.role==="ro"?"記録する端末にする":"見るだけの端末にする"}</button></div></details>
+      <details><summary><i>${icon("refresh")}</i><span><strong>同期・歩数／睡眠</strong><small>${syncConfigured(cfg)?"同期済み・アプリを開くと更新します":"未接続"}</small></span></summary><div class="v2-settings-body"><p>歩数と睡眠は、設定済みのiPhoneショートカット／同期から読み込みます。</p><label>GitHubトークン</label><input id="v2SyncToken" type="password" autocomplete="off" placeholder="初回設定時のみ入力"><label>Gist ID</label><input id="v2SyncGist" value="${esc2(cfg.gistId||"")}" placeholder="2台目のみ入力"><button class="v2-sub-action" data-v2-sync-start>${icon("refresh")}同期を設定・開始</button><button class="v2-sub-action" data-v2-sync>今すぐ同期する</button><button class="v2-sub-action" data-v2-role>${cfg.role==="ro"?"記録する端末にする":"見るだけの端末にする"}</button></div></details>
       <details><summary><i>${icon("list")}</i><span><strong>毎日の習慣</strong><small>今日の流れに表示する項目</small></span></summary><div class="v2-settings-body"><div class="v2-habits">${habitList().map(h=>`<span class="v2-habit"><i>${habitIcon(h)}</i>${esc2(h.label)}</span>`).join("")}</div><label>習慣の名前</label><input id="v2HabitLabel" placeholder="例：ストレッチ"><button class="v2-sub-action" data-v2-habit-add>${icon("plus")}習慣を追加</button></div></details>
       <details><summary><i>${icon("wallet")}</i><span><strong>お金の初期設定</strong><small>カード上限・方法・カテゴリー</small></span></summary><div class="v2-settings-body"><label>カードの上限</label><input id="v2CardCap" type="text" inputmode="numeric" value="${(+S.cardCap||0).toLocaleString("ja-JP")}"><button class="v2-sub-action" data-v2-card-cap>上限を保存</button><hr><label>支出の方法</label><small>追加済み：${methods}</small><input id="v2MethodAdd" placeholder="例：交通系IC"><button class="v2-sub-action" data-v2-method-add>方法を追加</button><label>支出のカテゴリー</label><small>追加済み：${categories}</small><input id="v2CategoryAdd" placeholder="例：医療費"><button class="v2-sub-action" data-v2-category-add>カテゴリーを追加</button><hr><label>収入の受け取り方法</label><input id="v2IncomeMethodAdd" placeholder="例：PayPay"><button class="v2-sub-action" data-v2-income-method-add>方法を追加</button><label>収入のカテゴリー</label><input id="v2IncomeCategoryAdd" placeholder="例：傷病手当"><button class="v2-sub-action" data-v2-income-category-add>カテゴリーを追加</button></div></details>
       <details><summary><i>${icon("calendar")}</i><span><strong>カレンダー連携</strong><small>予定の取り込みと表示</small></span></summary><div class="v2-settings-body"><p>予定は「一日の流れ」から確認・追加できます。</p></div></details>
@@ -2796,7 +2796,7 @@
   */
   function deviceSyncStatus(c){
     const ro=c.role==="ro";
-    if(!(c.token&&c.gistId)) return ro ? "読み取り専用・未設定" : "未設定";
+    if(!syncConfigured(c)) return ro ? "読み取り専用・未設定" : "未設定";
     if(c.lastSyncError) return "接続エラー（確認が必要）";
     if(c.lastSync) return ro ? "読み取り専用・接続確認済み" : "接続確認済み";
     return ro ? "読み取り専用・設定済み（通信未確認）" : "設定済み（通信未確認）";
@@ -2934,13 +2934,15 @@
     if(auto)dailyReportAutoImported={date:data.date};
     if(redraw)newAppRender();
     const syncCfgNow=typeof syncCfg==="function"?syncCfg():{};
-    if(syncCfgNow.token&&syncCfgNow.gistId&&syncCfgNow.role!=="ro"&&typeof pushImportedWorkLog==="function"){
+    // 同期の有無は syncConfigured で見る（同期の置き場（cloud）でも日報を同期先へ反映する・2026-11-14）
+    const syncOnNow=typeof syncConfigured==="function"&&syncConfigured(syncCfgNow);
+    if(syncOnNow&&syncCfgNow.role!=="ro"&&typeof pushImportedWorkLog==="function"){
       try{ localStorage.setItem("mainichi.pending-work-log-sync",JSON.stringify({day:data.date,record:importedRecordForSync,createdAt:new Date().toISOString()})); }catch(e){}
       toast("日報を同期先へ反映中…");
       const syncResult=await pushImportedWorkLog(data.date,importedRecordForSync);
       if(syncResult.ok) successToast(auto?`日報（${data.date}）を自動で取り込み、同期先へ反映しました`:overwrite?"日報を上書きし、同期先へ反映しました":"日報を取り込み、同期先へ反映しました");
       else toast("日報はこの端末に保存しましたが、同期先へ反映できませんでした");
-    }else if(syncCfgNow.token&&syncCfgNow.gistId&&syncCfgNow.role==="ro"){
+    }else if(syncOnNow&&syncCfgNow.role==="ro"){
       toast("読み取り専用のため、同期先へ反映できませんでした");
     }else{
       successToast(auto?`日報（${data.date}）を自動で取り込みました（端末内保存）`:overwrite?"日報を上書きしました（端末内保存）":"日報を取り込みました（端末内保存）");

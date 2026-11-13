@@ -343,6 +343,31 @@ window.addEventListener("load", () => setTimeout(async () => {
       await pullRemote(true);
       await pushRemote();
       if (S.errands.some(item => item.id === "smoke-ro") || S.errands.some(item => item.id === "smoke-local") || patches !== patchesBefore) throw new Error("UI smoke: sync read-only adopts remote");
+      // 6) 同期の置き場（cloud）の設定でも、状態の表示・自動の受け取り・保存の後の送信の予約・送信が動く
+      //    （2026-11-14: 同期の有無を Gist の token だけで見ていて、cloud では自動の送受信が走らなかった＝syncConfigured に替えた）
+      const CLOUD = "https://smoke-sync.test", gistOnlyFetch = window.fetch;
+      let cloudVersion = 1, cloudContent = JSON.stringify(S), cloudGets = 0, cloudPuts = 0;
+      window.fetch = async (url, opts) => {
+        if (!String(url).startsWith(CLOUD)) return gistOnlyFetch(url, opts);
+        if (!opts || !opts.method || opts.method === "GET") { cloudGets++; return {ok:true, status:200, json: async () => ({version:cloudVersion, content:cloudContent})}; }
+        if (String(opts.headers["If-Match"]).replace(/"/g, "") !== String(cloudVersion)) return {ok:false, status:409, json: async () => ({error:"conflict", conflict:true, version:cloudVersion, content:cloudContent})};
+        cloudPuts++; cloudVersion++; cloudContent = opts.body;
+        return {ok:true, status:200, json: async () => ({ok:true, version:cloudVersion})};
+      };
+      localStorage.setItem(SYNC_KEY, JSON.stringify({mode:"cloud", cloudBase:CLOUD, spaceId:"0".repeat(32), spaceSecret:"smoke", role:"rw"}));
+      setSyncBase(JSON.parse(cloudContent));
+      syncPaint("ok", "smoke");
+      if (document.getElementById("syncState").textContent === "未接続") throw new Error("UI smoke: cloud sync shows not connected");
+      startSyncLoop(); clearInterval(pullTimer);
+      for (let i = 0; i < 20 && (!cloudGets || syncing); i++) await new Promise(r => setTimeout(r, 25));
+      if (!cloudGets) throw new Error("UI smoke: cloud sync loop does not pull");
+      clearTimeout(syncTimer); syncTimer = null;
+      schedulePush();
+      if (!syncTimer) throw new Error("UI smoke: cloud sync does not schedule a push after save");
+      clearTimeout(syncTimer);
+      S.errands.push(errand("smoke-cloud", "置き場の用事")); S.savedAt = "2099-02-01T00:10:00Z";
+      await pushRemote();
+      if (cloudPuts !== 1 || !JSON.parse(cloudContent).errands.some(item => item.id === "smoke-cloud")) throw new Error("UI smoke: cloud sync push");
     } finally {
       window.fetch = savedFetch;
       clearTimeout(syncTimer);
