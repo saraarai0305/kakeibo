@@ -4237,12 +4237,15 @@ async function pushRemote(){
     let read = await syncRead(c), merged = false, body = null;
     for(let attempt = 0; ; attempt++){
       const remote = read.data;
-      if(remote && !syncReplacePending()){
-        const plan = reconcileSync(S, remote, syncBase(), false);
+      // 復元・読み込みの後は、戻した時に見えていた姿を基準に足し合わせる（基準が無い時だけ置き換える）
+      const replacing = syncReplacePending(), replaceBase = replacing ? syncReplaceBase() : null;
+      if(remote && (!replacing || replaceBase)){
+        const plan = reconcileSync(S, remote, replacing ? replaceBase : syncBase(), false);
         if(plan.kind === "same" || plan.kind === "adopt"){
           // 送る変更が無い。相手のほうが変わっていれば受け取る
           if(plan.kind === "same") setSyncBase(remote);
           else if(!adoptSyncRemote(remote, true)) return;
+          if(replacing) clearSyncReplace();
           c.lastSync = new Date().toISOString(); setSyncCfg(c);
           syncPaint("ok", "同期済み " + new Date().toLocaleTimeString("ja-JP"));
           if(merged){ render(); toast("ほかの端末の変更と合わせました"); }
@@ -4363,9 +4366,22 @@ function setSyncBase(content){
   try{ localStorage.setItem(SYNC_BASE_KEY, JSON.stringify(typeof content === "string" ? JSON.parse(content) : content)); }
   catch(e){ try{ localStorage.removeItem(SYNC_BASE_KEY); }catch(_){} }   // 残せなければ持たない（足し合わせは消さない側に倒れる）
 }
-// 復元・ファイルの読み込みは「この端末の中身にそろえる」操作。次の送信だけは足し合わせずに置き換える
-function markSyncReplace(){ try{ localStorage.setItem(SYNC_REPLACE_KEY, new Date().toISOString()); }catch(e){} }
+// 復元・ファイルの読み込みは「この端末の中身にそろえる」操作。
+// 丸ごと置き換えると、戻した後（戻す時に見えていなかった間も）にほかの端末が入れた記録まで消える。
+// そこで戻した時に見えていた同期先の姿（前にそろえた姿）を印に写しておき、次の送信はそれを基準に3者で足し合わせる
+// ＝戻した側が消した・変えた所はそのとおりに、基準の後にほかの端末が足した・変えた所は残す（2026-11-14 sync-no-lost-writes 3.1）。
+// 基準が無い端末（同期を始める前の読み込み）だけは今までどおり置き換える
+function markSyncReplace(){
+  try{ localStorage.setItem(SYNC_REPLACE_KEY, JSON.stringify({ at: new Date().toISOString(), base: syncBase() })); }catch(e){}
+}
 function syncReplacePending(){ try{ return Boolean(localStorage.getItem(SYNC_REPLACE_KEY)); }catch(e){ return false; } }
+function syncReplaceBase(){
+  let raw = null;
+  try{ raw = localStorage.getItem(SYNC_REPLACE_KEY); }catch(e){ return null; }
+  if(!raw) return null;
+  try{ const o = JSON.parse(raw); if(syncPlain(o) && "base" in o) return o.base || null; }catch(e){}
+  return syncBase();   // 前の版のアプリが付けた印（時刻だけ）は、今の前にそろえた姿を基準にする
+}
 function clearSyncReplace(){ try{ localStorage.removeItem(SYNC_REPLACE_KEY); }catch(e){} }
 function syncIdList(...lists){
   return lists.every(list => list === undefined || (Array.isArray(list) &&

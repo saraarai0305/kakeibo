@@ -462,5 +462,34 @@ await scenario(`戻す（${where}）: 置き場の最新（ほかの端末の分
   return ids(space.plan[MOVE_DAY]) === "base,ipad,iphone,while-cloud" || `置き場の中身が変わった: ${ids(space?.plan?.[MOVE_DAY])}`;
 });
 
+// 明示の復元（退避からの戻し・ファイルの読み込み＝markSyncReplace の後の送信）（tasks 3.1 の残り・2026-11-14）
+// 同期先の姿 base には取り違えた予定 wrong が入っている。PC は wrong を消した姿へ戻す
+const restoreBase = day => ({ plan: { [day]: [{ id: "base", text: "元" }, { id: "wrong", text: "取り違えて入った" }] }, savedAt: `${day}T00:00:00Z` });
+const dropWrong = day => s => { s.plan[day] = s.plan[day].filter(x => x.id !== "wrong"); };
+
+await scenario(`同期の置き場（${where}）: 復元した後に送っても、ほかの端末が後から足した予定は消さず、戻した所は戻る`, async () => {
+  const day = "2099-04-01", base = restoreBase(day), store = await cloudStore(base, solo);
+  const pc = device(base, dropWrong(day), store);
+  pc.run("markSyncReplace()");                      // PC で「戻す」を押した（この時に見えていたのは base）
+  const phone = device(base, addPlan(day, "later", "戻した後に iPhone で足した"), store);
+  await phone.push();                               // その後に iPhone が保存した
+  await pc.push();
+  const head = await store.head();
+  if (conflictsOf(head).length) return `食い違いを作った: ${conflictsOf(head).join("・")}`;
+  if (pc.run("syncReplacePending()")) return "送った後も復元の印が残った";
+  if (ids(pc.state().plan[day]) !== "base,later") return `PC の手元の予定が違う: ${ids(pc.state().plan[day])}`;
+  return ids(head.plan[day]) === "base,later" || `同期先の予定は ${ids(head.plan[day])}（later が消えた＝丸ごと置き換えた／wrong が残った＝戻していない）`;
+});
+
+await scenario(`同期の置き場（${where}）: 復元の後にほかの端末の変更が無ければ、戻した姿がそのまま同期先に入る`, async () => {
+  const day = "2099-04-02", base = restoreBase(day), store = await cloudStore(base, solo);
+  const pc = device(base, dropWrong(day), store);
+  pc.run("markSyncReplace()");
+  await pc.push();
+  const head = await store.head();
+  if (pc.run("syncReplacePending()")) return "送った後も復元の印が残った";
+  return ids(head.plan[day]) === "base" || `同期先の予定は ${ids(head.plan[day])}`;
+});
+
 for (const [name, verdict, reference] of results) console.log(`${verdict.startsWith("通った") ? "○" : reference ? "－" : "×"} ${name} … ${verdict}`);
 process.exit(results.every(([, v, reference]) => reference || v === "通った") ? 0 : 1);
