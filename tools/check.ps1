@@ -431,8 +431,19 @@ window.addEventListener("load", () => setTimeout(async () => {
         tap('[data-v2-back]', "settings → home (pairing join)");
         tap('[data-v2-go="settings"]', "home → settings (pairing join)");
         document.getElementById("v2DeviceSyncPairCode").value = pairingCode;
+        // 9) 窓を出さずにすぐ「キャンセル」を返す画面（2026-11-15 0.32.24・Claude アプリの中の画面は confirm を 1ms で false にした）:
+        //    画面の中の窓が出る・キャンセルで何も変わらない・OK で進む（社長の PC で「コードで自動接続する」が黙って止まった件）
+        window.confirm = () => false;
         document.querySelector('[data-v2-device-sync-pair-join]').click();
+        await until(() => document.querySelector('.app-confirm [data-app-confirm-cancel]'), "suppressed confirm shows the in-app confirm");
+        document.querySelector('.app-confirm [data-app-confirm-cancel]').click();
+        await new Promise(r => setTimeout(r, 100));
+        if (document.querySelector('.app-confirm') || cfgNow().mode === "cloud" || cfgNow().token !== "pc") throw new Error("UI smoke: in-app confirm cancel leaves the device as it was");
+        document.querySelector('[data-v2-device-sync-pair-join]').click();
+        await until(() => document.querySelector('.app-confirm [data-app-confirm-ok]'), "suppressed confirm shows the in-app confirm again");
+        document.querySelector('.app-confirm [data-app-confirm-ok]').click();
         await until(() => cfgNow().mode === "cloud" && !syncing, "join a cloud pairing does not finish");
+        if (document.querySelector('.app-confirm')) throw new Error("UI smoke: in-app confirm closes after OK");
         clearInterval(pullTimer); clearTimeout(syncTimer);
         const joined = cfgNow();
         if (joined.role !== "ro" || joined.spaceId !== "1".repeat(32) || joined.cloudBase !== CLOUD) throw new Error("UI smoke: read-only device stays read-only after joining a cloud pairing");
@@ -791,6 +802,9 @@ if ($uiV2 -notmatch 'syncEventTimePreview' -or $uiV2 -notmatch 'syncEventTimePre
 "OK  時間ピッカー表示同期あり"
 if ($uiV2 -notmatch 'typeof isReadOnly.*isReadOnly\(\)' -or $uiV2 -notmatch 'selected&&writable') { Write-Error "時間割の読み取り専用ガードがありません" }
 "OK  時間割の読み取り専用ガードあり"
+# 確認の窓は askConfirm を通す（2026-11-15 0.32.24）。素の confirm( は、窓を出さずに false を返す画面で黙って止まる
+if ($uiV2 -match '(?<![\w.])confirm\(|window\.confirm\(' -or $src -match '(?<![\w.])confirm\(' -or ([regex]::Matches($src, 'window\.confirm\(')).Count -ne 1 -or $src -notmatch 'function confirmSheet') { Write-Error "確認の窓が askConfirm を通っていない所があります" }
+"OK  確認の窓は askConfirm を通る"
 
 # AI分析へ進む前の日報取り込み基盤。ファイル選択・プレビュー・明示保存を分け、
 # 既存日報は専用の上書き操作に隔離し、読み取り専用端末からの保存を許さない。
