@@ -683,11 +683,11 @@
     if(kind==="incomeMethod")for(const item of S.incomeLogs||[])if(String(item.method||"")===old){item.method=clean;item.methodLabel=clean;}
     return {ok:true};
   }
-  function deleteMoneyOption(kind,index){
+  async function deleteMoneyOption(kind,index){
     if(!canWrite())return {ok:false,reason:"readonly"};
     const key=moneyOptionSet(kind),list=key?(S[key]||[]):[],old=String(list[index]||"");
     if(!old)return {ok:false,reason:"missing"};
-    if(!window.confirm(`「${old}」を今後の選択肢から削除します。過去の記録は残ります。よろしいですか？`))return {ok:false,reason:"cancel"};
+    if(!(await askConfirm(`「${old}」を今後の選択肢から削除します。過去の記録は残ります。よろしいですか？`)))return {ok:false,reason:"cancel"};
     list.splice(index,1);return {ok:true};
   }
   function workLogImportPanel(){
@@ -1671,7 +1671,7 @@
     e.stopImmediatePropagation();
     addBorrowingLog(document.getElementById("v2Amount")?.value,document.getElementById("v2Borrower")?.value);
   },true);
-  root.addEventListener("click",e=>{
+  root.addEventListener("click",async e=>{
     const flip=e.target.closest("[data-v2-benefit-flip]");
     if(flip&&!e.target.closest("[data-v2-private]")){
       e.stopImmediatePropagation();
@@ -1694,7 +1694,7 @@
       if(!canWrite())return;
       const tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);
       const endDate=ymd(tomorrow);
-      if(!window.confirm(`明日（${dateLabel(endDate)}）まで残し、明後日以降の毎日の予定を終了します。よろしいですか？`))return;
+      if(!(await askConfirm(`明日（${dateLabel(endDate)}）まで残し、明後日以降の毎日の予定を終了します。よろしいですか？`)))return;
       S.dailyTimelineEndDate=endDate;save();newAppRender();successToast("明後日以降の毎日の予定を終了しました");
       return;
     }
@@ -1706,7 +1706,7 @@
       tomorrow.setDate(tomorrow.getDate()+1);
       const startDate=ymd(tomorrow),count=futureWorkScheduleCount(today);
       if(!count){toast("削除対象の仕事予定はありません");return;}
-      if(!window.confirm(`明日（${dateLabel(startDate)}）以降の仕事予定を${count}件削除します。過去の予定・仕事記録・生活／共通予定は残ります。よろしいですか？`))return;
+      if(!(await askConfirm(`明日（${dateLabel(startDate)}）以降の仕事予定を${count}件削除します。過去の予定・仕事記録・生活／共通予定は残ります。よろしいですか？`)))return;
       captureFlowUndo();
       const removed=deleteFutureWorkSchedules(today);
       selectedFlowEvent=null;
@@ -1719,7 +1719,7 @@
       if(!canWrite())return;
       const count=dailyWorkRoutineCount();
       if(!count){toast("外す対象の仕事ルーティーンはありません");return;}
-      if(!window.confirm(`今日（${dateLabel(ymd(now()))}）以降に毎日表示される仕事ルーティーン${count}件を外します。過去の日報と、この日の予定は残ります。よろしいですか？`))return;
+      if(!(await askConfirm(`今日（${dateLabel(ymd(now()))}）以降に毎日表示される仕事ルーティーン${count}件を外します。過去の日報と、この日の予定は残ります。よろしいですか？`)))return;
       captureFlowUndo();
       const removed=deleteDailyWorkRoutines();
       selectedFlowEvent=null;
@@ -1731,7 +1731,7 @@
       e.stopImmediatePropagation();
       if(!canWrite())return;
       if(!workAutoScheduleIsVisibleOn(ymd(now())))return;
-      if(!window.confirm(`今日（${dateLabel(ymd(now()))}）以降の自動仕事予定を停止します。過去の日報・案件カタログ・手動予定・生活／共通予定は残ります。よろしいですか？`))return;
+      if(!(await askConfirm(`今日（${dateLabel(ymd(now()))}）以降の自動仕事予定を停止します。過去の日報・案件カタログ・手動予定・生活／共通予定は残ります。よろしいですか？`)))return;
       captureFlowUndo();
       const yesterday=new Date();yesterday.setDate(yesterday.getDate()-1);
       S.workAutoScheduleEndDate=ymd(yesterday);
@@ -1893,7 +1893,7 @@
     clearFlowPress();
     return true;
   }
-  document.addEventListener("click",event=>{
+  document.addEventListener("click",async event=>{
     const undo=event.target.closest("[data-v2-flow-undo]");
     if(undo){
       event.stopImmediatePropagation();
@@ -1904,7 +1904,7 @@
     if(del){
       event.stopImmediatePropagation();
       if(!canWrite()||!activeFlowEvent) return;
-      if(activeFlowEvent.origin==="daily"&&!window.confirm("これは毎日表示される予定です。全日付から削除しますか？")) return;
+      if(activeFlowEvent.origin==="daily"&&!(await askConfirm("これは毎日表示される予定です。全日付から削除しますか？"))) return;
       captureFlowUndo();
       deleteFlowEvent(activeFlowEvent);
       activeFlowEvent=null; save(); newAppRender(); successToast("予定を削除しました");
@@ -2143,7 +2143,7 @@
     }
     const optionDelete=event.target.closest("[data-v2-money-option-delete]");
     if(optionDelete){
-      const [kind,indexText]=String(optionDelete.dataset.v2MoneyOptionDelete||"").split(":"),result=deleteMoneyOption(kind,Number(indexText));
+      const [kind,indexText]=String(optionDelete.dataset.v2MoneyOptionDelete||"").split(":"),result=await deleteMoneyOption(kind,Number(indexText));
       if(!result.ok)return;
       save();newAppRender();successToast("支払いの種類を削除しました");return;
     }
@@ -2993,13 +2993,13 @@
       return;
     }
     if(button.hasAttribute("data-v2-sync-move-cloud")){
-      if(!confirm("同期先を GitHub から Cloudflare（予定の通知サーバーの同期の置き場）へ移します。\n\n・この端末と GitHub の中身をそろえてから、新しい置き場へ書きます\n・移す前の GitHub の中身は、この端末に写しとして残します。GitHub の中身は消さず、書き換えません\n・途中で止まったら、今までの GitHub の同期のままです\n・あとで「GitHub に戻す」で戻せます（置き場は消しません）\n・ほかの端末は、この端末で作る接続コードで置き場につなぎ直します"))return;
+      if(!(await askConfirm("同期先を GitHub から Cloudflare（予定の通知サーバーの同期の置き場）へ移します。\n\n・この端末と GitHub の中身をそろえてから、新しい置き場へ書きます\n・移す前の GitHub の中身は、この端末に写しとして残します。GitHub の中身は消さず、書き換えません\n・途中で止まったら、今までの GitHub の同期のままです\n・あとで「GitHub に戻す」で戻せます（置き場は消しません）\n・ほかの端末は、この端末で作る接続コードで置き場につなぎ直します")))return;
       try{const r=await moveSyncToCloud(schedulePushConfig());newAppRender();successToast(`同期先を移しました（置き場 ${r.count}件・移す前の写し ${r.savedCount}件）`);}
       catch(error){newAppRender();toast(error?.message||"同期先を移せませんでした");}
       return;
     }
     if(button.hasAttribute("data-v2-sync-move-back")){
-      if(!confirm("同期先を GitHub に戻します。\n\n・置き場の最新を受け取ってから、GitHub へ送ります\n・Cloudflare の置き場は消しません\n・ほかの端末は、この端末で作る接続コードで GitHub につなぎ直します"))return;
+      if(!(await askConfirm("同期先を GitHub に戻します。\n\n・置き場の最新を受け取ってから、GitHub へ送ります\n・Cloudflare の置き場は消しません\n・ほかの端末は、この端末で作る接続コードで GitHub につなぎ直します")))return;
       try{await moveSyncBackToGist();newAppRender();successToast("同期先を GitHub に戻しました");}
       catch(error){newAppRender();toast(error?.message||"GitHub に戻せませんでした");}
       return;
@@ -3013,7 +3013,7 @@
       const code=document.getElementById("v2DeviceSyncPairCode")?.value.trim()||"";
       if(!code)return toast("接続コードを貼り付けてください");
       const joinRo=syncCfg().role==="ro";
-      if(!confirm((joinRo?"この端末を同期へ接続します（読み取り専用のまま。記録は送りません）。":"この端末を双方向同期へ接続します。")+"\n\n最初に、同期済み端末の最新データをこの端末へ受信します。現在この端末だけにある未同期データは置き換わるため、必要なら先にバックアップしてください。"))return;
+      if(!(await askConfirm((joinRo?"この端末を同期へ接続します（読み取り専用のまま。記録は送りません）。":"この端末を双方向同期へ接続します。")+"\n\n最初に、同期済み端末の最新データをこの端末へ受信します。現在この端末だけにある未同期データは置き換わるため、必要なら先にバックアップしてください。")))return;
       try{await joinDeviceSyncPairing(code);deviceSyncPairingCode="";newAppRender();successToast(joinRo?"自動同期を開始しました（この端末は読み取り専用のままです）":"自動同期を開始しました。以後はPC・iPhoneの両方から更新できます");}
       catch(error){toast(error?.message||"自動接続できませんでした");}
       return;
@@ -3021,7 +3021,7 @@
     if(button.hasAttribute("data-v2-device-sync-role-save")){
       const role=document.getElementById("v2DeviceSyncRole")?.value||"ro";
       const current=syncCfg();
-      if(role==="rw" && current.role!=="rw" && !confirm("このPCから同期先へ記録を送信できるようにします。\n\niPhoneを正本として見るだけにする場合はキャンセルしてください。")) return;
+      if(role==="rw" && current.role!=="rw" && !(await askConfirm("このPCから同期先へ記録を送信できるようにします。\n\niPhoneを正本として見るだけにする場合はキャンセルしてください。"))) return;
       current.role=role; setSyncCfg(current);
       if(typeof rolePaint==="function") rolePaint();
       const status=root.querySelector('[data-v2-sync-status="refresh"]');
@@ -3181,7 +3181,7 @@
     fbRestoreScroll(before);
   }
   function fbStore(){save();fbRefreshKeepingScroll();}
-  root.addEventListener("click",event=>{
+  root.addEventListener("click",async event=>{
     const tool=event.target.closest("[data-v2-freeboard-tool]"),full=event.target.closest("[data-v2-freeboard-fullscreen]"),remove=event.target.closest("[data-v2-freeboard-delete]"),close=event.target.closest("[data-v2-freeboard-modal-close]"),keep=event.target.closest("[data-v2-freeboard-editor-save]"),style=event.target.closest("[data-v2-freeboard-style]"),clear=event.target.closest("[data-v2-freeboard-clear]"),duplicate=event.target.closest("[data-v2-freeboard-duplicate]"),groupDelete=event.target.closest("[data-v2-freeboard-delete-group]"),groupBox=event.target.closest("[data-v2-freeboard-group-box]");
     if(!tool&&!full&&!remove&&!close&&!keep&&!style&&!clear&&!duplicate&&!groupDelete&&!groupBox) return;
     event.stopImmediatePropagation();
@@ -3189,7 +3189,7 @@
     if(full){freeBoardUI.fullscreen=!freeBoardUI.fullscreen;fbSelect([]);freeBoardUI.editingId=null;freeBoardUI.styleId=null;newAppRender();return;}
     if(clear){
       if(!canWrite()){toast("この端末では書き込みできません");return;}
-      if(!fbCards().length||!window.confirm("フリーボードの内容をすべて削除しますか？"))return;
+      if(!fbCards().length||!(await askConfirm("フリーボードの内容をすべて削除しますか？")))return;
       boardState().cards=[];fbSelect([]);fbStore();toast("すべて削除しました");return;
     }
     if(duplicate){

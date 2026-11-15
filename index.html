@@ -6,7 +6,7 @@
 <title>LIFE NOTE</title>
 <link rel="manifest" href="manifest.webmanifest">
 <script src="design-system.js"></script>
-<link rel="stylesheet" href="ui-v2.css?v=0.32.23">
+<link rel="stylesheet" href="ui-v2.css?v=0.32.24">
 <meta name="theme-color" content="#F6EFDE">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -798,8 +798,8 @@ body[data-tab="cal"]:not([data-cal-page="check"]) #checklistPage{display:none!im
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:1ms!important;animation-iteration-count:1!important;transition-duration:1ms!important}}
 </style>
 <!-- 旧画面のインラインCSSより後に読み込み、紙面UIを最終スタイルとして適用する。 -->
-<link rel="stylesheet" href="ui-analog.css?v=0.32.23">
-<link rel="stylesheet" href="ui-paper-baseline.css?v=0.32.23">
+<link rel="stylesheet" href="ui-analog.css?v=0.32.24">
+<link rel="stylesheet" href="ui-paper-baseline.css?v=0.32.24">
 <link rel="stylesheet" href="design-foundation.css">
 </head>
 <body data-tab="home">
@@ -1435,7 +1435,7 @@ addEventListener("error", ev => {
   b.textContent = `エラー: ${ev.message || ev.error} （${(ev.filename||"").split("/").pop()}:${ev.lineno||"?"}）`;
 });
 
-const BUILD = "0.32.23";         // version.txt と一致させること
+const BUILD = "0.32.24";         // version.txt と一致させること
 const KEY = "mainichi.v1";
 // 仕事の案件を部署名へ付け替える表（2026-09-21 社長「日報の案件を部署名に合わせる」→ 問いの画面「部署名に付け替える」）。
 // 09-21 に社長の案件にあった名だけ。ここに無い名（PC・環境の整備など）は触らない。新しい部署は日報の projectKind="department" で足す
@@ -3138,6 +3138,57 @@ function toast(msg){
   t.textContent = msg; t.classList.add("show");
   clearTimeout(toastTimer);
   toastTimer = setTimeout(()=>t.classList.remove("show"), 1600);
+}
+
+
+/* 確認の窓（2026-11-15）。ブラウザが窓を出さずにすぐ「キャンセル」を返す所では、アプリの画面の中に同じ問いを出す。
+   Claude アプリの中の画面は window.confirm を 0.001 秒で false にする＝押しても何も起きなかった（社長の PC・接続コード）。
+   人が窓を見て押すには必ず時間がかかるので、50ms より早い「キャンセル」は窓が出なかったと見る。ふつうのブラウザでは今までどおり */
+function askConfirm(message){
+  const started = Date.now();
+  let ok = false;
+  try{ ok = window.confirm(message); }catch(e){ ok = false; }
+  if(ok || Date.now() - started > 50) return Promise.resolve(Boolean(ok));
+  return confirmSheet(message);
+}
+function confirmSheet(message){
+  if(!document.getElementById("appConfirmStyle")){
+    const style = document.createElement("style");
+    style.id = "appConfirmStyle";
+    style.textContent = ".app-confirm{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(39,55,68,.45)}" +
+      ".app-confirm-box{max-width:420px;width:100%;max-height:calc(100vh - 32px);overflow:auto;background:var(--a-paper-warm,#fff8e9);color:var(--a-ink,#273744);border:1.5px solid var(--a-line,#334d59);border-radius:14px;box-shadow:var(--a-shadow,3px 4px 0 rgba(40,47,39,.16));padding:18px 18px 14px;font:15px/1.6 var(--a-sans,sans-serif)}" +
+      ".app-confirm-box p{margin:0 0 14px;white-space:pre-wrap;overflow-wrap:anywhere}" +
+      ".app-confirm-actions{display:flex;gap:10px;justify-content:flex-end}" +
+      ".app-confirm-actions button{min-height:44px;min-width:96px;padding:0 16px;border-radius:10px;border:1.5px solid var(--a-line,#334d59);font:600 15px var(--a-sans,sans-serif);cursor:pointer;background:transparent;color:var(--a-ink,#273744)}" +
+      ".app-confirm-actions [data-app-confirm-ok]{background:var(--a-blue,#376b91);border-color:var(--a-blue,#376b91);color:#fff}";
+    document.head.appendChild(style);
+  }
+  return new Promise(resolve => {
+    const before = document.activeElement;
+    const wrap = document.createElement("div");
+    wrap.className = "app-confirm";
+    wrap.setAttribute("role", "alertdialog");
+    wrap.setAttribute("aria-modal", "true");
+    wrap.innerHTML = '<div class="app-confirm-box"><p id="appConfirmText"></p><div class="app-confirm-actions"><button type="button" data-app-confirm-cancel>キャンセル</button><button type="button" data-app-confirm-ok>OK</button></div></div>';
+    wrap.setAttribute("aria-labelledby", "appConfirmText");
+    wrap.querySelector("p").textContent = String(message);
+    const done = ok => {
+      document.removeEventListener("keydown", onKey, true);
+      wrap.remove();
+      try{ before && before.focus && before.focus(); }catch(e){}
+      resolve(ok);
+    };
+    const onKey = e => { if(e.key === "Escape"){ e.preventDefault(); done(false); } };
+    // 押した時の処理は、下の画面の押した時の処理（document の click）へ伝えない
+    wrap.addEventListener("click", e => {
+      e.stopPropagation();
+      if(e.target.closest("[data-app-confirm-ok]")) done(true);
+      else if(e.target.closest("[data-app-confirm-cancel]")) done(false);
+    });
+    document.addEventListener("keydown", onKey, true);
+    document.body.appendChild(wrap);
+    wrap.querySelector("[data-app-confirm-ok]").focus();
+  });
 }
 
 /* ---------- money movement ---------- */
@@ -4975,10 +5026,10 @@ document.getElementById("syncStart").addEventListener("click", async ()=>{
   const token = document.getElementById("syncToken").value.trim();
   const gistId = document.getElementById("syncGist").value.trim();
   if(!token) return toast("トークンを貼ってください");
-  if(gistId && !confirm(
+  if(gistId && !(await askConfirm(
       "この端末のデータは、同期先の内容に置き換わります。\n\n" +
       "先に設定した端末（データが入っているほう）の内容に合わせる場合はOK。\n" +
-      "この端末のデータを残したい場合はキャンセルして、こちらを1台目として設定してください。"))
+      "この端末のデータを残したい場合はキャンセルして、こちらを1台目として設定してください。")))
     return;
 
   setSyncCfg(Object.assign({}, syncCfg(), { token, gistId }));
@@ -5026,10 +5077,10 @@ function restorePaint(){
   document.getElementById("restoreInfo").textContent = info;
 }
 
-document.getElementById("restoreBtn").addEventListener("click", ()=>{
+document.getElementById("restoreBtn").addEventListener("click", async ()=>{
   const raw = localStorage.getItem("mainichi.before-sync");
   if(!raw) return toast("退避データがありません");
-  if(!confirm("同期で上書きされる前の状態に戻します。\n今の内容は失われます。よろしいですか？")) return;
+  if(!(await askConfirm("同期で上書きされる前の状態に戻します。\n今の内容は失われます。よろしいですか？"))) return;
   try{
     S = normalize(JSON.parse(raw));
     S.savedAt = new Date().toISOString();      // これを最新として扱う
@@ -5223,6 +5274,6 @@ if("serviceWorker" in navigator &&
   navigator.serviceWorker.register("sw.js?v=" + BUILD, {updateViaCache:"none"}).catch(()=>{});
 }
 </script>
-<script defer src="ui-v2.js?v=0.32.23"></script>
+<script defer src="ui-v2.js?v=0.32.24"></script>
 </body>
 </html>
