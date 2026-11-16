@@ -393,11 +393,11 @@ window.addEventListener("load", () => setTimeout(async () => {
           return {ok:true, status:200, json: async () => ({spaceId:"1".repeat(32), spaceSecret:"smoke-space"})};
         }
         if (u.startsWith(CLOUD + "/v1/sync/spaces/")) return cloudLayer(url, opts);
-        if (u === CLOUD + "/v1/sync/pairings" && opts && opts.method === "POST") { pairingEnvelope = JSON.parse(opts.body).envelope; return {ok:true, status:200, json: async () => ({pairingId:"a".repeat(32)})}; }
-        if (u === CLOUD + "/v1/sync/pairings/join") return {ok:true, status:200, json: async () => ({envelope: pairingEnvelope})};
+        if (u === CLOUD + "/v1/sync/pairings" && opts && opts.method === "POST") { pairingEnvelope = JSON.parse(opts.body).envelope; return {ok:true, status:200, json: async () => ({pairingId:"a".repeat(32), expiresAt:"2099-01-01T03:30:00Z"})}; }
+        if (u === CLOUD + "/v1/sync/pairings/join") { pairingJoins++; return pairingJoins > 1 ? {ok:false, status:401, json: async () => ({error:"接続コードを確認してください"})} : {ok:true, status:200, json: async () => ({envelope: pairingEnvelope})}; }   // 1回限り（11-16 通知サーバー）
         return {ok:false, status:404, json: async () => ({error:"not found"})};
       };
-      let pairingEnvelope = null;
+      let pairingEnvelope = null, pairingJoins = 0;
       try {
         localStorage.setItem(PUSH_KEY, JSON.stringify({url: CLOUD, deviceId: "smoke-device", deviceSecret: "smoke-device-secret"}));
         localStorage.setItem(SYNC_KEY, JSON.stringify({token:"smoke", gistId:"smoke", role:"rw"}));
@@ -432,6 +432,7 @@ window.addEventListener("load", () => setTimeout(async () => {
         document.querySelector('[data-v2-device-sync-pair-create]').click();
         await until(() => pairingEnvelope && document.querySelector('textarea.an-sync-code[readonly]'), "pairing code for a cloud device");
         const pairingCode = document.querySelector('textarea.an-sync-code[readonly]').value.trim();
+        if (!/1回だけ使えます/.test(document.querySelector('textarea.an-sync-code[readonly]').parentElement.textContent)) throw new Error("UI smoke: pairing code shows its expiry and one-time use");
         const b64 = v => Uint8Array.from(atob(v.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - v.length % 4) % 4)), c => c.charCodeAt(0));
         const pairKey = await crypto.subtle.importKey("raw", await crypto.subtle.digest("SHA-256", new TextEncoder().encode(pairingCode.split(".")[1])), {name:"AES-GCM"}, false, ["decrypt"]);
         const carried = JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({name:"AES-GCM", iv:b64(pairingEnvelope.iv)}, pairKey, b64(pairingEnvelope.ciphertext))));
@@ -455,6 +456,21 @@ window.addEventListener("load", () => setTimeout(async () => {
         if (document.querySelector('.app-confirm')) throw new Error("UI smoke: in-app confirm closes after OK");
         clearInterval(pullTimer); clearTimeout(syncTimer);
         const joined = cfgNow();
+        // 10) 同じコードの2回目（通知サーバーが 401）: 設定は変えず、「使えません（30分を過ぎたか、1回使い済み）」と分かる言葉で止まる（11-16）
+        const beforeReuse = JSON.stringify(cfgNow());
+        document.getElementById("v2DeviceSyncPairCode").value = pairingCode;
+        document.querySelector('[data-v2-device-sync-pair-join]').click();
+        await until(() => document.querySelector('.app-confirm [data-app-confirm-ok]'), "reused code still asks first");
+        document.querySelector('.app-confirm [data-app-confirm-ok]').click();
+        await until(() => (document.getElementById("toast")?.textContent || "").includes("使えません"), "a used pairing code is refused with a clear message");
+        if (pairingJoins !== 2 || JSON.stringify(cfgNow()) !== beforeReuse) throw new Error("UI smoke: a used pairing code is refused without changing the sync config");
+        // 11) 設定の行の中の開き閉じ（手動で設定する（予備））は横1行（11-16 右側の幅で字が縦に並んだ）
+        const manual = [...document.querySelectorAll('.v2-settings details details > summary')].find(el => el.textContent.trim() === "手動で設定する（予備）");
+        if (!manual) throw new Error("UI smoke: manual sync summary exists");
+        manual.closest('.v2-settings > details').open = true;
+        const manualBox = manual.getBoundingClientRect();
+        if (getComputedStyle(manual).display !== "flex" || manualBox.height > 60 || manualBox.width < 200) throw new Error("UI smoke: nested settings summary stays on one row (" + Math.round(manualBox.width) + "x" + Math.round(manualBox.height) + ")");
+        manual.closest('.v2-settings > details').open = false;
         if (joined.role !== "ro" || joined.spaceId !== "1".repeat(32) || joined.cloudBase !== CLOUD) throw new Error("UI smoke: read-only device stays read-only after joining a cloud pairing");
       } finally {
         window.confirm = savedConfirm;

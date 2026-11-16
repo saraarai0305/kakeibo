@@ -172,7 +172,8 @@ export default {
         body: JSON.stringify({ secretHash: body.pairingSecretHash, envelope: body.envelope }),
       }));
       if (!response.ok) return cors(request, response);
-      return cors(request, json({ pairingId }));
+      const made = await response.json().catch(() => ({}));
+      return cors(request, json({ pairingId, expiresAt: made?.expiresAt || null }));
     }
     if (request.method === "POST" && url.pathname === "/v1/sync/pairings/join") {
       const body = await request.json().catch(() => null);
@@ -371,10 +372,23 @@ export class ScheduleReminder extends DurableObject {
 
 // GitHubトークンをブラウザ間で平文送信しないための、一回限りの接続コード用保管庫。
 // Workerには端末側でAES-GCM暗号化済みの小さな接続情報だけが保存される。
+// コードは作ってから PAIRING_TTL_SECONDS（既定 30分）で切れ、1回つないだら消える（社長 11-16「両方進めてください」）。
+const PAIRING_TTL_SECONDS_DEFAULT = 30 * 60;
 export class DeviceSyncPairing extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
     this.storage = ctx.storage;
+    this.env = env;
+  }
+
+  ttlMs() {
+    const seconds = Number(this.env?.PAIRING_TTL_SECONDS);
+    return (Number.isFinite(seconds) && seconds >= 0 ? seconds : PAIRING_TTL_SECONDS_DEFAULT) * 1000;
+  }
+
+  async forget() {
+    await this.storage.deleteAlarm();
+    await this.storage.deleteAll();
   }
 
   async authorised(request) {
@@ -388,15 +402,27 @@ export class DeviceSyncPairing extends DurableObject {
       if (await this.storage.get("secretHash")) return json({ error: "接続コードを作成できませんでした" }, 409);
       const body = await request.json().catch(() => null);
       if (!body?.secretHash || !validPairingEnvelope(body?.envelope)) return json({ error: "接続コードの内容を確認してください" }, 400);
-      await this.storage.put({ secretHash: String(body.secretHash), envelope: body.envelope, createdAt: new Date().toISOString() });
-      return json({ ok: true });
+      const now = Date.now();
+      await this.storage.put({ secretHash: String(body.secretHash), envelope: body.envelope, createdAt: new Date(now).toISOString() });
+      await this.storage.setAlarm(now + this.ttlMs());
+      return json({ ok: true, expiresAt: new Date(now + this.ttlMs()).toISOString() });
     }
     if (action !== "join" || request.method !== "POST" || !(await this.authorised(request))) {
       return json({ error: "接続コードを確認してください" }, 401);
     }
+    const createdAt = Date.parse(String(await this.storage.get("createdAt") || ""));
+    if (!Number.isFinite(createdAt) || Date.now() - createdAt >= this.ttlMs()) {
+      await this.forget();
+      return json({ error: "接続コードの期限が切れています" }, 410);
+    }
     const envelope = await this.storage.get("envelope");
+    await this.forget();   // 1回つないだら消す（同じコードの2回目は 401）
     if (!validPairingEnvelope(envelope)) return json({ error: "接続コードの内容を確認してください" }, 404);
     return json({ envelope });
+  }
+
+  async alarm() {
+    await this.storage.deleteAll();
   }
 }
 

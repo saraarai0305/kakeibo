@@ -72,6 +72,7 @@
   let scheduleNotificationTimer = null;
   let schedulePushSyncTimer = null;
   let deviceSyncPairingCode = "";
+  let deviceSyncPairingExpiresAt = "";   // 接続コードの期限（通知サーバーが返す・作ってから30分）
   const SCHEDULE_PUSH_STORAGE_KEY="mainichi.schedule-push.v1";
   const SCHEDULE_PUSH_SERVER_URL="https://mainichi-schedule-push.mainichi-schedule-push-01.workers.dev";
   const successToast = message => {
@@ -506,6 +507,7 @@
     if(!response.ok)throw new Error(`接続コードを作成できませんでした (${response.status})`);
     const result=await response.json();
     const suffix=String(result?.pairingId||"");
+    deviceSyncPairingExpiresAt=String(result?.expiresAt||"");
     if(!suffix)throw new Error("接続コードを受け取れませんでした");
     // このコードは接続先でだけ使い、端末データやGistには保存しない。
     return `${suffix}.${localSecret}`;
@@ -513,6 +515,7 @@
   async function joinDeviceSyncPairing(code){
     const parts=pairingCodeParts(code),url=schedulePushConfig().url||SCHEDULE_PUSH_SERVER_URL;
     const response=await fetch(new URL("/v1/sync/pairings/join",`${url}/`),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({pairingCode:code})});
+    if(response.status===401||response.status===404||response.status===410)throw new Error("この接続コードは使えません（30分を過ぎたか、1回使い済みです）。コードを作った端末で作り直してください");
     if(!response.ok)throw new Error(`接続コードを確認できませんでした (${response.status})`);
     const result=await response.json(),config=await decryptPairingConfig(result?.envelope,parts.secret);
     const current=syncCfg();
@@ -2834,7 +2837,7 @@
   }
   function deviceSyncPairingPanel(device){
     const canMakeCode=Boolean(syncConfigured(device)&&schedulePushReady());
-    const visibleCode=deviceSyncPairingCode?`<label>この端末の接続コード</label><textarea class="an-sync-code" readonly rows="3">${esc2(deviceSyncPairingCode)}</textarea><p class="an-settings-help">接続するPCだけへ渡してください。コードには暗号化を復号する鍵が含まれるため、チャット・日報・Gitには残しません。</p>`:"";
+    const visibleCode=deviceSyncPairingCode?`<label>この端末の接続コード</label><textarea class="an-sync-code" readonly rows="3">${esc2(deviceSyncPairingCode)}</textarea><p class="an-settings-help">接続するPCだけへ渡してください。${deviceSyncPairingExpiresAt?`${esc2(new Date(deviceSyncPairingExpiresAt).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"}))}まで・`:"作ってから30分・"}1回だけ使えます。コードには暗号化を復号する鍵が含まれるため、チャット・日報・Gitには残しません。</p>`:"";
     return `<p>一度ペアリングすると、PCとiPhoneのどちらで入力しても、開いたとき・前面へ戻ったとき・表示中45秒ごとに自動でそろいます。</p><p class="an-sync-note">初回だけ、すでに同期済みの端末で接続コードを作り、もう一方へ入力します。GitHubトークンは画面に表示されず、コード内で暗号化して渡されます。</p><button class="an-small-action" data-v2-device-sync-pair-create ${canMakeCode?"":"disabled"}>この端末の接続コードを作る</button>${canMakeCode?"":"<p class=\"an-settings-help\">コードを作る端末では、端末同期と予定の通知サーバーの両方を先に接続してください。</p>"}${visibleCode}<hr class="an-settings-divider"><label>別の端末で作った接続コード</label><textarea id="v2DeviceSyncPairCode" rows="3" placeholder="接続コードを貼り付け"></textarea><button class="an-small-action" data-v2-device-sync-pair-join>コードで自動接続する</button>`;
   }
   function dailyReportApiPanel(){
