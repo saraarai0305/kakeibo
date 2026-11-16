@@ -368,6 +368,15 @@ window.addEventListener("load", () => setTimeout(async () => {
       S.errands.push(errand("smoke-cloud", "置き場の用事")); S.savedAt = "2099-02-01T00:10:00Z";
       await pushRemote();
       if (cloudPuts !== 1 || !JSON.parse(cloudContent).errands.some(item => item.id === "smoke-cloud")) throw new Error("UI smoke: cloud sync push");
+      // 6b) 送りの失敗は設定の状態の欄にも残る（2026-11-16）: 置き場が書き込みを断ると lastSyncError が立ち、次に送れたら消える
+      const cloudOkLayer = window.fetch;
+      window.fetch = async (url, opts) => (String(url).startsWith(CLOUD) && opts && opts.method && opts.method !== "GET") ? {ok:false, status:503, json: async () => ({error:"smoke down"})} : cloudOkLayer(url, opts);
+      S.errands.push(errand("smoke-cloud-fail", "送れない用事")); S.savedAt = "2099-02-01T00:10:30Z";
+      await pushRemote();
+      window.fetch = cloudOkLayer;
+      if (cloudPuts !== 1 || !JSON.parse(localStorage.getItem(SYNC_KEY)).lastSyncError) throw new Error("UI smoke: a failed push is kept in the sync status");
+      await pushRemote();
+      if (cloudPuts !== 2 || JSON.parse(localStorage.getItem(SYNC_KEY)).lastSyncError || !JSON.parse(cloudContent).errands.some(item => item.id === "smoke-cloud-fail")) throw new Error("UI smoke: a later successful push clears the sync error and sends the kept record");
       // 7) 同期先を移す・戻す（2026-11-14 sync-no-lost-writes 3.4・3.5）: 設定の「同期先」の行と釦から、偽の Gist と偽の置き場で移して戻す
       //    押す前の確認（window.confirm）は一時で「はい」にする。移す間は Gist を書かず、戻すと Gist へ送る
       const PUSH_KEY = "mainichi.schedule-push.v1", savedPush = localStorage.getItem(PUSH_KEY), savedConfirm = window.confirm, savedBeforeCloud = localStorage.getItem("mainichi.before-cloud");
